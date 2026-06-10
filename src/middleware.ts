@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { hasProfile } from "@/lib/auth/profile-edge";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
 function copyCookies(from: NextResponse, to: NextResponse) {
@@ -56,12 +57,37 @@ export async function middleware(request: NextRequest) {
     return redirect;
   }
 
-  if (user && isLoginPage) {
-    const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = "/";
-    const redirect = NextResponse.redirect(homeUrl);
-    copyCookies(supabaseResponse, redirect);
-    return redirect;
+  if (user) {
+    const profileExists = await hasProfile(user.id);
+
+    if (!profileExists) {
+      if (isLoginPage) {
+        return supabaseResponse;
+      }
+
+      if (isApiRoute) {
+        const unauthorized = NextResponse.json(
+          { error: "Unauthorized" },
+          { status: 401 }
+        );
+        copyCookies(supabaseResponse, unauthorized);
+        return unauthorized;
+      }
+
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      const redirect = NextResponse.redirect(loginUrl);
+      copyCookies(supabaseResponse, redirect);
+      return redirect;
+    }
+
+    if (isLoginPage) {
+      const homeUrl = request.nextUrl.clone();
+      homeUrl.pathname = "/";
+      const redirect = NextResponse.redirect(homeUrl);
+      copyCookies(supabaseResponse, redirect);
+      return redirect;
+    }
   }
 
   return supabaseResponse;
