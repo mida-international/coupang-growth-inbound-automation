@@ -22,6 +22,7 @@ export type NavItem = {
   title: string;
   href: string;
   icon: LucideIcon;
+  masterOnly?: boolean;
 };
 
 export type NavGroup = {
@@ -62,7 +63,12 @@ export const settingsNavGroup: NavGroup = {
   items: [
     { title: "개인정보", href: "/settings/profile", icon: User },
     { title: "계정 관리", href: "/settings/accounts", icon: Users },
-    { title: "회원관리", href: "/settings/members", icon: UserCog },
+    {
+      title: "회원관리",
+      href: "/settings/members",
+      icon: UserCog,
+      masterOnly: true,
+    },
     { title: "연동 가이드", href: "/settings/integration-guide", icon: Plug },
     { title: "샵플링 API", href: "/settings/shopling-api", icon: Settings },
   ],

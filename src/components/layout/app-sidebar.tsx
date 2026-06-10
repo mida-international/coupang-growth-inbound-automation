@@ -9,7 +9,7 @@ import {
   APP_NAME,
   dataNavGroup,
   mainNavItems,
-  settingsNavGroup,
+  settingsNavGroup as defaultSettingsNavGroup,
   type NavGroup,
   type NavItem,
 } from "@/config/navigation";
@@ -187,13 +187,24 @@ function NavCollapsibleGroup({
 
 export function AppSidebar({
   showSidebarTrigger = true,
+  isMaster = false,
 }: {
   showSidebarTrigger?: boolean;
+  isMaster?: boolean;
 }) {
   const pathname = usePathname();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const { sidebarInteractionHandlers } = useSidebarInteraction();
+  const settingsNavGroup = React.useMemo(
+    () => ({
+      ...defaultSettingsNavGroup,
+      items: defaultSettingsNavGroup.items.filter(
+        (item) => !item.masterOnly || isMaster
+      ),
+    }),
+    [isMaster]
+  );
 
   if (!showSidebarTrigger) {
     return null;
