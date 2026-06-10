@@ -14,6 +14,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  master
+  admin
+}
+
+model Profile {
+  id        String   @id
+  email     String   @unique
+  name      String?
+  role      Role     @default(admin)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model HealthCheck {
   id        String   @id @default(cuid())
   checkedAt DateTime @default(now())
