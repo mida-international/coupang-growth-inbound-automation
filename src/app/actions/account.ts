@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
-import { changePassword } from "@/lib/account/change-password";
-import type { ChangePasswordInput } from "@/lib/account/types";
+import { changePassword } from "@/services/account/change-password";
+import type { ChangePasswordInput } from "@/services/account/types";
 import { requireProfile } from "@/lib/auth/profile";
 
 export type ChangePasswordResult =

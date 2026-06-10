@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { AccountResult, ChangePasswordInput } from "@/lib/account/types";
+import type { AccountResult, ChangePasswordInput } from "@/services/account/types";
 import { createClient } from "@/lib/supabase/server";
 
 const changePasswordSchema = z
