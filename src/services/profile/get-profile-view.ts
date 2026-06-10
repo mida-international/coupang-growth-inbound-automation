@@ -1,7 +1,7 @@
 import type { Profile } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 
-import type { ProfileView } from "@/lib/profile/types";
+import type { ProfileView } from "@/services/profile/types";
 
 function toProfileView(profile: Profile): ProfileView {
   return {

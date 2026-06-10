@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { requireProfile } from "@/lib/auth/profile";
-import { updateProfileName } from "@/lib/profile/update-profile-name";
-import type { ProfileView, UpdateProfileNameInput } from "@/lib/profile/types";
+import { updateProfileName } from "@/services/profile/update-profile-name";
+import type { ProfileView, UpdateProfileNameInput } from "@/services/profile/types";
 
 export type UpdateProfileResult =
   | { ok: true; data: ProfileView }

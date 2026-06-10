@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { ProfileSettingsForm } from "@/components/profile/profile-settings-form";
 import { requireProfile } from "@/lib/auth/profile";
-import { getProfileView } from "@/lib/profile/get-profile-view";
+import { getProfileView } from "@/services/profile/get-profile-view";
 
 export default async function ProfilePage() {
   const profile = await requireProfile();

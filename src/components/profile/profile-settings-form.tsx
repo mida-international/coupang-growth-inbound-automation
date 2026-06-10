@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import type { ProfileView } from "@/lib/profile/types";
+import type { ProfileView } from "@/services/profile/types";
 
 function roleLabel(role: ProfileView["role"]) {
   return role === "master" ? "마스터" : "관리자";
