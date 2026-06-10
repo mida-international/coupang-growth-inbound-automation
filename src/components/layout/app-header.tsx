@@ -9,6 +9,7 @@ import {
   type NavGroup,
   type NavItem,
 } from "@/config/navigation";
+import { LogoutButton } from "@/components/auth/logout-button";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -109,8 +110,9 @@ export function AppHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="flex h-14 shrink-0 items-center border-b border-border px-4">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
       <HeaderBreadcrumb pathname={pathname} />
+      <LogoutButton />
     </header>
   );
 }
