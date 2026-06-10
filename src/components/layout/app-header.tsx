@@ -16,8 +16,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Separator } from "@/components/ui/separator";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 
 type NavContext = {
   groupTitle?: string;
@@ -80,20 +78,26 @@ function HeaderBreadcrumb({ pathname }: { pathname: string }) {
 
   return (
     <Breadcrumb>
-      <BreadcrumbList>
+      <BreadcrumbList className="gap-2 text-lg">
         {groupTitle ? (
           <>
             <BreadcrumbItem>
-              <BreadcrumbPage>{groupTitle}</BreadcrumbPage>
+              <BreadcrumbPage className="text-lg font-semibold text-foreground">
+                {groupTitle}
+              </BreadcrumbPage>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
+              <BreadcrumbPage className="text-lg font-semibold text-foreground">
+                {pageTitle}
+              </BreadcrumbPage>
             </BreadcrumbItem>
           </>
         ) : (
           <BreadcrumbItem>
-            <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
+            <BreadcrumbPage className="text-lg font-semibold text-foreground">
+              {pageTitle}
+            </BreadcrumbPage>
           </BreadcrumbItem>
         )}
       </BreadcrumbList>
@@ -105,9 +109,7 @@ export function AppHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
-      <SidebarTrigger />
-      <Separator orientation="vertical" className="h-4" />
+    <header className="flex h-14 shrink-0 items-center border-b border-border px-4">
       <HeaderBreadcrumb pathname={pathname} />
     </header>
   );

@@ -26,6 +26,7 @@ export type NavItem = {
 
 export type NavGroup = {
   title: string;
+  icon: LucideIcon;
   items: NavItem[];
 };
 
@@ -40,6 +41,7 @@ export const mainNavItems: NavItem[] = [
 
 export const dataNavGroup: NavGroup = {
   title: "데이터 관리",
+  icon: Database,
   items: [
     { title: "샵플링 정보 관리", href: "/data/shopling", icon: Database },
     { title: "쿠팡 Growth", href: "/data/coupang-growth", icon: TrendingUp },
@@ -56,6 +58,7 @@ export const dataNavGroup: NavGroup = {
 
 export const settingsNavGroup: NavGroup = {
   title: "설정",
+  icon: Settings,
   items: [
     { title: "개인정보", href: "/settings/profile", icon: User },
     { title: "계정 관리", href: "/settings/accounts", icon: Users },

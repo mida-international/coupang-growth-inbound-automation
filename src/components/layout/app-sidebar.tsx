@@ -31,8 +31,51 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
+import { useSidebarInteraction } from "@/hooks/use-sidebar-hover";
 import { cn } from "@/lib/utils";
+
+const iconRailMenuClassName =
+  "group-data-[collapsible=icon]:gap-2 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2";
+
+const expandedMenuClassName = "gap-1.5 px-3 py-2";
+
+const expandedIconClassName = "[&_svg]:size-[1.35rem]";
+
+const expandedButtonClassName = cn(
+  "h-11 gap-3 px-3 text-[0.95rem] leading-snug font-medium",
+  expandedIconClassName,
+);
+
+const expandedSubButtonClassName = cn(
+  "h-10 gap-3 px-3 text-[0.9rem] leading-snug",
+  "[&_svg]:size-5",
+);
+
+const expandedGroupTriggerClassName = cn(
+  "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-[0.95rem] font-medium text-sidebar-foreground/70",
+  "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+  "[&[data-panel-open]]:text-sidebar-foreground",
+);
+
+function menuButtonClassName(isCollapsed: boolean) {
+  if (isCollapsed) {
+    return cn(
+      "!size-10 !w-10 !min-w-10 !max-w-10 mx-auto justify-center p-0 overflow-hidden",
+      expandedIconClassName,
+      "text-sidebar-foreground/75",
+      "data-active:bg-primary/12 data-active:text-primary data-active:[&_svg]:text-primary",
+      "hover:bg-sidebar-accent/80 hover:text-sidebar-foreground",
+    );
+  }
+
+  return expandedButtonClassName;
+}
+
+function menuListClassName(isCollapsed: boolean) {
+  return cn(iconRailMenuClassName, !isCollapsed && expandedMenuClassName);
+}
 
 function isNavItemActive(pathname: string, href: string) {
   if (href === "/") {
@@ -42,15 +85,28 @@ function isNavItemActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function NavMenuItem({ item, pathname }: { item: NavItem; pathname: string }) {
+function NavIconMenuItem({
+  item,
+  pathname,
+}: {
+  item: NavItem;
+  pathname: string;
+}) {
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
+
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem
+      className={cn(isCollapsed && "flex w-full justify-center")}
+    >
       <SidebarMenuButton
+        className={menuButtonClassName(isCollapsed)}
+        tooltip={item.title}
         isActive={isNavItemActive(pathname, item.href)}
         render={<Link href={item.href} />}
       >
         <item.icon />
-        <span>{item.title}</span>
+        {!isCollapsed ? <span>{item.title}</span> : null}
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
@@ -63,6 +119,8 @@ function NavCollapsibleGroup({
   group: NavGroup;
   pathname: string;
 }) {
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
   const isGroupActive = group.items.some((item) =>
     isNavItemActive(pathname, item.href),
   );
@@ -74,6 +132,18 @@ function NavCollapsibleGroup({
     }
   }, [isGroupActive]);
 
+  if (isCollapsed) {
+    return (
+      <SidebarGroup className="py-0">
+        <SidebarMenu className={menuListClassName(true)}>
+          {group.items.map((item) => (
+            <NavIconMenuItem key={item.href} item={item} pathname={pathname} />
+          ))}
+        </SidebarMenu>
+      </SidebarGroup>
+    );
+  }
+
   return (
     <SidebarGroup>
       <Collapsible
@@ -83,25 +153,21 @@ function NavCollapsibleGroup({
       >
         <SidebarGroupLabel
           render={
-            <CollapsibleTrigger
-              className={cn(
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-foreground/70",
-                "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                "[&[data-panel-open]]:text-sidebar-foreground",
-              )}
-            >
+            <CollapsibleTrigger className={expandedGroupTriggerClassName}>
+              <group.icon className="size-[1.35rem] shrink-0" />
               <span className="flex-1 text-left">{group.title}</span>
-              <ChevronDown className="size-4 shrink-0 transition-transform group-data-[panel-open]/collapsible:rotate-180" />
+              <ChevronDown className="size-[1.1rem] shrink-0 transition-transform group-data-[panel-open]/collapsible:rotate-180" />
             </CollapsibleTrigger>
           }
         />
         <CollapsibleContent>
           <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuSub>
+            <SidebarMenu className="gap-1">
+              <SidebarMenuSub className="gap-1.5 py-1">
                 {group.items.map((item) => (
                   <SidebarMenuSubItem key={item.href}>
                     <SidebarMenuSubButton
+                      className={expandedSubButtonClassName}
                       isActive={isNavItemActive(pathname, item.href)}
                       render={<Link href={item.href} />}
                     >
@@ -119,20 +185,47 @@ function NavCollapsibleGroup({
   );
 }
 
-export function AppSidebar() {
+export function AppSidebar({
+  showSidebarTrigger = true,
+}: {
+  showSidebarTrigger?: boolean;
+}) {
   const pathname = usePathname();
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
+  const { sidebarInteractionHandlers } = useSidebarInteraction();
+
+  if (!showSidebarTrigger) {
+    return null;
+  }
 
   return (
-    <Sidebar>
-      <SidebarHeader className="flex h-14 shrink-0 flex-row items-center border-b border-sidebar-border px-4 py-0">
-        <span className="text-base font-semibold text-primary">{APP_NAME}</span>
+    <Sidebar collapsible="icon" {...sidebarInteractionHandlers}>
+      <SidebarHeader
+        className={cn(
+          "flex h-14 shrink-0 flex-row items-center border-b border-sidebar-border py-0",
+          isCollapsed ? "justify-center px-2" : "px-4",
+        )}
+      >
+        {isCollapsed ? (
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
+            미
+          </span>
+        ) : (
+          <span className="text-lg font-semibold text-primary">{APP_NAME}</span>
+        )}
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
+      <SidebarContent
+        className={cn(
+          isCollapsed && "overflow-x-hidden",
+          !isCollapsed && "gap-2 py-1",
+        )}
+      >
+        <SidebarGroup className={cn(isCollapsed && "py-0", !isCollapsed && "py-1")}>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className={menuListClassName(isCollapsed)}>
               {mainNavItems.map((item) => (
-                <NavMenuItem key={item.href} item={item} pathname={pathname} />
+                <NavIconMenuItem key={item.href} item={item} pathname={pathname} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
