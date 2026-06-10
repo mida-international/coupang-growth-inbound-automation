@@ -124,7 +124,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-3">
+      <SidebarHeader className="flex h-14 shrink-0 flex-row items-center border-b border-sidebar-border px-4 py-0">
         <span className="text-base font-semibold text-primary">{APP_NAME}</span>
       </SidebarHeader>
       <SidebarContent>
