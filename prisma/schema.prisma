@@ -19,13 +19,36 @@ enum Role {
   admin
 }
 
+enum AuditAction {
+  profile_update
+  password_change
+  member_create
+}
+
 model Profile {
-  id        String   @id
-  email     String   @unique
+  id        String     @id
+  email     String     @unique
   name      String?
-  role      Role     @default(admin)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      Role       @default(admin)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  auditLogs AuditLog[]
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  actorId    String
+  action     AuditAction
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+
+  actor Profile @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 model HealthCheck {
