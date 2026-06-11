@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { AUDIT_ACTIONS, logAudit } from "@/lib/audit";
 import { requireApiProfile } from "@/lib/api/auth";
 import { fromServiceResult, jsonError, jsonSuccess } from "@/lib/api/response";
 import { getProfileView } from "@/services/profile/get-profile-view";
@@ -38,6 +39,16 @@ export async function PATCH(request: NextRequest) {
   }
 
   const result = await updateProfileName(auth.profile.id, body);
+
+  if (result.ok) {
+    await logAudit({
+      actorId: auth.profile.id,
+      action: AUDIT_ACTIONS.profileUpdate,
+      targetType: "profile",
+      targetId: auth.profile.id,
+      metadata: { name: result.data.name },
+    });
+  }
 
   return fromServiceResult(result);
 }
