@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
-import { getProfileView } from "@/lib/profile/get-profile-view";
+import { getProfileView } from "@/services/profile/get-profile-view";
 import type {
   ProfileResult,
   ProfileView,
   UpdateProfileNameInput,
-} from "@/lib/profile/types";
+} from "@/services/profile/types";
 
 const updateProfileNameSchema = z.object({
   name: z
