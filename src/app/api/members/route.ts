@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { AUDIT_ACTIONS, logAudit } from "@/lib/audit";
 import { requireApiMaster } from "@/lib/api/auth";
 import { logRouteError } from "@/lib/api/log-route-error";
 import { fromServiceResult, jsonError, jsonSuccess } from "@/lib/api/response";
@@ -40,10 +41,20 @@ export async function POST(request: NextRequest) {
       return jsonError("요청 본문이 올바르지 않습니다.", 400);
     }
 
-    const result = await createAdmin(body);
+  const result = await createAdmin(body);
 
-    return fromServiceResult(result, { successStatus: 201 });
-  } catch (error) {
+  if (result.ok) {
+    await logAudit({
+      actorId: auth.profile.id,
+      action: AUDIT_ACTIONS.memberCreate,
+      targetType: "profile",
+      targetId: result.data.id,
+      metadata: { email: result.data.email, role: result.data.role },
+    });
+  }
+
+  return fromServiceResult(result, { successStatus: 201 });
+} catch (error) {
     logRouteError(error, { route: "/api/members", method: "POST" });
     return jsonError("요청 처리에 실패했습니다.", 500);
   }
