@@ -1,10 +1,7 @@
-"use server";
-
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { requireMaster } from "@/lib/auth/profile";
 import { prisma } from "@/lib/db";
+import type { CreateAdminInput, MembersResult } from "@/lib/members/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const createAdminSchema = z.object({
@@ -14,17 +11,9 @@ const createAdminSchema = z.object({
   role: z.enum(["admin", "master"]),
 });
 
-export type CreateAdminInput = z.infer<typeof createAdminSchema>;
-
-export type CreateAdminResult =
-  | { ok: true }
-  | { ok: false; error: string };
-
 export async function createAdmin(
   input: CreateAdminInput
-): Promise<CreateAdminResult> {
-  await requireMaster();
-
+): Promise<MembersResult> {
   const parsed = createAdminSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -78,6 +67,5 @@ export async function createAdmin(
     return { ok: false, error: "프로필 생성에 실패했습니다." };
   }
 
-  revalidatePath("/settings/members");
-  return { ok: true };
+  return { ok: true, data: undefined };
 }

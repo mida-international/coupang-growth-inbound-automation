@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { updateProfile } from "@/app/actions/profile";
+import { apiPatch } from "@/lib/api-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +34,7 @@ export function ProfileSettingsForm({ profile }: { profile: ProfileView }) {
     setSuccess(null);
     setLoading(true);
 
-    const result = await updateProfile({ name });
+    const result = await apiPatch<ProfileView>("/api/profile", { name });
 
     setLoading(false);
 
