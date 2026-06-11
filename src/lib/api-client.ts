@@ -13,7 +13,7 @@ function isApiResult(value: unknown): value is ApiResult<unknown> {
 
   const obj = value as Record<string, unknown>;
 
-  if (obj.ok === true && "data" in obj) {
+  if (obj.ok === true) {
     return true;
   }
 
