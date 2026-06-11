@@ -2,7 +2,11 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { CreateAdminInput, MembersResult } from "@/services/members/types";
+import type {
+  CreateAdminInput,
+  CreatedAdmin,
+  MembersResult,
+} from "@/services/members/types";
 
 const createAdminSchema = z.object({
   email: z.email("유효한 이메일을 입력해 주세요."),
@@ -13,7 +17,7 @@ const createAdminSchema = z.object({
 
 export async function createAdmin(
   input: CreateAdminInput
-): Promise<MembersResult> {
+): Promise<MembersResult<CreatedAdmin>> {
   const parsed = createAdminSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -67,5 +71,12 @@ export async function createAdmin(
     return { ok: false, error: "프로필 생성에 실패했습니다." };
   }
 
-  return { ok: true, data: undefined };
+  return {
+    ok: true,
+    data: {
+      id: data.user.id,
+      email,
+      role,
+    },
+  };
 }
