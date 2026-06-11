@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -20,7 +21,10 @@ export async function GET() {
       hasSession: data.session !== null,
     });
   } catch (error) {
-    console.error(error);
+    logger.error(
+      { err: error, route: "/api/auth/health" },
+      "Auth health check failed"
+    );
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       { ok: false, auth: "error", message },
