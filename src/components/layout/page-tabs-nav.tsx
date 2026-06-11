@@ -7,7 +7,6 @@ import {
   getActivePageTabHref,
   type PageTab,
 } from "@/config/page-tabs";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 type PageTabsNavProps = {
@@ -24,21 +23,31 @@ export function PageTabsNav({ tabs, className }: PageTabsNavProps) {
   }
 
   return (
-    <div className={cn("border-b border-border", className)}>
-      <Tabs value={activeHref}>
-        <TabsList variant="line" className="h-10 w-full justify-start rounded-none bg-transparent p-0">
-          {tabs.map((tab) => (
-            <TabsTrigger
+    <nav
+      aria-label="페이지 탭"
+      className={cn("border-b border-border", className)}
+    >
+      <div className="flex h-11 items-end gap-1">
+        {tabs.map((tab) => {
+          const isActive = tab.href === activeHref;
+
+          return (
+            <Link
               key={tab.href}
-              value={tab.href}
-              className="h-10 rounded-none px-4"
-              render={<Link href={tab.href} aria-current={tab.href === activeHref ? "page" : undefined} />}
+              href={tab.href}
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "inline-flex h-11 items-center border-b-2 px-4 text-sm font-medium transition-colors",
+                isActive
+                  ? "border-primary font-semibold text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
             >
               {tab.title}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-    </div>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
