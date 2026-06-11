@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { apiPost } from "@/lib/api-client";
+import { changePasswordAction } from "@/app/actions/account";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -36,7 +36,7 @@ export function ChangePasswordForm() {
 
     setLoading(true);
 
-    const result = await apiPost<void>("/api/account/password", {
+    const result = await changePasswordAction({
       currentPassword,
       newPassword,
     });

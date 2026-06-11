@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { apiPost } from "@/lib/api-client";
-import type { CreateAdminInput } from "@/lib/members/types";
+import { createAdmin, type CreateAdminInput } from "@/app/actions/members";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,7 +36,7 @@ export function AddAdminForm() {
     setError(null);
     setLoading(true);
 
-    const result = await apiPost<void>("/api/members", {
+    const result = await createAdmin({
       email,
       password,
       name: name.trim() || undefined,

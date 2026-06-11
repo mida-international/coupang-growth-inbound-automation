@@ -8,12 +8,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireMaster } from "@/lib/auth/profile";
-import { listMembers } from "@/lib/members/list-members";
+import { prisma } from "@/lib/db";
 
 export default async function MembersPage() {
   await requireMaster();
 
-  const members = await listMembers();
+  const members = await prisma.profile.findMany({
+    orderBy: { createdAt: "desc" },
+  });
 
   return (
     <div className="space-y-6">
