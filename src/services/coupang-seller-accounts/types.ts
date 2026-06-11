@@ -1,6 +1,9 @@
-export type CreateSellerAccountInput = {
+export type CreateSellerAccountBody = {
   displayName: string;
   isActive?: boolean;
+};
+
+export type CreateSellerAccountInput = CreateSellerAccountBody & {
   createdById: string;
 };
 
