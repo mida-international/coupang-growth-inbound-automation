@@ -21,3 +21,14 @@ export type ShoplingApiConfigSecret = {
 export type ShoplingApiConfigResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string };
+
+export type ShoplingApiConnectionTestResult = {
+  ok: boolean;
+  message: string;
+  httpStatus: number | null;
+  durationMs: number;
+  startDt: string;
+  endDt: string;
+  productCount: number;
+  apiError: string | null;
+};
