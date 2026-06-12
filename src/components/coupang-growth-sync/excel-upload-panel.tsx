@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
-import { FileSpreadsheet, Upload, X } from "lucide-react";
+import { useState } from "react";
 
+import { ExcelDropzone } from "@/components/excel/excel-dropzone";
+import { ExcelFileList } from "@/components/excel/excel-file-list";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,39 +14,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { detectExcelTargetId } from "@/lib/excel/detect-target";
+import type {
+  ExcelIngestionTargetId,
+  SelectedExcelFile,
+} from "@/lib/excel/types";
+import { isExcelFile } from "@/lib/excel/validate-file";
 import { cn } from "@/lib/utils";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
 
-const EXCEL_EXTENSIONS = [".xlsx", ".xls"] as const;
-const EXCEL_MIME_TYPES = [
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.ms-excel",
-] as const;
-const FILE_INPUT_ACCEPT =
-  ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel";
+const COUPANG_GROWTH_TARGET_IDS = [
+  "coupang_growth_inbound_template",
+  "coupang_growth_inventory_health",
+] as const satisfies readonly ExcelIngestionTargetId[];
 
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function isExcelFile(file: File) {
-  const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-
-  if (EXCEL_EXTENSIONS.includes(extension as (typeof EXCEL_EXTENSIONS)[number])) {
-    return true;
-  }
-
-  return file.type
-    ? EXCEL_MIME_TYPES.includes(file.type as (typeof EXCEL_MIME_TYPES)[number])
-    : false;
+function createFileId(file: File) {
+  return `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`;
 }
 
 function UploadSection({
@@ -88,58 +72,78 @@ export function ExcelUploadPanel({
 }: {
   accounts: SellerAccountView[];
 }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<SelectedExcelFile[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
 
-  function selectFile(nextFile: File | null) {
-    if (!nextFile) {
-      setFile(null);
+  function addFiles(incoming: File[]) {
+    const validFiles: SelectedExcelFile[] = [];
+    const invalidNames: string[] = [];
+
+    for (const file of incoming) {
+      if (!isExcelFile(file)) {
+        invalidNames.push(file.name);
+        continue;
+      }
+
+      const isDuplicate = files.some(
+        (entry) =>
+          entry.file.name === file.name &&
+          entry.file.size === file.size &&
+          entry.file.lastModified === file.lastModified,
+      );
+
+      if (isDuplicate) {
+        continue;
+      }
+
+      validFiles.push({
+        id: createFileId(file),
+        file,
+        targetId: detectExcelTargetId(file, COUPANG_GROWTH_TARGET_IDS),
+      });
+    }
+
+    if (invalidNames.length > 0) {
+      setFileError(
+        `엑셀 파일(.xlsx, .xls)만 업로드할 수 있습니다: ${invalidNames.join(", ")}`,
+      );
+    } else {
       setFileError(null);
-      return;
     }
 
-    if (!isExcelFile(nextFile)) {
-      setFile(null);
-      setFileError("엑셀 파일(.xlsx, .xls)만 업로드할 수 있습니다.");
-      return;
+    if (validFiles.length > 0) {
+      setFiles((current) => [...current, ...validFiles]);
+      setUploadNotice(null);
     }
+  }
 
-    setFile(nextFile);
-    setFileError(null);
+  function removeFile(id: string) {
+    setFiles((current) => current.filter((entry) => entry.id !== id));
     setUploadNotice(null);
   }
 
-  function handleFileInputChange(event: React.ChangeEvent<HTMLInputElement>) {
-    selectFile(event.target.files?.[0] ?? null);
-    event.target.value = "";
-  }
-
-  function handleDrop(event: React.DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setIsDragging(false);
-    selectFile(event.dataTransfer.files[0] ?? null);
-  }
-
   function handleUpload() {
-    if (!selectedAccountId || !file) {
+    if (!selectedAccountId || files.length === 0) {
       return;
     }
 
     setUploadNotice("업로드 기능은 준비 중입니다. 곧 연결될 예정입니다.");
   }
 
-  const canUpload = Boolean(selectedAccountId && file);
+  const allFilesIdentified =
+    files.length > 0 && files.every((entry) => entry.targetId !== null);
+  const canUpload = Boolean(
+    selectedAccountId && files.length > 0 && allFilesIdentified,
+  );
 
   return (
     <Card className="overflow-hidden">
       <CardHeader className="border-b bg-muted/30">
         <CardTitle>엑셀 업로드</CardTitle>
         <CardDescription>
-          쿠팡 판매자 계정을 선택하고 상품 정보 엑셀 파일을 업로드합니다.
+          쿠팡 판매자 계정을 선택하고 입고 템플릿·재고 현황 엑셀을 업로드합니다.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 bg-muted/15 p-(--card-spacing)">
@@ -162,7 +166,11 @@ export function ExcelUploadPanel({
               </Button>
             </div>
           ) : (
-            <FieldGroup className="gap-3" role="radiogroup" aria-label="쿠팡 판매자 계정">
+            <FieldGroup
+              className="gap-3"
+              role="radiogroup"
+              aria-label="쿠팡 판매자 계정"
+            >
               {accounts.map((account) => {
                 const inputId = `seller-account-${account.id}`;
 
@@ -201,78 +209,23 @@ export function ExcelUploadPanel({
 
         <UploadSection
           title="엑셀 파일"
-          description="드래그 앤 드롭하거나 클릭하여 .xlsx, .xls 파일을 선택합니다."
+          description="입고 템플릿·재고 현황 엑셀을 함께 올릴 수 있습니다."
           variant="plain"
         >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={FILE_INPUT_ACCEPT}
-            className="sr-only"
-            onChange={handleFileInputChange}
+          <ExcelDropzone
+            description="파일을 드래그하거나 클릭하여 선택 (여러 파일 가능)"
+            onFilesSelected={addFiles}
           />
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => fileInputRef.current?.click()}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                fileInputRef.current?.click();
-              }
-            }}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={(event) => {
-              event.preventDefault();
-              setIsDragging(false);
-            }}
-            onDrop={handleDrop}
-            className={cn(
-              "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-10 text-center transition-colors",
-              isDragging
-                ? "border-primary bg-primary/5"
-                : "border-border bg-background hover:border-primary/50 hover:bg-muted/30",
-            )}
-          >
-            <Upload className="size-8 text-muted-foreground" aria-hidden />
-            <p className="text-sm font-medium text-foreground">
-              파일을 드래그하거나 클릭하여 선택
-            </p>
-            <p className="text-xs text-muted-foreground">
-              지원 형식: .xlsx, .xls
-            </p>
-          </div>
-
-          {file ? (
-            <div className="mt-3 flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2">
-              <FileSpreadsheet
-                className="size-5 shrink-0 text-primary"
-                aria-hidden
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{file.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatFileSize(file.size)}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="선택 파일 제거"
-                onClick={() => selectFile(null)}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-          ) : null}
-
+          <ExcelFileList files={files} onRemove={removeFile} />
           {fileError ? (
             <p className="mt-2 text-sm text-destructive" role="alert">
               {fileError}
+            </p>
+          ) : null}
+          {files.length > 0 && !allFilesIdentified ? (
+            <p className="mt-2 text-sm text-amber-700" role="status">
+              일부 파일의 유형을 자동으로 식별하지 못했습니다. 파일명에
+              입고/템플릿 또는 재고/inventory 키워드를 포함해 주세요.
             </p>
           ) : null}
         </UploadSection>

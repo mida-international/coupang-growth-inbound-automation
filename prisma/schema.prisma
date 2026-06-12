@@ -34,6 +34,7 @@ model Profile {
   updatedAt             DateTime               @updatedAt
   auditLogs             AuditLog[]
   coupangSellerAccounts CoupangSellerAccount[]
+  ingestionLogs         IngestionLog[]
 }
 
 model CoupangSellerAccount {
@@ -44,10 +45,206 @@ model CoupangSellerAccount {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  createdBy Profile @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy            Profile                        @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  inboundTemplates     CoupangGrowthInboundTemplate[]
+  inventoryHealthRows  CoupangGrowthInventoryHealth[]
 
   @@index([createdById])
   @@index([createdAt])
+}
+
+/// 적재 이력 (모든 적재 사건의 본체 — 작업자/시각/파일/행수). 본 테이블들이 ingestion_id로 이 로그에 연결됨
+model IngestionLog {
+  id                  BigInt                         @id @default(autoincrement())
+  /// 대상 테이블명
+  tableName           String                         @map("table_name")
+  /// 적재 대상 스냅샷 기준일 (파일 기준일)
+  snapshotDate        DateTime?                      @map("snapshot_date") @db.Date
+  /// insert | reload 등
+  operation           String
+  /// 처리된 행 수
+  rowCount            Int?                           @map("row_count")
+  /// 작업자 (Profile.id / Supabase Auth 사용자)
+  uploadedById        String?                        @map("uploaded_by")
+  /// 업로드한 원본 파일명
+  sourceFile          String?                        @map("source_file")
+  createdAt           DateTime                       @default(now()) @map("created_at")
+  uploadedBy          Profile?                       @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  inboundTemplates    CoupangGrowthInboundTemplate[]
+  inventoryHealthRows CoupangGrowthInventoryHealth[]
+
+  @@index([tableName, snapshotDate], map: "idx_ingestion_log_table_date")
+  @@map("ingestion_log")
+}
+
+/// 쿠팡 그로스 입고 생성 템플릿 (전체 등록 상품)
+model CoupangGrowthInboundTemplate {
+  id                     BigInt               @id @default(autoincrement())
+  /// 어느 적재 배치인지
+  ingestionId            BigInt?              @map("ingestion_id")
+  /// 쿠팡 판매자 계정
+  coupangSellerAccountId String               @map("coupang_seller_account_id")
+  /// 스냅샷 기준일 (파일 기준일)
+  snapshotDate           DateTime             @map("snapshot_date") @db.Date
+  /// 등록상품명 (B)
+  registeredProductName  String?              @map("registered_product_name")
+  /// 옵션명 (C)
+  optionName             String?              @map("option_name")
+  /// 판매가 (D)
+  sellingPrice           Int?                 @map("selling_price")
+  /// 노출상품 ID (E)
+  exposedProductId       BigInt?              @map("exposed_product_id")
+  /// 등록상품 ID (F)
+  registeredProductId    BigInt?              @map("registered_product_id")
+  /// 옵션 ID (G)
+  optionId               BigInt?              @map("option_id")
+  /// 판매 방식 (H)
+  sellingMethod          String?              @map("selling_method")
+  /// 25년 총계 (I)
+  sales2025Total         BigInt?              @map("sales_2025_total")
+  /// 26년 총계 (J)
+  sales2026Total         BigInt?              @map("sales_2026_total")
+  /// 26년 03월 (K)
+  sales2026_03           BigInt?              @map("sales_2026_03")
+  /// 26년 04월 (L)
+  sales2026_04           BigInt?              @map("sales_2026_04")
+  /// 26년 05월 (M)
+  sales2026_05           BigInt?              @map("sales_2026_05")
+  /// 지난 14일 (N)
+  salesLast14days        BigInt?              @map("sales_last_14days")
+  /// 2주간 판매수량 (O)
+  qtySold2weeks          Int?                 @map("qty_sold_2weeks")
+  /// 1주간 판매수량 (P)
+  qtySold1week           Int?                 @map("qty_sold_1week")
+  /// 판매자 수수료율 (Q)
+  sellerFeeRate          Decimal?             @map("seller_fee_rate") @db.Decimal(6, 3)
+  /// 판매자 수수료 (R)
+  sellerFee              Int?                 @map("seller_fee")
+  /// 쿠팡풀필먼트서비스 예상 요금(개당) (S)
+  cfsEstimatedFee        Int?                 @map("cfs_estimated_fee")
+  /// 기본 할인액 (T)
+  baseDiscount           Int?                 @map("base_discount")
+  /// 할인 적용 예상 요금 (U)
+  discountedEstimatedFee Int?                 @map("discounted_estimated_fee")
+  /// 입고수량에 따른 2주간 예상 매출 (W)
+  estSales2weeksByQty    BigInt?              @map("est_sales_2weeks_by_qty")
+  /// 유통기간 입력 (X)
+  shelfLifeDaysInput     String?              @map("shelf_life_days_input")
+  /// 유통(소비)기한 (Y)
+  expiryDate             String?              @map("expiry_date")
+  /// 제조일자 (Z)
+  manufactureDate        String?              @map("manufacture_date")
+  /// 생산연도 (AA)
+  productionYear         String?              @map("production_year")
+  /// 상품바코드 (AB)
+  productBarcode         String?              @map("product_barcode")
+  /// 상품 사이즈 (AC)
+  productSize            String?              @map("product_size")
+  /// 취급주의여부 (AD)
+  handleWithCare         String?              @map("handle_with_care")
+  /// 판매가능재고 (AE)
+  availableStock         Int?                 @map("available_stock")
+  /// 예상 재고 소진일 (AF)
+  estStockoutDate        String?              @map("est_stockout_date")
+  /// 카테고리 (AG)
+  category               String?
+  /// 병행수입 여부 (AH)
+  parallelImport         String?              @map("parallel_import")
+  /// 과세유형 (AI)
+  taxType                String?              @map("tax_type")
+  /// SKU ID (AJ)
+  skuId                  BigInt?              @map("sku_id")
+  /// Req exp date (AK)
+  reqExpDate             Boolean?             @map("req_exp_date")
+  /// Req man date (AL)
+  reqManDate             Boolean?             @map("req_man_date")
+  /// Req prod year (AM)
+  reqProdYear            Boolean?             @map("req_prod_year")
+  /// 이 행 적재 시각
+  createdAt              DateTime             @default(now()) @map("created_at")
+  ingestion              IngestionLog?        @relation(fields: [ingestionId], references: [id], onDelete: SetNull)
+  coupangSellerAccount   CoupangSellerAccount @relation(fields: [coupangSellerAccountId], references: [id], onDelete: Restrict)
+
+  @@index([optionId], map: "idx_inbound_template_option_id")
+  @@index([snapshotDate], map: "idx_inbound_template_snapshot_date")
+  @@index([ingestionId], map: "idx_inbound_template_ingestion_id")
+  @@index([coupangSellerAccountId, snapshotDate], map: "idx_inbound_template_seller_snapshot")
+  @@index([coupangSellerAccountId, optionId], map: "idx_inbound_template_seller_option")
+  @@map("coupang_growth_inbound_template")
+}
+
+/// 쿠팡 그로스 재고 현황 (입고되어 재고가 잡힌 상품)
+model CoupangGrowthInventoryHealth {
+  id                     BigInt               @id @default(autoincrement())
+  /// 어느 적재 배치인지
+  ingestionId            BigInt?              @map("ingestion_id")
+  /// 쿠팡 판매자 계정
+  coupangSellerAccountId String               @map("coupang_seller_account_id")
+  /// 스냅샷 기준일 (파일 기준일)
+  snapshotDate           DateTime             @map("snapshot_date") @db.Date
+  /// Inventory ID (B)
+  inventoryId            BigInt?              @map("inventory_id")
+  /// Option ID (C) — template과 논리적 연관, FK 미설정
+  optionId               BigInt?              @map("option_id")
+  /// SKU ID (D)
+  skuId                  BigInt?              @map("sku_id")
+  /// Product name (E)
+  productName            String?              @map("product_name")
+  /// Option name (F)
+  optionName             String?              @map("option_name")
+  /// Offer condition (G)
+  offerCondition         String?              @map("offer_condition")
+  /// Orderable quantity (real-time) (H)
+  orderableQuantity      Int?                 @map("orderable_quantity")
+  /// Pending inbounds (real-time) (I)
+  pendingInbounds        Int?                 @map("pending_inbounds")
+  /// Item winner (J)
+  itemWinner             String?              @map("item_winner")
+  /// Recent sales (Excluding bundle sales) Last 7 days (K)
+  recentSales7days       BigInt?              @map("recent_sales_7days")
+  /// Recent sales (Excluding bundle sales) Last 30 days (L)
+  recentSales30days      BigInt?              @map("recent_sales_30days")
+  /// Recent sales quantity Last 7 days (M)
+  recentSalesQty7days    Int?                 @map("recent_sales_qty_7days")
+  /// Recent sales quantity Last 30 days (N)
+  recentSalesQty30days   Int?                 @map("recent_sales_qty_30days")
+  /// Recommended inbound quantity (O)
+  recommendedInboundQty  Int?                 @map("recommended_inbound_qty")
+  /// Recommended inbound date (P)
+  recommendedInboundDate String?              @map("recommended_inbound_date")
+  /// Days of cover (Q)
+  daysOfCover            String?              @map("days_of_cover")
+  /// Monthly storage fee (R)
+  monthlyStorageFee      Int?                 @map("monthly_storage_fee")
+  /// Sku age (D-1) 1~30 days (S)
+  skuAge1_30             Int?                 @map("sku_age_1_30")
+  /// Sku age (D-1) 31~45 days (T)
+  skuAge31_45            Int?                 @map("sku_age_31_45")
+  /// Sku age (D-1) 46~60 days (U)
+  skuAge46_60            Int?                 @map("sku_age_46_60")
+  /// Sku age (D-1) 61~120 days (V)
+  skuAge61_120           Int?                 @map("sku_age_61_120")
+  /// Sku age (D-1) 121~180 days (W)
+  skuAge121_180          Int?                 @map("sku_age_121_180")
+  /// Sku age (D-1) 181+ days (X)
+  skuAge181Plus          Int?                 @map("sku_age_181_plus")
+  /// Customer returns last 30 days (D-1) (Y)
+  customerReturns30days  Int?                 @map("customer_returns_30days")
+  /// Season (Z)
+  season                 String?
+  /// Product listing date (AA)
+  productListingDate     DateTime?            @map("product_listing_date") @db.Date
+  /// 이 행 적재 시각
+  createdAt              DateTime             @default(now()) @map("created_at")
+  ingestion              IngestionLog?        @relation(fields: [ingestionId], references: [id], onDelete: SetNull)
+  coupangSellerAccount   CoupangSellerAccount @relation(fields: [coupangSellerAccountId], references: [id], onDelete: Restrict)
+
+  @@index([optionId], map: "idx_inventory_health_option_id")
+  @@index([snapshotDate], map: "idx_inventory_health_snapshot_date")
+  @@index([ingestionId], map: "idx_inventory_health_ingestion_id")
+  @@index([coupangSellerAccountId, snapshotDate], map: "idx_inventory_health_seller_snapshot")
+  @@index([coupangSellerAccountId, optionId], map: "idx_inventory_health_seller_option")
+  @@map("coupang_growth_inventory_health")
 }
 
 model AuditLog {
