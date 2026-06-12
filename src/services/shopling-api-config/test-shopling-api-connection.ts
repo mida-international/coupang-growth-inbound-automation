@@ -7,6 +7,7 @@ import {
   formatYyyyMmDd,
   subtractDaysFromKstDate,
 } from "@/lib/shopling/format-yyyymmdd";
+import { postShoplingApi } from "@/lib/shopling/post-shopling-api";
 import {
   countProductsInResponseXml,
   extractShoplingApiError,
@@ -61,17 +62,16 @@ export async function testShoplingApiConnection(): Promise<
   });
 
   const startedAt = performance.now();
-  let response: Response;
+  let httpStatus: number;
+  let responseText: string;
 
   try {
-    response = await fetch(SHOPLING_PROD_GATHER_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/xml; charset=UTF-8",
-      },
-      body: requestXml,
-      cache: "no-store",
-    });
+    const response = await postShoplingApi(
+      SHOPLING_PROD_GATHER_URL,
+      requestXml,
+    );
+    httpStatus = response.status;
+    responseText = response.body;
   } catch (error) {
     return {
       ok: true,
@@ -89,17 +89,17 @@ export async function testShoplingApiConnection(): Promise<
   }
 
   const durationMs = Math.round(performance.now() - startedAt);
-  const responseText = await response.text();
   const productCount = countProductsInResponseXml(responseText);
   const apiError = extractShoplingApiError(responseText);
+  const responseOk = httpStatus >= 200 && httpStatus < 300;
 
-  if (!response.ok) {
+  if (!responseOk) {
     return {
       ok: true,
       data: {
         ok: false,
-        message: `샵플링 API 요청에 실패했습니다. (HTTP ${response.status})`,
-        httpStatus: response.status,
+        message: `샵플링 API 요청에 실패했습니다. (HTTP ${httpStatus})`,
+        httpStatus,
         durationMs,
         startDt,
         endDt,
@@ -115,7 +115,7 @@ export async function testShoplingApiConnection(): Promise<
       data: {
         ok: false,
         message: `연동 실패: ${apiError}`,
-        httpStatus: response.status,
+        httpStatus,
         durationMs,
         startDt,
         endDt,
@@ -133,7 +133,7 @@ export async function testShoplingApiConnection(): Promise<
         productCount > 0
           ? `연동 성공 — 최근 ${TEST_LOOKBACK_DAYS}일 상품 ${productCount}건 조회됨`
           : `연동 성공 — 최근 ${TEST_LOOKBACK_DAYS}일 조회 결과 0건 (인증·통신 정상)`,
-      httpStatus: response.status,
+      httpStatus,
       durationMs,
       startDt,
       endDt,
