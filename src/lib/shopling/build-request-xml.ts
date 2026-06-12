@@ -11,6 +11,7 @@ export type BuildRequestXmlParams = {
   apiAuthKey: string;
   startDt: string;
   endDt: string;
+  prodFields?: string;
 };
 
 function escapeXmlText(value: string): string {
@@ -26,6 +27,7 @@ export function buildShoplingRequestXml(params: BuildRequestXmlParams): string {
   const loginId = escapeXmlText(params.loginId);
   const companyId = escapeXmlText(params.companyId);
   const apiAuthKey = escapeXmlText(params.apiAuthKey);
+  const prodFields = params.prodFields ?? SHOPLING_PROD_FIELDS;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <reqst>
@@ -36,7 +38,7 @@ export function buildShoplingRequestXml(params: BuildRequestXmlParams): string {
     <search_tp><![CDATA[${SHOPLING_SEARCH_TP}]]></search_tp>
     <start_dt>${params.startDt}</start_dt>
     <end_dt>${params.endDt}</end_dt>
-    <prod_fields><![CDATA[${SHOPLING_PROD_FIELDS}]]></prod_fields>
+    <prod_fields><![CDATA[${prodFields}]]></prod_fields>
     <opt_yn><![CDATA[Y]]></opt_yn>
     <attri_yn><![CDATA[N]]></attri_yn>
   </apiProdGather>
