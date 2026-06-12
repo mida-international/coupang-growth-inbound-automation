@@ -8,6 +8,7 @@ import {
   Link2,
   MessageSquare,
   Plug,
+  RefreshCw,
   Settings,
   TrendingUp,
   Upload,
@@ -39,6 +40,15 @@ export const mainNavItems: NavItem[] = [
   { title: "입고 관리하기", href: "/inbound", icon: Download },
   { title: "소통 게시판", href: "/board", icon: MessageSquare },
 ];
+
+export const syncNavGroup: NavGroup = {
+  title: "데이터 동기화",
+  icon: RefreshCw,
+  items: [
+    { title: "쿠팡 Growth", href: "/sync/coupang-growth", icon: TrendingUp },
+    { title: "샵플링", href: "/sync/shopling", icon: Database },
+  ],
+};
 
 export const dataNavGroup: NavGroup = {
   title: "데이터 관리",

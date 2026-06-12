@@ -9,6 +9,7 @@ import {
   APP_NAME,
   dataNavGroup,
   mainNavItems,
+  syncNavGroup,
   settingsNavGroup as defaultSettingsNavGroup,
   type NavGroup,
   type NavItem,
@@ -241,6 +242,7 @@ export function AppSidebar({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <NavCollapsibleGroup group={syncNavGroup} pathname={pathname} />
         <NavCollapsibleGroup group={dataNavGroup} pathname={pathname} />
         <NavCollapsibleGroup group={settingsNavGroup} pathname={pathname} />
       </SidebarContent>

@@ -6,6 +6,7 @@ import {
   dataNavGroup,
   mainNavItems,
   settingsNavGroup,
+  syncNavGroup,
   type NavGroup,
   type NavItem,
 } from "@/config/navigation";
@@ -56,6 +57,11 @@ function getNavContext(pathname: string): NavContext {
       pageTitle: mainItem.title,
       pageHref: mainItem.href,
     };
+  }
+
+  const syncMatch = findInGroup(pathname, syncNavGroup);
+  if (syncMatch) {
+    return syncMatch;
   }
 
   const dataMatch = findInGroup(pathname, dataNavGroup);
