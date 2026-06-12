@@ -14,6 +14,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { detectExcelTargetIdFromFile } from "@/lib/excel/detect-target-client";
 import type {
@@ -79,6 +87,10 @@ export function ExcelUploadPanel({
   const [fileError, setFileError] = useState<string | null>(null);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [unrecognizedDialog, setUnrecognizedDialog] = useState<{
+    open: boolean;
+    fileNames: string[];
+  }>({ open: false, fileNames: [] });
 
   async function detectFileTarget(fileId: string, file: File) {
     const targetId = await detectExcelTargetIdFromFile(
@@ -93,6 +105,13 @@ export function ExcelUploadPanel({
           : entry,
       ),
     );
+
+    if (!targetId) {
+      setUnrecognizedDialog((current) => ({
+        open: true,
+        fileNames: [...new Set([...current.fileNames, file.name])],
+      }));
+    }
   }
 
   function addFiles(incoming: File[]) {
@@ -293,25 +312,53 @@ export function ExcelUploadPanel({
               {fileError}
             </p>
           ) : null}
-          {files.length > 0 && !isDetecting && !allFilesIdentified ? (
-            <p className="mt-2 text-sm text-amber-700" role="status">
-              일부 파일의 유형을 자동으로 식별하지 못했습니다. 엑셀 헤더(등록상품명,
-              옵션 ID 등)를 확인해 주세요.
-            </p>
-          ) : null}
         </UploadSection>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <Button type="button" disabled={!canUpload} onClick={handleUpload}>
-            {uploading ? "업로드 중..." : "업로드"}
-          </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
           {uploadNotice ? (
-            <p className="text-sm text-muted-foreground" role="status">
+            <p
+              className="text-sm text-muted-foreground sm:mr-auto"
+              role="status"
+            >
               {uploadNotice}
             </p>
           ) : null}
+          <Button type="button" disabled={!canUpload} onClick={handleUpload}>
+            {uploading ? "업로드 중..." : "업로드"}
+          </Button>
         </div>
       </CardContent>
+
+      <Dialog
+        open={unrecognizedDialog.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            setUnrecognizedDialog({ open: false, fileNames: [] });
+          }
+        }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>엑셀 파일을 인식할 수 없습니다</DialogTitle>
+            <DialogDescription>
+              {unrecognizedDialog.fileNames.join(", ")}
+              <br />
+              지원 형식: 입고 생성 템플릿, 재고 현황. 헤더(등록상품 ID, 옵션 ID
+              등)를 확인해 주세요.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() =>
+                setUnrecognizedDialog({ open: false, fileNames: [] })
+              }
+            >
+              확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
