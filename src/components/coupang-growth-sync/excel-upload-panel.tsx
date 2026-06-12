@@ -42,6 +42,16 @@ function createFileId(file: File) {
   return `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`;
 }
 
+function getDefaultSellerAccountId(accounts: SellerAccountView[]): string {
+  const match = accounts.find(
+    (account) =>
+      account.isActive &&
+      account.displayName.trim().toLowerCase() === "mizucos",
+  );
+
+  return match?.id ?? "";
+}
+
 function UploadSection({
   title,
   description,
@@ -82,7 +92,9 @@ export function ExcelUploadPanel({
 }: {
   accounts: SellerAccountView[];
 }) {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
+  const [selectedAccountId, setSelectedAccountId] = useState(() =>
+    getDefaultSellerAccountId(accounts),
+  );
   const [files, setFiles] = useState<SelectedExcelFile[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
@@ -115,6 +127,11 @@ export function ExcelUploadPanel({
   }
 
   function addFiles(incoming: File[]) {
+    if (!selectedAccountId) {
+      setFileError("쿠팡 판매자 계정을 선택해 주세요.");
+      return;
+    }
+
     const pendingFiles: SelectedExcelFile[] = [];
     const invalidNames: string[] = [];
 
@@ -303,7 +320,12 @@ export function ExcelUploadPanel({
           variant="plain"
         >
           <ExcelDropzone
-            description="파일을 드래그하거나 클릭하여 선택 (여러 파일 가능)"
+            description={
+              selectedAccountId
+                ? "파일을 드래그하거나 클릭하여 선택 (여러 파일 가능)"
+                : "판매자 계정을 먼저 선택해 주세요."
+            }
+            disabled={!selectedAccountId}
             onFilesSelected={addFiles}
           />
           <ExcelFileList files={files} onRemove={removeFile} />

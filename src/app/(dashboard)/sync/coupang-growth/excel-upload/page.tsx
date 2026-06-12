@@ -5,7 +5,9 @@ import { listSellerAccounts } from "@/services/coupang-seller-accounts/list-sell
 export default async function CoupangGrowthExcelUploadPage() {
   await requireProfile();
 
-  const accounts = await listSellerAccounts();
+  const accounts = (await listSellerAccounts()).sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+  );
 
   return (
     <div className="space-y-6">
