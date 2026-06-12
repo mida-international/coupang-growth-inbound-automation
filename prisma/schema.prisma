@@ -26,13 +26,28 @@ enum AuditAction {
 }
 
 model Profile {
-  id        String     @id
-  email     String     @unique
-  name      String?
-  role      Role       @default(admin)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  auditLogs AuditLog[]
+  id                    String                 @id
+  email                 String                 @unique
+  name                  String?
+  role                  Role                   @default(admin)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  auditLogs             AuditLog[]
+  coupangSellerAccounts CoupangSellerAccount[]
+}
+
+model CoupangSellerAccount {
+  id          String   @id @default(cuid())
+  displayName String
+  isActive    Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy Profile @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([createdById])
+  @@index([createdAt])
 }
 
 model AuditLog {
