@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { ExcelDropzone } from "@/components/excel/excel-dropzone";
 import { ExcelFileList } from "@/components/excel/excel-file-list";
+import { apiPostFormData } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,13 +15,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { detectExcelTargetId } from "@/lib/excel/detect-target";
+import { detectExcelTargetIdFromFile } from "@/lib/excel/detect-target";
 import type {
   ExcelIngestionTargetId,
   SelectedExcelFile,
 } from "@/lib/excel/types";
 import { isExcelFile } from "@/lib/excel/validate-file";
 import { cn } from "@/lib/utils";
+import type { ExcelUploadResponse } from "@/services/coupang-growth-sync/types";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
 
 const COUPANG_GROWTH_TARGET_IDS = [
@@ -76,9 +78,25 @@ export function ExcelUploadPanel({
   const [files, setFiles] = useState<SelectedExcelFile[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function detectFileTarget(fileId: string, file: File) {
+    const targetId = await detectExcelTargetIdFromFile(
+      file,
+      COUPANG_GROWTH_TARGET_IDS,
+    );
+
+    setFiles((current) =>
+      current.map((entry) =>
+        entry.id === fileId
+          ? { ...entry, targetId, detecting: false }
+          : entry,
+      ),
+    );
+  }
 
   function addFiles(incoming: File[]) {
-    const validFiles: SelectedExcelFile[] = [];
+    const pendingFiles: SelectedExcelFile[] = [];
     const invalidNames: string[] = [];
 
     for (const file of incoming) {
@@ -98,11 +116,14 @@ export function ExcelUploadPanel({
         continue;
       }
 
-      validFiles.push({
+      const entry: SelectedExcelFile = {
         id: createFileId(file),
         file,
-        targetId: detectExcelTargetId(file, COUPANG_GROWTH_TARGET_IDS),
-      });
+        targetId: null,
+        detecting: true,
+      };
+
+      pendingFiles.push(entry);
     }
 
     if (invalidNames.length > 0) {
@@ -113,9 +134,13 @@ export function ExcelUploadPanel({
       setFileError(null);
     }
 
-    if (validFiles.length > 0) {
-      setFiles((current) => [...current, ...validFiles]);
+    if (pendingFiles.length > 0) {
+      setFiles((current) => [...current, ...pendingFiles]);
       setUploadNotice(null);
+
+      for (const entry of pendingFiles) {
+        void detectFileTarget(entry.id, entry.file);
+      }
     }
   }
 
@@ -124,18 +149,64 @@ export function ExcelUploadPanel({
     setUploadNotice(null);
   }
 
-  function handleUpload() {
-    if (!selectedAccountId || files.length === 0) {
+  async function handleUpload() {
+    if (!selectedAccountId || files.length === 0 || uploading) {
       return;
     }
 
-    setUploadNotice("업로드 기능은 준비 중입니다. 곧 연결될 예정입니다.");
+    setUploading(true);
+    setUploadNotice(null);
+    setFileError(null);
+
+    const formData = new FormData();
+    formData.append("coupangSellerAccountId", selectedAccountId);
+
+    for (const entry of files) {
+      formData.append("files", entry.file);
+    }
+
+    const result = await apiPostFormData<ExcelUploadResponse>(
+      "/api/coupang-growth-sync/excel-upload",
+      formData,
+    );
+
+    setUploading(false);
+
+    if (!result.ok) {
+      setFileError(result.error);
+      return;
+    }
+
+    const successResults = result.data.results.filter((item) => item.ok);
+    const failedResults = result.data.results.filter((item) => !item.ok);
+
+    if (successResults.length > 0) {
+      const summary = successResults
+        .map((item) => `${item.fileName}: ${item.rowCount ?? 0}건 적재`)
+        .join(", ");
+
+      setUploadNotice(summary);
+      setFiles([]);
+    }
+
+    if (failedResults.length > 0) {
+      setFileError(
+        failedResults
+          .map((item) => `${item.fileName}: ${item.error ?? "실패"}`)
+          .join(" / "),
+      );
+    }
   }
 
+  const isDetecting = files.some((entry) => entry.detecting);
   const allFilesIdentified =
     files.length > 0 && files.every((entry) => entry.targetId !== null);
   const canUpload = Boolean(
-    selectedAccountId && files.length > 0 && allFilesIdentified,
+    selectedAccountId &&
+      files.length > 0 &&
+      allFilesIdentified &&
+      !isDetecting &&
+      !uploading,
   );
 
   return (
@@ -222,17 +293,17 @@ export function ExcelUploadPanel({
               {fileError}
             </p>
           ) : null}
-          {files.length > 0 && !allFilesIdentified ? (
+          {files.length > 0 && !isDetecting && !allFilesIdentified ? (
             <p className="mt-2 text-sm text-amber-700" role="status">
-              일부 파일의 유형을 자동으로 식별하지 못했습니다. 파일명에
-              입고/템플릿 또는 재고/inventory 키워드를 포함해 주세요.
+              일부 파일의 유형을 자동으로 식별하지 못했습니다. 엑셀 헤더(등록상품명,
+              옵션 ID 등)를 확인해 주세요.
             </p>
           ) : null}
         </UploadSection>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <Button type="button" disabled={!canUpload} onClick={handleUpload}>
-            업로드
+            {uploading ? "업로드 중..." : "업로드"}
           </Button>
           {uploadNotice ? (
             <p className="text-sm text-muted-foreground" role="status">

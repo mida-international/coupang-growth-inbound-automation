@@ -1,3 +1,5 @@
+import { normalizeHeader } from "@/lib/excel/normalize-header";
+import { readExcelRows } from "@/lib/excel/read-workbook";
 import { listTargets } from "@/lib/excel/targets/registry";
 import type {
   ExcelIngestionTarget,
@@ -5,20 +7,30 @@ import type {
   ExcelTargetDetectionResult,
 } from "@/lib/excel/types";
 
-function matchesFilenamePattern(file: File, target: ExcelIngestionTarget) {
-  if (!target.filenamePatterns?.length) {
-    return false;
-  }
+const HEADER_SCAN_ROW_LIMIT = 30;
 
-  return target.filenamePatterns.some((pattern) => pattern.test(file.name));
+function rowContainsKeywords(
+  row: unknown[],
+  keywords: readonly string[],
+): boolean {
+  const normalizedCells = row.map(normalizeHeader);
+
+  return keywords.every((keyword) => {
+    const normalizedKeyword = normalizeHeader(keyword);
+
+    return normalizedCells.some((cell) => cell.includes(normalizedKeyword));
+  });
 }
 
-function scoreTargetByFilename(file: File, target: ExcelIngestionTarget) {
-  return matchesFilenamePattern(file, target) ? 1 : 0;
+function matchTargetInRow(
+  row: unknown[],
+  target: ExcelIngestionTarget,
+): boolean {
+  return rowContainsKeywords(row, target.requiredHeaderKeywords);
 }
 
-export function detectExcelTarget(
-  file: File,
+export function detectExcelTargetFromRows(
+  rows: unknown[][],
   allowedTargetIds?: readonly ExcelIngestionTargetId[],
 ): ExcelTargetDetectionResult {
   const candidates = listTargets(allowedTargetIds);
@@ -27,27 +39,38 @@ export function detectExcelTarget(
     return { ok: false, reason: "not_allowed" };
   }
 
-  const scored = candidates
-    .map((target) => ({
-      target,
-      score: scoreTargetByFilename(file, target),
-    }))
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score);
+  const scanLimit = Math.min(rows.length, HEADER_SCAN_ROW_LIMIT);
 
-  const best = scored[0];
+  for (let rowIndex = 0; rowIndex < scanLimit; rowIndex += 1) {
+    const row = rows[rowIndex];
 
-  if (!best) {
-    return { ok: false, reason: "unknown" };
+    if (!Array.isArray(row)) {
+      continue;
+    }
+
+    for (const target of candidates) {
+      if (matchTargetInRow(row, target)) {
+        return { ok: true, targetId: target.id };
+      }
+    }
   }
 
-  return { ok: true, targetId: best.target.id };
+  return { ok: false, reason: "unknown" };
 }
 
-export function detectExcelTargetId(
+export function detectExcelTargetFromBuffer(
+  buffer: ArrayBuffer | Buffer,
+  allowedTargetIds?: readonly ExcelIngestionTargetId[],
+): ExcelTargetDetectionResult {
+  const rows = readExcelRows(buffer);
+  return detectExcelTargetFromRows(rows, allowedTargetIds);
+}
+
+export async function detectExcelTargetIdFromFile(
   file: File,
   allowedTargetIds?: readonly ExcelIngestionTargetId[],
-): ExcelIngestionTargetId | null {
-  const result = detectExcelTarget(file, allowedTargetIds);
+): Promise<ExcelIngestionTargetId | null> {
+  const buffer = await file.arrayBuffer();
+  const result = detectExcelTargetFromBuffer(buffer, allowedTargetIds);
   return result.ok ? result.targetId : null;
 }

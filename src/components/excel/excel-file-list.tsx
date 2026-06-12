@@ -38,7 +38,11 @@ export function ExcelFileList({ files, onRemove }: ExcelFileListProps) {
                 <p className="text-xs text-muted-foreground">
                   {formatFileSize(entry.file.size)}
                 </p>
-                {target ? (
+                {entry.detecting ? (
+                  <Badge variant="outline" className="text-xs">
+                    유형 확인 중...
+                  </Badge>
+                ) : target ? (
                   <Badge variant="secondary" className="text-xs">
                     {target.label}
                   </Badge>

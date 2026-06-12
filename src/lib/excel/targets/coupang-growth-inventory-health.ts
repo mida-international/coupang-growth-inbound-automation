@@ -11,10 +11,4 @@ export const coupangGrowthInventoryHealthTarget: ExcelIngestionTarget = {
     "Orderable quantity",
     "Days of cover",
   ],
-  filenamePatterns: [
-    /inventory/i,
-    /재고/i,
-    /health/i,
-    /stock/i,
-  ],
 };

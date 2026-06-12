@@ -22,4 +22,5 @@ export type SelectedExcelFile = {
   id: string;
   file: File;
   targetId: ExcelIngestionTargetId | null;
+  detecting?: boolean;
 };

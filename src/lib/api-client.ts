@@ -107,6 +107,41 @@ export function apiPost<T>(
   return apiRequest<T>(path, { method: "POST", body });
 }
 
+export async function apiPostFormData<T>(
+  path: string,
+  formData: FormData,
+): Promise<ApiResult<T>> {
+  let response: Response;
+
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      body: formData,
+      credentials: "same-origin",
+    });
+  } catch {
+    return { ok: false, error: "요청 처리에 실패했습니다." };
+  }
+
+  let parsed: unknown;
+
+  try {
+    parsed = await response.json();
+  } catch {
+    return { ok: false, error: "응답을 처리할 수 없습니다." };
+  }
+
+  if (isApiResult(parsed)) {
+    return parsed as ApiResult<T>;
+  }
+
+  if (!response.ok) {
+    return normalizeErrorBody(parsed, response.status);
+  }
+
+  return { ok: false, error: "응답을 처리할 수 없습니다." };
+}
+
 export function apiPatch<T>(
   path: string,
   body: unknown
