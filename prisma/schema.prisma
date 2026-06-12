@@ -32,9 +32,10 @@ model Profile {
   role                  Role                   @default(admin)
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
-  auditLogs             AuditLog[]
-  coupangSellerAccounts CoupangSellerAccount[]
-  ingestionLogs         IngestionLog[]
+  auditLogs                AuditLog[]
+  coupangSellerAccounts    CoupangSellerAccount[]
+  ingestionLogs            IngestionLog[]
+  shoplingApiConfigUpdates ShoplingApiConfig[]
 }
 
 model CoupangSellerAccount {
@@ -72,6 +73,7 @@ model IngestionLog {
   uploadedBy          Profile?                       @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
   inboundTemplates    CoupangGrowthInboundTemplate[]
   inventoryHealthRows CoupangGrowthInventoryHealth[]
+  shoplingInventories ShoplingInventory[]
 
   @@index([tableName, snapshotDate], map: "idx_ingestion_log_table_date")
   @@map("ingestion_log")
@@ -245,6 +247,53 @@ model CoupangGrowthInventoryHealth {
   @@index([coupangSellerAccountId, snapshotDate], map: "idx_inventory_health_seller_snapshot")
   @@index([coupangSellerAccountId, optionId], map: "idx_inventory_health_seller_option")
   @@map("coupang_growth_inventory_health")
+}
+
+model ShoplingApiConfig {
+  id          String   @id @default("default")
+  loginId     String   @map("login_id")
+  companyId   String   @map("company_id")
+  apiAuthKey  String   @map("api_auth_key")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedById String?  @map("updated_by")
+  updatedBy   Profile? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("shopling_api_config")
+}
+
+/// 샵플링 상품조회 API (prod_gather_api) 동기화 — 옵션 1행 = optBarcode/optQty/optId ... [i]
+/// 참고: https://shopling.github.io/ 상품조회 API
+model ShoplingInventory {
+  id             BigInt   @id @default(autoincrement())
+  ingestionId    BigInt?  @map("ingestion_id")
+  goodsKey       String   @map("goods_key")
+  ptnGoodsCd     String?  @map("ptn_goods_cd")
+  productName    String?  @map("product_name") @db.VarChar(500)
+  saleStatus     String?  @map("sale_status")
+  goodsTp        String?  @default("G") @map("goods_tp") @db.VarChar(2)
+  barcode        String   @default("") @db.VarChar(20)
+  optId          String?  @map("opt_id") @db.VarChar(32)
+  optionTitle    String?  @map("option_title") @db.VarChar(500)
+  optionValue    String?  @map("option_value") @db.VarChar(500)
+  availableStock Int?     @default(0) @map("available_stock")
+  realStock      Int?     @default(0) @map("real_stock")
+  optVrtlQty     Int?     @default(0) @map("opt_vrtl_qty")
+  optPrice       Int?     @default(0) @map("opt_price")
+  optSupplyPrice Int?     @default(0) @map("opt_supply_price")
+  optStatus      String?  @map("opt_status")
+  location       String?  @db.VarChar(20)
+  snapshotDate   DateTime @map("snapshot_date") @db.Date
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  ingestion IngestionLog? @relation(fields: [ingestionId], references: [id], onDelete: SetNull)
+
+  @@unique([barcode, snapshotDate, goodsKey, optionTitle, optionValue], map: "uq_shopling_inv_barcode_date_goods_opt")
+  @@index([barcode], map: "idx_shopling_inv_barcode")
+  @@index([snapshotDate], map: "idx_shopling_inv_snapshot_date")
+  @@index([ptnGoodsCd], map: "idx_shopling_inv_ptn_goods_cd")
+  @@index([goodsKey], map: "idx_shopling_inv_goods_key")
+  @@index([ingestionId], map: "idx_shopling_inv_ingestion_id")
+  @@map("shopling_inventory")
 }
 
 model AuditLog {
