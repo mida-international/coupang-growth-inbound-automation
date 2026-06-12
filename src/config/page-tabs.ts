@@ -20,7 +20,21 @@ export const coupangGrowthTabGroup: PageTabGroup = {
   ],
 };
 
-export const pageTabGroups: PageTabGroup[] = [coupangGrowthTabGroup];
+export const coupangGrowthSyncTabGroup: PageTabGroup = {
+  id: "coupang-growth-sync",
+  basePath: "/sync/coupang-growth",
+  tabs: [
+    {
+      title: "엑셀 업로드",
+      href: "/sync/coupang-growth/excel-upload",
+    },
+  ],
+};
+
+export const pageTabGroups: PageTabGroup[] = [
+  coupangGrowthTabGroup,
+  coupangGrowthSyncTabGroup,
+];
 
 export function isPageTabActive(pathname: string, href: string) {
   if (href === "/") {
