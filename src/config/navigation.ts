@@ -79,7 +79,6 @@ export const settingsNavGroup: NavGroup = {
       icon: UserCog,
       masterOnly: true,
     },
-    { title: "연동 가이드", href: "/settings/integration-guide", icon: Plug },
-    { title: "샵플링 API", href: "/settings/shopling-api", icon: Settings },
+    { title: "외부 연동", href: "/integrations", icon: Plug },
   ],
 };
