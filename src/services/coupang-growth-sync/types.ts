@@ -13,6 +13,19 @@ export type IngestInboundTemplateResult = {
   skippedRowCount: number;
 };
 
+export type IngestInventoryHealthInput = {
+  buffer: Buffer;
+  sourceFile: string;
+  coupangSellerAccountId: string;
+  uploadedById: string;
+};
+
+export type IngestInventoryHealthResult = {
+  ingestionId: bigint;
+  rowCount: number;
+  skippedRowCount: number;
+};
+
 export type ExcelUploadFileResult = {
   fileName: string;
   ok: boolean;

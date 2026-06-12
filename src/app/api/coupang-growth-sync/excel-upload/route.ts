@@ -5,6 +5,7 @@ import { logRouteError } from "@/lib/api/log-route-error";
 import { jsonError, jsonSuccess } from "@/lib/api/response";
 import { detectExcelTargetFromBuffer } from "@/lib/excel/detect-target";
 import { ingestInboundTemplate } from "@/services/coupang-growth-sync/ingest-inbound-template";
+import { ingestInventoryHealth } from "@/services/coupang-growth-sync/ingest-inventory-health";
 import type { ExcelUploadFileResult } from "@/services/coupang-growth-sync/types";
 
 export async function POST(request: NextRequest) {
@@ -49,11 +50,28 @@ export async function POST(request: NextRequest) {
       }
 
       if (detection.targetId === "coupang_growth_inventory_health") {
+        const ingestResult = await ingestInventoryHealth({
+          buffer,
+          sourceFile: file.name,
+          coupangSellerAccountId: coupangSellerAccountId.trim(),
+          uploadedById: auth.profile.id,
+        });
+
+        if (!ingestResult.ok) {
+          results.push({
+            fileName: file.name,
+            ok: false,
+            targetId: detection.targetId,
+            error: ingestResult.error,
+          });
+          continue;
+        }
+
         results.push({
           fileName: file.name,
-          ok: false,
+          ok: true,
           targetId: detection.targetId,
-          error: "재고 현황 적재는 준비 중입니다.",
+          rowCount: ingestResult.data.rowCount,
         });
         continue;
       }
