@@ -62,15 +62,6 @@ export function detectExcelTargetFromBuffer(
   buffer: ArrayBuffer | Buffer,
   allowedTargetIds?: readonly ExcelIngestionTargetId[],
 ): ExcelTargetDetectionResult {
-  const rows = readExcelRows(buffer);
+  const rows = readExcelRows(buffer, { maxRows: HEADER_SCAN_ROW_LIMIT });
   return detectExcelTargetFromRows(rows, allowedTargetIds);
-}
-
-export async function detectExcelTargetIdFromFile(
-  file: File,
-  allowedTargetIds?: readonly ExcelIngestionTargetId[],
-): Promise<ExcelIngestionTargetId | null> {
-  const buffer = await file.arrayBuffer();
-  const result = detectExcelTargetFromBuffer(buffer, allowedTargetIds);
-  return result.ok ? result.targetId : null;
 }

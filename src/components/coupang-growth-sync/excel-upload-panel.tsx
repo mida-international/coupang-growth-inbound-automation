@@ -15,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { detectExcelTargetIdFromFile } from "@/lib/excel/detect-target";
+import { detectExcelTargetIdFromFile } from "@/lib/excel/detect-target-client";
 import type {
   ExcelIngestionTargetId,
   SelectedExcelFile,

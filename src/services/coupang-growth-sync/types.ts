@@ -25,6 +25,15 @@ export type ExcelUploadResponse = {
   results: ExcelUploadFileResult[];
 };
 
+export type DetectExcelFileResult = {
+  fileName: string;
+  targetId: ExcelIngestionTargetId | null;
+};
+
+export type DetectExcelResponse = {
+  results: DetectExcelFileResult[];
+};
+
 export type IngestServiceResult<T = void> =
   | { ok: true; data: T }
   | { ok: false; error: string };
