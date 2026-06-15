@@ -38,6 +38,13 @@ export type ExcelUploadResponse = {
   results: ExcelUploadFileResult[];
 };
 
+export type ExcelUploadOutcome = "success" | "partial" | "error";
+
+export type ExcelUploadResultSummary = {
+  outcome: ExcelUploadOutcome;
+  results: ExcelUploadFileResult[];
+};
+
 export type DetectExcelFileResult = {
   fileName: string;
   targetId: ExcelIngestionTargetId | null;
