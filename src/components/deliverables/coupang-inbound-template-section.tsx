@@ -1,0 +1,253 @@
+"use client";
+
+import { ImageIcon, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
+import { ExcelDropzone } from "@/components/excel/excel-dropzone";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+
+type CoupangInboundTemplateSectionProps = {
+  sellerId: string;
+};
+
+type InputTab = "excel" | "image";
+
+export function CoupangInboundTemplateSection({
+  sellerId,
+}: CoupangInboundTemplateSectionProps) {
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [activeTab, setActiveTab] = useState<InputTab>("excel");
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [isImageDragging, setIsImageDragging] = useState(false);
+  const hasSeller = sellerId.trim().length > 0;
+  const hasInputFile =
+    activeTab === "excel" ? excelFile !== null : imageFile !== null;
+  const canDownload = hasSeller && hasInputFile && !isDownloading;
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(imageFile);
+    setImagePreviewUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [imageFile]);
+
+  function handleImageFiles(fileList: FileList | null) {
+    if (!hasSeller || !fileList?.length) {
+      return;
+    }
+
+    const file = fileList[0];
+
+    if (!file.type.startsWith("image/")) {
+      return;
+    }
+
+    setImageFile(file);
+    setNotice(null);
+  }
+
+  function handleDownloadClick() {
+    if (!canDownload) {
+      return;
+    }
+
+    setIsDownloading(true);
+    setNotice(null);
+
+    setNotice("기능 연동 예정입니다.");
+    setIsDownloading(false);
+  }
+
+  return (
+    <DeliverablesSection
+      title="쿠팡그로스 입고 템플릿 생성"
+      description="박스 단위 입고 리스트(엑셀 또는 이미지)를 업로드한 뒤, 쿠팡 WING 입고 템플릿에 수량을 반영해 생성합니다."
+      variant="plain"
+    >
+      <div className="space-y-4">
+        <div className="rounded-md border border-border bg-muted/20 p-4">
+          <p className="mb-3 text-sm font-medium text-foreground">
+            입고 리스트 업로드
+          </p>
+
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as InputTab)}
+          >
+            <TabsList className="mb-4 grid w-full grid-cols-2">
+              <TabsTrigger value="excel" className="flex-1">
+                엑셀 파일 업로드
+              </TabsTrigger>
+              <TabsTrigger value="image" className="flex-1">
+                이미지 업로드
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="excel" className="space-y-2">
+              <ExcelDropzone
+                multiple={false}
+                disabled={!hasSeller}
+                description={
+                  excelFile
+                    ? excelFile.name
+                    : "엑셀 파일을 드래그하거나 클릭하여 선택"
+                }
+                onFilesSelected={(files) => {
+                  setExcelFile(files[0] ?? null);
+                  setNotice(null);
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                필수 컬럼: 바코드, 수량 (등록상품명·옵션명은 선택)
+              </p>
+            </TabsContent>
+
+            <TabsContent value="image" className="space-y-2">
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                disabled={!hasSeller}
+                className="sr-only"
+                onChange={(event) => {
+                  handleImageFiles(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+              <div
+                role="button"
+                tabIndex={hasSeller ? 0 : -1}
+                aria-disabled={!hasSeller}
+                onClick={() => {
+                  if (hasSeller) {
+                    imageInputRef.current?.click();
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (!hasSeller) {
+                    return;
+                  }
+
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    imageInputRef.current?.click();
+                  }
+                }}
+                onDragOver={(event) => {
+                  if (!hasSeller) {
+                    return;
+                  }
+
+                  event.preventDefault();
+                  setIsImageDragging(true);
+                }}
+                onDragLeave={(event) => {
+                  if (!hasSeller) {
+                    return;
+                  }
+
+                  event.preventDefault();
+                  setIsImageDragging(false);
+                }}
+                onDrop={(event) => {
+                  if (!hasSeller) {
+                    return;
+                  }
+
+                  event.preventDefault();
+                  setIsImageDragging(false);
+                  handleImageFiles(event.dataTransfer.files);
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-10 text-center transition-colors",
+                  !hasSeller
+                    ? "cursor-not-allowed border-border bg-muted/30 opacity-50"
+                    : "cursor-pointer",
+                  hasSeller &&
+                    (isImageDragging
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-background hover:border-primary/50 hover:bg-muted/30"),
+                )}
+              >
+                {imageFile ? (
+                  <ImageIcon
+                    className="size-8 text-muted-foreground"
+                    aria-hidden
+                  />
+                ) : (
+                  <Upload className="size-8 text-muted-foreground" aria-hidden />
+                )}
+                <p className="text-sm font-medium text-foreground">
+                  {imageFile
+                    ? imageFile.name
+                    : "사진 또는 스캔본을 드래그하거나 클릭하여 선택"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  지원 형식: JPG, PNG, WEBP 등 이미지 파일
+                </p>
+              </div>
+
+              {imagePreviewUrl ? (
+                <div className="overflow-hidden rounded-md border border-border bg-muted/30">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imagePreviewUrl}
+                    alt="입고 리스트 이미지 미리보기"
+                    className="mx-auto max-h-40 object-contain"
+                  />
+                </div>
+              ) : null}
+
+              <p className="text-xs text-muted-foreground">
+                종이 입고 리스트 사진을 AI가 자동 인식합니다 (기능 연동 예정)
+              </p>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <Button
+            type="button"
+            size="sm"
+            disabled={!canDownload}
+            onClick={handleDownloadClick}
+          >
+            {isDownloading ? "생성 중..." : "다운로드"}
+          </Button>
+        </div>
+
+        {!hasSeller ? (
+          <p className="text-sm text-muted-foreground">
+            판매자 계정을 선택해 주세요.
+          </p>
+        ) : hasSeller && !hasInputFile ? (
+          <p className="text-sm text-muted-foreground">
+            {activeTab === "excel"
+              ? "박스 입고 리스트 엑셀 파일을 선택해 주세요."
+              : "입고 리스트 이미지를 선택해 주세요."}
+          </p>
+        ) : null}
+
+        {notice ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            {notice}
+          </p>
+        ) : null}
+      </div>
+    </DeliverablesSection>
+  );
+}
