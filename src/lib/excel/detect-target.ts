@@ -1,5 +1,4 @@
-import { normalizeHeader } from "@/lib/excel/normalize-header";
-import { readExcelRows } from "@/lib/excel/read-workbook";
+import { rowMatchesTargetKeywords } from "@/lib/excel/match-header-keywords";
 import { listTargets } from "@/lib/excel/targets/registry";
 import type {
   ExcelIngestionTarget,
@@ -9,24 +8,14 @@ import type {
 
 const HEADER_SCAN_ROW_LIMIT = 30;
 
-function rowContainsKeywords(
-  row: unknown[],
-  keywords: readonly string[],
-): boolean {
-  const normalizedCells = row.map(normalizeHeader);
-
-  return keywords.every((keyword) => {
-    const normalizedKeyword = normalizeHeader(keyword);
-
-    return normalizedCells.some((cell) => cell.includes(normalizedKeyword));
-  });
-}
-
 function matchTargetInRow(
   row: unknown[],
   target: ExcelIngestionTarget,
 ): boolean {
-  return rowContainsKeywords(row, target.requiredHeaderKeywords);
+  return rowMatchesTargetKeywords(row, {
+    requiredHeaderKeywords: target.requiredHeaderKeywords,
+    requiredHeaderKeywordSets: target.requiredHeaderKeywordSets,
+  });
 }
 
 export function detectExcelTargetFromRows(
@@ -62,6 +51,8 @@ export function detectExcelTargetFromBuffer(
   buffer: ArrayBuffer | Buffer,
   allowedTargetIds?: readonly ExcelIngestionTargetId[],
 ): ExcelTargetDetectionResult {
+  const { readExcelRows } =
+    require("@/lib/excel/read-workbook") as typeof import("@/lib/excel/read-workbook");
   const rows = readExcelRows(buffer, { maxRows: HEADER_SCAN_ROW_LIMIT });
   return detectExcelTargetFromRows(rows, allowedTargetIds);
 }

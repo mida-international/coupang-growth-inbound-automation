@@ -10,7 +10,8 @@ export type ExcelIngestionTarget = {
   id: ExcelIngestionTargetId;
   tableName: string;
   label: string;
-  requiredHeaderKeywords: readonly string[];
+  requiredHeaderKeywords?: readonly string[];
+  requiredHeaderKeywordSets?: readonly (readonly string[])[];
   filenamePatterns?: readonly RegExp[];
 };
 

@@ -1,4 +1,5 @@
 import { detectExcelTargetFromRows } from "@/lib/excel/detect-target";
+import { rowMatchesTargetKeywords } from "@/lib/excel/match-header-keywords";
 import { normalizeHeader } from "@/lib/excel/normalize-header";
 import { readExcelRows } from "@/lib/excel/read-workbook";
 import {
@@ -104,15 +105,13 @@ function findHeaderRowIndex(rows: unknown[][]): number | null {
       continue;
     }
 
-    const normalizedCells = row.map(normalizeHeader);
-
     if (
-      coupangGrowthInboundTemplateTarget.requiredHeaderKeywords.every(
-        (keyword) =>
-          normalizedCells.some((cell) =>
-            cell.includes(normalizeHeader(keyword)),
-          ),
-      )
+      rowMatchesTargetKeywords(row, {
+        requiredHeaderKeywords:
+          coupangGrowthInboundTemplateTarget.requiredHeaderKeywords,
+        requiredHeaderKeywordSets:
+          coupangGrowthInboundTemplateTarget.requiredHeaderKeywordSets,
+      })
     ) {
       return rowIndex;
     }

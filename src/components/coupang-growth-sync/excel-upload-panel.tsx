@@ -5,7 +5,9 @@ import { useState } from "react";
 
 import { ExcelDropzone } from "@/components/excel/excel-dropzone";
 import { ExcelFileList } from "@/components/excel/excel-file-list";
+import { ExcelUploadResultCard } from "@/components/coupang-growth-sync/excel-upload-result-card";
 import { apiPostFormData } from "@/lib/api-client";
+import { summarizeExcelUpload } from "@/lib/coupang-growth-sync/summarize-excel-upload";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -30,7 +32,7 @@ import type {
 } from "@/lib/excel/types";
 import { isExcelFile } from "@/lib/excel/validate-file";
 import { cn } from "@/lib/utils";
-import type { ExcelUploadResponse } from "@/services/coupang-growth-sync/types";
+import type { ExcelUploadResponse, ExcelUploadResultSummary } from "@/services/coupang-growth-sync/types";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
 
 const COUPANG_GROWTH_TARGET_IDS = [
@@ -97,7 +99,9 @@ export function ExcelUploadPanel({
   );
   const [files, setFiles] = useState<SelectedExcelFile[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+  const [uploadResult, setUploadResult] = useState<ExcelUploadResultSummary | null>(
+    null,
+  );
   const [uploading, setUploading] = useState(false);
   const [unrecognizedDialog, setUnrecognizedDialog] = useState<{
     open: boolean;
@@ -172,7 +176,7 @@ export function ExcelUploadPanel({
 
     if (pendingFiles.length > 0) {
       setFiles((current) => [...current, ...pendingFiles]);
-      setUploadNotice(null);
+      setUploadResult(null);
 
       for (const entry of pendingFiles) {
         void detectFileTarget(entry.id, entry.file);
@@ -182,7 +186,7 @@ export function ExcelUploadPanel({
 
   function removeFile(id: string) {
     setFiles((current) => current.filter((entry) => entry.id !== id));
-    setUploadNotice(null);
+    setUploadResult(null);
   }
 
   async function handleUpload() {
@@ -191,7 +195,7 @@ export function ExcelUploadPanel({
     }
 
     setUploading(true);
-    setUploadNotice(null);
+    setUploadResult(null);
     setFileError(null);
 
     const formData = new FormData();
@@ -209,28 +213,24 @@ export function ExcelUploadPanel({
     setUploading(false);
 
     if (!result.ok) {
-      setFileError(result.error);
+      setUploadResult({
+        outcome: "error",
+        results: [
+          {
+            fileName: "업로드 요청",
+            ok: false,
+            error: result.error,
+          },
+        ],
+      });
       return;
     }
 
-    const successResults = result.data.results.filter((item) => item.ok);
-    const failedResults = result.data.results.filter((item) => !item.ok);
+    const summary = summarizeExcelUpload(result.data.results);
+    setUploadResult(summary);
 
-    if (successResults.length > 0) {
-      const summary = successResults
-        .map((item) => `${item.fileName}: ${item.rowCount ?? 0}건 적재`)
-        .join(", ");
-
-      setUploadNotice(summary);
+    if (summary.results.some((item) => item.ok)) {
       setFiles([]);
-    }
-
-    if (failedResults.length > 0) {
-      setFileError(
-        failedResults
-          .map((item) => `${item.fileName}: ${item.error ?? "실패"}`)
-          .join(" / "),
-      );
     }
   }
 
@@ -297,7 +297,7 @@ export function ExcelUploadPanel({
                       disabled={!account.isActive}
                       onChange={() => {
                         setSelectedAccountId(account.id);
-                        setUploadNotice(null);
+                        setUploadResult(null);
                       }}
                       className="size-4 shrink-0 accent-primary"
                     />
@@ -336,15 +336,9 @@ export function ExcelUploadPanel({
           ) : null}
         </UploadSection>
 
+        {uploadResult ? <ExcelUploadResultCard result={uploadResult} /> : null}
+
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-          {uploadNotice ? (
-            <p
-              className="text-sm text-muted-foreground sm:mr-auto"
-              role="status"
-            >
-              {uploadNotice}
-            </p>
-          ) : null}
           <Button type="button" disabled={!canUpload} onClick={handleUpload}>
             {uploading ? "업로드 중..." : "업로드"}
           </Button>
