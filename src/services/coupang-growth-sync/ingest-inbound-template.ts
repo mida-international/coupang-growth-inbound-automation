@@ -4,6 +4,7 @@ import { parseInboundTemplate } from "@/lib/excel/parsers/parse-inbound-template
 import type { ParsedInboundTemplateRow } from "@/lib/excel/parsers/parse-inbound-template";
 import { prisma } from "@/lib/db";
 import { coupangGrowthInboundTemplateTarget } from "@/lib/excel/targets/coupang-growth-inbound-template";
+import { saveInboundTemplateFile } from "@/services/coupang-growth-sync/save-inbound-template-file";
 import type {
   IngestInboundTemplateInput,
   IngestInboundTemplateResult,
@@ -100,6 +101,9 @@ export async function ingestInboundTemplate(
   }
 
   const snapshotDate = getKstTodayDate();
+  const fileBuffer = Buffer.isBuffer(input.buffer)
+    ? input.buffer
+    : Buffer.from(input.buffer);
   const txTimeout = computeIngestTransactionTimeoutMs(parsed.rows.length);
 
   try {
@@ -154,6 +158,19 @@ export async function ingestInboundTemplate(
         timeout: txTimeout,
       },
     );
+
+    try {
+      await saveInboundTemplateFile({
+        coupangSellerAccountId: input.coupangSellerAccountId,
+        buffer: fileBuffer,
+        sourceFileName: input.sourceFile,
+      });
+    } catch (storageError) {
+      console.warn(
+        "[ingestInboundTemplate] Storage 저장 실패 (DB 적재는 완료):",
+        storageError,
+      );
+    }
 
     return { ok: true, data: result };
   } catch (error) {
