@@ -54,8 +54,8 @@ export const dataNavGroup: NavGroup = {
   title: "데이터 관리",
   icon: Database,
   items: [
-    { title: "샵플링 정보 관리", href: "/data/shopling", icon: Database },
     { title: "쿠팡 Growth", href: "/data/coupang-growth", icon: TrendingUp },
+    { title: "샵플링", href: "/data/shopling", icon: Database },
     { title: "바코드 매핑", href: "/data/barcode-mapping", icon: Link2 },
     { title: "상품 매핑", href: "/data/product-mapping", icon: Layers },
     { title: "패키지 매핑", href: "/data/package-mapping", icon: Layers },
