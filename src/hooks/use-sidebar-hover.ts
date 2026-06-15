@@ -14,7 +14,7 @@ type SidebarInteractionContextValue = {
   sidebarInteractionHandlers: {
     onMouseEnter: () => void;
     onMouseLeave: () => void;
-    onClick: () => void;
+    onClick: (event: React.MouseEvent) => void;
   };
   openSidebar: () => void;
   scheduleClose: () => void;
@@ -37,6 +37,14 @@ function isInsideSidebarInteraction(target: EventTarget | null) {
       target.closest('[data-slot="sidebar-trigger"]') ||
       target.closest('[data-sidebar="trigger"]'),
   );
+}
+
+function isSidebarNavigationTarget(target: EventTarget | null) {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  return Boolean(target.closest("a[href]"));
 }
 
 export function SidebarInteractionProvider({
@@ -121,7 +129,13 @@ export function SidebarInteractionProvider({
       sidebarInteractionHandlers: {
         onMouseEnter: openSidebar,
         onMouseLeave: scheduleClose,
-        onClick: pinSidebar,
+        onClick: (event) => {
+          if (isSidebarNavigationTarget(event.target)) {
+            return;
+          }
+
+          pinSidebar();
+        },
       },
       openSidebar,
       scheduleClose,

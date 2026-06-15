@@ -104,7 +104,14 @@ function NavIconMenuItem({
         className={menuButtonClassName(isCollapsed)}
         tooltip={item.title}
         isActive={isNavItemActive(pathname, item.href)}
-        render={<Link href={item.href} />}
+        render={
+          <Link
+            href={item.href}
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          />
+        }
       >
         <item.icon />
         {!isCollapsed ? <span>{item.title}</span> : null}
@@ -170,7 +177,14 @@ function NavCollapsibleGroup({
                     <SidebarMenuSubButton
                       className={expandedSubButtonClassName}
                       isActive={isNavItemActive(pathname, item.href)}
-                      render={<Link href={item.href} />}
+                      render={
+          <Link
+            href={item.href}
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          />
+        }
                     >
                       <item.icon />
                       <span>{item.title}</span>
