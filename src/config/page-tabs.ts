@@ -42,8 +42,20 @@ export const integrationsTabGroup: PageTabGroup = {
   ],
 };
 
+export const shoplingDataTabGroup: PageTabGroup = {
+  id: "shopling-data",
+  basePath: "/data/shopling",
+  tabs: [
+    {
+      title: "상품정보",
+      href: "/data/shopling/products",
+    },
+  ],
+};
+
 export const pageTabGroups: PageTabGroup[] = [
   coupangGrowthTabGroup,
+  shoplingDataTabGroup,
   coupangGrowthSyncTabGroup,
   integrationsTabGroup,
 ];
