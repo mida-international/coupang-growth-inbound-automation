@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CoupangInboundTemplateSection } from "@/components/deliverables/coupang-inbound-template-section";
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
 import { WarehouseInboundListSection } from "@/components/deliverables/warehouse-inbound-list-section";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,8 @@ export function DeliverablesPanel({
         rowCount={warehouseInboundList.rowCount}
         snapshotDates={warehouseInboundList.snapshotDates}
       />
+
+      <CoupangInboundTemplateSection sellerId={sellerId} />
     </div>
   );
 }
