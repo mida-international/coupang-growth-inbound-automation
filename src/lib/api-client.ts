@@ -155,3 +155,7 @@ export function apiPut<T>(
 ): Promise<ApiResult<T>> {
   return apiRequest<T>(path, { method: "PUT", body });
 }
+
+export function apiDelete<T>(path: string): Promise<ApiResult<T>> {
+  return apiRequest<T>(path, { method: "DELETE" });
+}
