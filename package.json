@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node --import tsx --test \"src/lib/shopling/**/*.test.ts\"",
     "db:seed:master": "tsx scripts/seed-master.ts"
   },
   "dependencies": {
@@ -18,6 +19,7 @@
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "fast-xml-parser": "^5.8.0",
     "lucide-react": "^1.17.0",
     "next": "^16.2.7",
     "pino": "^10.3.1",

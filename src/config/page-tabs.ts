@@ -31,9 +31,21 @@ export const coupangGrowthSyncTabGroup: PageTabGroup = {
   ],
 };
 
+export const integrationsTabGroup: PageTabGroup = {
+  id: "integrations",
+  basePath: "/integrations",
+  tabs: [
+    {
+      title: "샵플링",
+      href: "/integrations/shopling",
+    },
+  ],
+};
+
 export const pageTabGroups: PageTabGroup[] = [
   coupangGrowthTabGroup,
   coupangGrowthSyncTabGroup,
+  integrationsTabGroup,
 ];
 
 export function isPageTabActive(pathname: string, href: string) {

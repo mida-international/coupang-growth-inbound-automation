@@ -10,6 +10,10 @@ import {
   type NavGroup,
   type NavItem,
 } from "@/config/navigation";
+import {
+  findPageTabGroup,
+  getActivePageTabHref,
+} from "@/config/page-tabs";
 import { LogoutButton } from "@/components/auth/logout-button";
 import {
   Breadcrumb,
@@ -71,6 +75,24 @@ function getNavContext(pathname: string): NavContext {
 
   const settingsMatch = findInGroup(pathname, settingsNavGroup);
   if (settingsMatch) {
+    if (isNavItemActive(pathname, "/integrations")) {
+      const tabGroup = findPageTabGroup(pathname);
+      if (tabGroup) {
+        const activeTabHref = getActivePageTabHref(pathname, tabGroup.tabs);
+        const activeTab = tabGroup.tabs.find(
+          (tab) => tab.href === activeTabHref,
+        );
+
+        if (activeTab) {
+          return {
+            groupTitle: settingsNavGroup.title,
+            pageTitle: activeTab.title,
+            pageHref: activeTab.href,
+          };
+        }
+      }
+    }
+
     return settingsMatch;
   }
 

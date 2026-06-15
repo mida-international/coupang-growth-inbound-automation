@@ -1,7 +1,7 @@
 import type { ApiResult } from "@/lib/api/types";
 
 export type ApiRequestOptions = {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   headers?: Record<string, string>;
 };
@@ -147,4 +147,11 @@ export function apiPatch<T>(
   body: unknown
 ): Promise<ApiResult<T>> {
   return apiRequest<T>(path, { method: "PATCH", body });
+}
+
+export function apiPut<T>(
+  path: string,
+  body: unknown
+): Promise<ApiResult<T>> {
+  return apiRequest<T>(path, { method: "PUT", body });
 }
