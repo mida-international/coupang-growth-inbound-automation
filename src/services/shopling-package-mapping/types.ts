@@ -30,3 +30,21 @@ export type FetchShoplingPackageSourceResult = {
   packageMappings: ParsedShoplingPackageMappingRow[];
   chunks: ShoplingPackageMappingChunkResult[];
 };
+
+export type SyncShoplingPackageMappingStats = {
+  total: number;
+  upserted: number;
+  skipped_manual: number;
+  missing_single_barcode: number;
+  missing_single_ptn_goods_cd: number;
+  missing_package_barcode: number;
+  duplicates_removed: number;
+  deleted: number;
+  prune_skipped: boolean;
+  prune_protected_manual: number;
+};
+
+export type SyncShoplingPackageMappingResult = {
+  stats: SyncShoplingPackageMappingStats;
+  errors?: string[];
+};
