@@ -32,6 +32,9 @@ type RawWorkbenchRow = {
   pending_inbounds: number;
   offer_condition: string | null;
   days_of_cover: string | null;
+  safety_stock: number;
+  calculated_growth_inbound_recommend: number;
+  growth_inbound_recommend: number;
   template_snapshot_date: Date;
   health_snapshot_date: Date | null;
   shopling_snapshot_date: Date | null;
@@ -60,6 +63,9 @@ function mapRow(row: RawWorkbenchRow): InboundWorkbenchRowView {
     offerCondition: row.offer_condition,
     daysOfCover: row.days_of_cover,
     location: row.location,
+    safetyStock: row.safety_stock,
+    calculatedGrowthInboundRecommend: row.calculated_growth_inbound_recommend,
+    growthInboundRecommend: row.growth_inbound_recommend,
   };
 }
 
@@ -139,7 +145,7 @@ export async function listInboundWorkbench(
     prisma.$queryRaw<[{ count: bigint }]>(
       Prisma.sql`
         SELECT COUNT(*)::bigint AS count
-        FROM inbound_workbench_v
+        FROM inbound_workbench_display_v
         ${baseWhere}
       `,
     ),
@@ -163,10 +169,13 @@ export async function listInboundWorkbench(
           pending_inbounds,
           offer_condition,
           days_of_cover,
+          safety_stock,
+          calculated_growth_inbound_recommend,
+          growth_inbound_recommend,
           template_snapshot_date,
           health_snapshot_date,
           shopling_snapshot_date
-        FROM inbound_workbench_v
+        FROM inbound_workbench_display_v
         ${baseWhere}
         ORDER BY registered_product_name ASC NULLS LAST, option_id ASC NULLS LAST, shopling_row_key ASC
         LIMIT ${pageSize}

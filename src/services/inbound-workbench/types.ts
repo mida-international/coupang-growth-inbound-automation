@@ -22,6 +22,9 @@ export type InboundWorkbenchRowView = {
   offerCondition: string | null;
   daysOfCover: string | null;
   location: string | null;
+  safetyStock: number;
+  calculatedGrowthInboundRecommend: number;
+  growthInboundRecommend: number;
 };
 
 export type ListInboundWorkbenchResult = {
@@ -50,4 +53,11 @@ export function normalizeInboundWorkbenchPageSize(value?: number): number {
   }
 
   return INBOUND_WORKBENCH_DEFAULT_PAGE_SIZE;
+}
+
+export function getInboundWorkbenchOverrideKey(row: {
+  optionId: string | null;
+  templateId: string;
+}): string {
+  return row.optionId ?? `template:${row.templateId}`;
 }

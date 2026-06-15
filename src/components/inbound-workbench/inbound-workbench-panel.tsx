@@ -1,8 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { InboundWorkbenchTable } from "@/components/inbound-workbench/inbound-workbench-table";
-import { InboundWorkbenchToolbar } from "@/components/inbound-workbench/inbound-workbench-toolbar";
+import { InboundWorkbenchPanelClient } from "@/components/inbound-workbench/inbound-workbench-panel-client";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
 import type { ListInboundWorkbenchResult } from "@/services/inbound-workbench/types";
 
@@ -32,91 +31,78 @@ export function InboundWorkbenchPanel({
   pageSize,
 }: InboundWorkbenchPanelProps) {
   const hasAccounts = accounts.some((account) => account.isActive);
-  const snapshotDates = data.snapshotDates;
   const isSearchEmpty = search.trim().length === 0;
 
-  function renderContent() {
-    if (!hasAccounts) {
-      return (
-        <EmptyState>
-          <p className="text-sm text-muted-foreground">
-            등록된 쿠팡 판매자 계정이 없습니다.
-          </p>
-          <p className="mt-2 text-sm">
-            <Link
-              href="/data/coupang-growth/seller-accounts"
-              className="text-primary underline-offset-4 hover:underline"
-            >
-              데이터 관리 &gt; 쿠팡 Growth
-            </Link>
-            에서 먼저 판매자 계정을 등록해 주세요.
-          </p>
-        </EmptyState>
-      );
-    }
+  let emptyContent: ReactNode = null;
 
-    if (!sellerId) {
-      return (
-        <EmptyState>
-          <p className="text-sm text-muted-foreground">
-            활성화된 쿠팡 판매자 계정이 없습니다.
-          </p>
-        </EmptyState>
-      );
-    }
-
-    if (!snapshotDates) {
-      return (
-        <EmptyState>
-          <p className="text-sm text-muted-foreground">
-            조회할 입고 템플릿 데이터가 없습니다.
-          </p>
-          <p className="mt-2 text-sm">
-            <Link
-              href="/sync/coupang-growth/excel-upload"
-              className="text-primary underline-offset-4 hover:underline"
-            >
-              데이터 동기화 &gt; 쿠팡 Growth
-            </Link>
-            에서 입고 템플릿을 먼저 업로드해 주세요.
-          </p>
-        </EmptyState>
-      );
-    }
-
-    if (data.totalCount === 0 && !isSearchEmpty) {
-      return (
-        <EmptyState>
-          <p className="text-sm text-muted-foreground">검색 결과가 없습니다.</p>
-        </EmptyState>
-      );
-    }
-
-    if (data.totalCount === 0) {
-      return (
-        <EmptyState>
-          <p className="text-sm text-muted-foreground">
-            조회할 입고 작업대 데이터가 없습니다.
-          </p>
-        </EmptyState>
-      );
-    }
-
-    return <InboundWorkbenchTable rows={data.rows} />;
+  if (!hasAccounts) {
+    emptyContent = (
+      <EmptyState>
+        <p className="text-sm text-muted-foreground">
+          등록된 쿠팡 판매자 계정이 없습니다.
+        </p>
+        <p className="mt-2 text-sm">
+          <Link
+            href="/data/coupang-growth/seller-accounts"
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            데이터 관리 &gt; 쿠팡 Growth
+          </Link>
+          에서 먼저 판매자 계정을 등록해 주세요.
+        </p>
+      </EmptyState>
+    );
+  } else if (!sellerId) {
+    emptyContent = (
+      <EmptyState>
+        <p className="text-sm text-muted-foreground">
+          활성화된 쿠팡 판매자 계정이 없습니다.
+        </p>
+      </EmptyState>
+    );
+  } else if (!data.snapshotDates) {
+    emptyContent = (
+      <EmptyState>
+        <p className="text-sm text-muted-foreground">
+          조회할 입고 템플릿 데이터가 없습니다.
+        </p>
+        <p className="mt-2 text-sm">
+          <Link
+            href="/sync/coupang-growth/excel-upload"
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            데이터 동기화 &gt; 쿠팡 Growth
+          </Link>
+          에서 입고 템플릿을 먼저 업로드해 주세요.
+        </p>
+      </EmptyState>
+    );
+  } else if (data.totalCount === 0 && !isSearchEmpty) {
+    emptyContent = (
+      <EmptyState>
+        <p className="text-sm text-muted-foreground">검색 결과가 없습니다.</p>
+      </EmptyState>
+    );
+  } else if (data.totalCount === 0) {
+    emptyContent = (
+      <EmptyState>
+        <p className="text-sm text-muted-foreground">
+          조회할 입고 작업대 데이터가 없습니다.
+        </p>
+      </EmptyState>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      <InboundWorkbenchToolbar
-        accounts={accounts}
-        sellerId={sellerId}
-        search={search}
-        page={page}
-        pageSize={pageSize}
-        totalCount={data.totalCount}
-        snapshotDates={snapshotDates}
-      />
-      {renderContent()}
-    </div>
+    <InboundWorkbenchPanelClient
+      accounts={accounts}
+      sellerId={sellerId}
+      data={data}
+      search={search}
+      page={page}
+      pageSize={pageSize}
+    >
+      {emptyContent}
+    </InboundWorkbenchPanelClient>
   );
 }

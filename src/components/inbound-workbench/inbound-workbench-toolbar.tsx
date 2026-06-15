@@ -19,6 +19,12 @@ type InboundWorkbenchToolbarProps = {
   pageSize: number;
   totalCount: number;
   snapshotDates: InboundWorkbenchSnapshotDates | null;
+  editMode?: boolean;
+  canEdit?: boolean;
+  saving?: boolean;
+  onEdit?: () => void;
+  onCancel?: () => void;
+  onSave?: () => void;
 };
 
 function formatSnapshotLine(dates: InboundWorkbenchSnapshotDates | null): string {
@@ -47,6 +53,12 @@ export function InboundWorkbenchToolbar({
   pageSize,
   totalCount,
   snapshotDates,
+  editMode = false,
+  canEdit = false,
+  saving = false,
+  onEdit,
+  onCancel,
+  onSave,
 }: InboundWorkbenchToolbarProps) {
   const router = useRouter();
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -57,47 +69,85 @@ export function InboundWorkbenchToolbar({
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-muted/30 px-3 py-3">
-      <form
-        method="GET"
-        action="/"
-        className="flex flex-col gap-2 lg:flex-row lg:items-center"
-      >
-        <select
-          name="seller"
-          defaultValue={sellerId}
-          disabled={activeAccounts.length === 0}
-          aria-label="쿠팡 판매자 계정"
-          className="h-9 min-w-[160px] rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <form
+          method="GET"
+          action="/"
+          className="flex flex-col gap-2 lg:flex-row lg:items-center"
         >
-          {activeAccounts.length === 0 ? (
-            <option value="">판매자 계정 없음</option>
+          <select
+            name="seller"
+            defaultValue={sellerId}
+            disabled={activeAccounts.length === 0 || editMode}
+            aria-label="쿠팡 판매자 계정"
+            className="h-9 min-w-[160px] rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+          >
+            {activeAccounts.length === 0 ? (
+              <option value="">판매자 계정 없음</option>
+            ) : (
+              activeAccounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.displayName}
+                </option>
+              ))
+            )}
+          </select>
+          <Input
+            name="q"
+            type="search"
+            defaultValue={search}
+            disabled={editMode}
+            placeholder="상품명 · 옵션명 · 바코드 · 자사상품코드 검색"
+            className="min-w-[200px] flex-1 lg:max-w-md"
+          />
+          <input type="hidden" name="pageSize" value={pageSize} />
+          <Button type="submit" size="sm" className="shrink-0" disabled={editMode}>
+            조회
+          </Button>
+        </form>
+
+        <div className="flex shrink-0 gap-2">
+          {!editMode ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canEdit}
+              onClick={onEdit}
+            >
+              편집
+            </Button>
           ) : (
-            activeAccounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.displayName}
-              </option>
-            ))
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={saving}
+                onClick={onCancel}
+              >
+                취소
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={saving}
+                onClick={onSave}
+              >
+                {saving ? "저장 중…" : "저장"}
+              </Button>
+            </>
           )}
-        </select>
-        <Input
-          name="q"
-          type="search"
-          defaultValue={search}
-          placeholder="상품명 · 옵션명 · 바코드 · 자사상품코드 검색"
-          className="min-w-[200px] flex-1 lg:max-w-md"
-        />
-        <input type="hidden" name="pageSize" value={pageSize} />
-        <Button type="submit" size="sm" className="shrink-0">
-          조회
-        </Button>
-      </form>
+        </div>
+      </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           {formatSnapshotLine(snapshotDates)} · {totalCount.toLocaleString()}건
+          {editMode ? " · 편집 모드" : null}
         </p>
 
-        {showPagination ? (
+        {showPagination && !editMode ? (
           <div className="flex flex-wrap items-center gap-3">
             <select
               value={pageSize}
