@@ -2,10 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Database,
   Download,
-  History,
-  Layers,
   LayoutDashboard,
-  Link2,
   MessageSquare,
   Plug,
   RefreshCw,
@@ -56,14 +53,6 @@ export const dataNavGroup: NavGroup = {
   items: [
     { title: "쿠팡 Growth", href: "/data/coupang-growth", icon: TrendingUp },
     { title: "샵플링", href: "/data/shopling", icon: Database },
-    { title: "바코드 매핑", href: "/data/barcode-mapping", icon: Link2 },
-    { title: "상품 매핑", href: "/data/product-mapping", icon: Layers },
-    { title: "패키지 매핑", href: "/data/package-mapping", icon: Layers },
-    {
-      title: "재고 차감 히스토리",
-      href: "/data/inventory-history",
-      icon: History,
-    },
   ],
 };
 

@@ -50,6 +50,10 @@ export const shoplingDataTabGroup: PageTabGroup = {
       title: "상품정보",
       href: "/data/shopling/products",
     },
+    {
+      title: "패키지 매핑",
+      href: "/data/shopling/package-mapping",
+    },
   ],
 };
 
