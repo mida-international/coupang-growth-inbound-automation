@@ -298,6 +298,30 @@ model ShoplingInventory {
   @@map("shopling_inventory")
 }
 
+/// 샵플링 패키지-구성단품 매핑 (pkgOptMappings). sync upsert + manually_edited 보호.
+model ShoplingPackageMapping {
+  id                String   @id @default(cuid())
+  packageBarcode    String?  @map("package_barcode")
+  packageGoodsKey   String   @map("package_goods_key")
+  packageOptId      String   @map("package_opt_id")
+  packagePtnGoodsCd String?  @map("package_ptn_goods_cd")
+  packageOptValue   String?  @map("package_opt_value")
+  singleBarcode     String?  @map("single_barcode")
+  singleGoodsKey    String?  @map("single_goods_key")
+  singleOptId       String   @map("single_opt_id")
+  singleOptValue    String?  @map("single_opt_value")
+  singlePtnGoodsCd  String?  @map("single_ptn_goods_cd")
+  mapCnt            Int      @default(1) @map("map_cnt")
+  manuallyEdited    Boolean  @default(false) @map("manually_edited")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([packageOptId, singleOptId], map: "uq_package_single_opt")
+  @@index([packageOptId], map: "idx_spm_package_opt_id")
+  @@index([singleOptId], map: "idx_spm_single_opt_id")
+  @@map("shopling_package_mapping")
+}
+
 /// 입고 작업대 수동값 (안전재고·쿠팡그로스 입고추천). 계산값은 VIEW에서 처리.
 model InboundPlanningOverride {
   id                        String               @id @default(cuid())

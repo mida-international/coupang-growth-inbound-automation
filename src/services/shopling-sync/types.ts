@@ -29,6 +29,7 @@ export type ShoplingSyncStatus = {
   hasApiConfig: boolean;
   snapshotDate: string;
   todayRowCount: number;
+  packageMappingRowCount: number;
   syncPolicy: {
     chunkMonths: number;
     maxChunks: number;
