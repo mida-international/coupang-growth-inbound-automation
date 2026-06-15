@@ -36,6 +36,7 @@ model Profile {
   coupangSellerAccounts    CoupangSellerAccount[]
   ingestionLogs            IngestionLog[]
   shoplingApiConfigUpdates ShoplingApiConfig[]
+  inboundPlanningOverrides InboundPlanningOverride[]
 }
 
 model CoupangSellerAccount {
@@ -49,6 +50,7 @@ model CoupangSellerAccount {
   createdBy            Profile                        @relation(fields: [createdById], references: [id], onDelete: Restrict)
   inboundTemplates     CoupangGrowthInboundTemplate[]
   inventoryHealthRows  CoupangGrowthInventoryHealth[]
+  inboundPlanningOverrides InboundPlanningOverride[]
 
   @@index([createdById])
   @@index([createdAt])
@@ -294,6 +296,25 @@ model ShoplingInventory {
   @@index([goodsKey], map: "idx_shopling_inv_goods_key")
   @@index([ingestionId], map: "idx_shopling_inv_ingestion_id")
   @@map("shopling_inventory")
+}
+
+/// 입고 작업대 수동값 (안전재고·쿠팡그로스 입고추천). 계산값은 VIEW에서 처리.
+model InboundPlanningOverride {
+  id                        String               @id @default(cuid())
+  coupangSellerAccountId    String               @map("coupang_seller_account_id")
+  optionId                  BigInt?              @map("option_id")
+  templateId                BigInt?              @map("template_id")
+  safetyStock               Int?                 @map("safety_stock")
+  growthInboundRecommendQty Int?                 @map("growth_inbound_recommend_qty")
+  updatedById               String               @map("updated_by_id")
+  updatedAt                 DateTime             @updatedAt @map("updated_at")
+
+  coupangSellerAccount CoupangSellerAccount @relation(fields: [coupangSellerAccountId], references: [id], onDelete: Cascade)
+  updatedBy            Profile              @relation(fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@unique([coupangSellerAccountId, optionId], map: "uq_inbound_override_seller_option")
+  @@index([coupangSellerAccountId, templateId], map: "idx_inbound_override_seller_template")
+  @@map("inbound_planning_override")
 }
 
 model AuditLog {
