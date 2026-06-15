@@ -4,19 +4,84 @@ import { useState } from "react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
 import { Button } from "@/components/ui/button";
+import type { WarehouseInboundListSnapshotDates } from "@/services/deliverables/types";
 
 type WarehouseInboundListSectionProps = {
   sellerId: string;
+  rowCount: number;
+  snapshotDates: WarehouseInboundListSnapshotDates | null;
 };
+
+function formatSnapshotLabel(
+  snapshotDates: WarehouseInboundListSnapshotDates | null,
+): string {
+  if (!snapshotDates) {
+    return "-";
+  }
+
+  const parts = [
+    snapshotDates.template ? `템플릿 ${snapshotDates.template}` : null,
+    snapshotDates.shopling ? `샵플링 ${snapshotDates.shopling}` : null,
+  ].filter(Boolean);
+
+  return parts.length > 0 ? parts.join(" · ") : "-";
+}
 
 export function WarehouseInboundListSection({
   sellerId,
+  rowCount,
+  snapshotDates,
 }: WarehouseInboundListSectionProps) {
   const [notice, setNotice] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   const hasSeller = sellerId.trim().length > 0;
 
-  function handleDownloadClick() {
-    setNotice("준비 중입니다. 다운로드 기능은 곧 연동됩니다.");
+  async function handleDownloadClick() {
+    if (!hasSeller) {
+      return;
+    }
+
+    setIsDownloading(true);
+    setNotice(null);
+
+    try {
+      const response = await fetch(
+        `/api/downloads/warehouse-inbound-list?seller=${encodeURIComponent(sellerId)}`,
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(payload?.error ?? "다운로드에 실패했습니다.");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") ?? "";
+      const filenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      const filename = filenameMatch
+        ? decodeURIComponent(filenameMatch[1])
+        : "창고전송용_입고리스트.xlsx";
+
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+
+      setNotice(
+        rowCount > 0
+          ? `${rowCount}건이 포함된 파일을 다운로드했습니다.`
+          : "다운로드 가능한 항목이 없어 헤더만 포함된 파일을 다운로드했습니다.",
+      );
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "다운로드에 실패했습니다.",
+      );
+    } finally {
+      setIsDownloading(false);
+    }
   }
 
   return (
@@ -27,15 +92,16 @@ export function WarehouseInboundListSection({
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          스냅샷 · 다운로드 가능 건수: {hasSeller ? "준비 중" : "-"}
+          스냅샷 {formatSnapshotLabel(snapshotDates)} · 다운로드 가능{" "}
+          {hasSeller ? `${rowCount}건` : "-"}
         </p>
         <Button
           type="button"
           size="sm"
-          disabled={!hasSeller}
+          disabled={!hasSeller || isDownloading}
           onClick={handleDownloadClick}
         >
-          다운로드
+          {isDownloading ? "생성 중..." : "다운로드"}
         </Button>
       </div>
 

@@ -3,16 +3,19 @@ import Link from "next/link";
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
 import { WarehouseInboundListSection } from "@/components/deliverables/warehouse-inbound-list-section";
 import { Button } from "@/components/ui/button";
+import type { ListWarehouseInboundRowsResult } from "@/services/deliverables/types";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
 
 type DeliverablesPanelProps = {
   accounts: SellerAccountView[];
   sellerId: string;
+  warehouseInboundList: ListWarehouseInboundRowsResult;
 };
 
 export function DeliverablesPanel({
   accounts,
   sellerId,
+  warehouseInboundList,
 }: DeliverablesPanelProps) {
   const activeAccounts = accounts.filter((account) => account.isActive);
 
@@ -67,7 +70,11 @@ export function DeliverablesPanel({
         )}
       </DeliverablesSection>
 
-      <WarehouseInboundListSection sellerId={sellerId} />
+      <WarehouseInboundListSection
+        sellerId={sellerId}
+        rowCount={warehouseInboundList.rowCount}
+        snapshotDates={warehouseInboundList.snapshotDates}
+      />
     </div>
   );
 }
