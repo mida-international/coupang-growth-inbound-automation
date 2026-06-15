@@ -1,9 +1,13 @@
 import { detectExcelTargetFromRows } from "@/lib/excel/detect-target";
+import {
+  matchesHeaderMatcher,
+  rowMatchesTargetKeywords,
+} from "@/lib/excel/match-header-keywords";
 import { normalizeHeader } from "@/lib/excel/normalize-header";
-import { readExcelRows } from "@/lib/excel/read-workbook";
 import {
   inventoryHealthColumnMap,
   coupangGrowthInventoryHealthTarget,
+  type InventoryHealthColumnMapEntry,
   type InventoryHealthField,
 } from "@/lib/excel/targets/coupang-growth-inventory-health";
 import {
@@ -46,33 +50,11 @@ export type ParseInventoryHealthResult =
   | { ok: true; rows: ParsedInventoryHealthRow[]; skippedRowCount: number }
   | { ok: false; error: string };
 
-type ColumnMapEntry = (typeof inventoryHealthColumnMap)[number];
-
-function matchesHeader(cell: unknown, entry: ColumnMapEntry): boolean {
-  const normalized = normalizeHeader(cell);
-  const primary = normalizeHeader(entry.headerIncludes);
-
-  if (!normalized.includes(primary)) {
-    return false;
-  }
-
-  if (
-    "headerAlsoIncludes" in entry &&
-    entry.headerAlsoIncludes &&
-    !normalized.includes(normalizeHeader(entry.headerAlsoIncludes))
-  ) {
-    return false;
-  }
-
-  if (
-    "excludeIncludes" in entry &&
-    entry.excludeIncludes &&
-    normalized.includes(normalizeHeader(entry.excludeIncludes))
-  ) {
-    return false;
-  }
-
-  return true;
+function matchesColumnEntry(
+  header: string,
+  entry: InventoryHealthColumnMapEntry,
+): boolean {
+  return entry.matchers.some((matcher) => matchesHeaderMatcher(header, matcher));
 }
 
 function forwardFillRow(row: unknown[]): string[] {
@@ -133,15 +115,13 @@ function findHeaderRowIndex(rows: unknown[][]): number | null {
       continue;
     }
 
-    const normalizedCells = row.map(normalizeHeader);
-
     if (
-      coupangGrowthInventoryHealthTarget.requiredHeaderKeywords.every(
-        (keyword) =>
-          normalizedCells.some((cell) =>
-            cell.includes(normalizeHeader(keyword)),
-          ),
-      )
+      rowMatchesTargetKeywords(row, {
+        requiredHeaderKeywords:
+          coupangGrowthInventoryHealthTarget.requiredHeaderKeywords,
+        requiredHeaderKeywordSets:
+          coupangGrowthInventoryHealthTarget.requiredHeaderKeywordSets,
+      })
     ) {
       return rowIndex;
     }
@@ -157,11 +137,11 @@ function buildColumnIndexMap(
 
   for (const entry of inventoryHealthColumnMap) {
     const columnIndex = effectiveHeaders.findIndex((header) =>
-      matchesHeader(header, entry),
+      matchesColumnEntry(header, entry),
     );
 
     if (columnIndex >= 0) {
-      indexMap[entry.field] = columnIndex;
+      indexMap[entry.field as InventoryHealthField] = columnIndex;
     }
   }
 
@@ -247,10 +227,9 @@ function shouldSkipRow(
   return false;
 }
 
-export function parseInventoryHealth(
-  buffer: ArrayBuffer | Buffer,
+export function parseInventoryHealthFromRows(
+  rows: unknown[][],
 ): ParseInventoryHealthResult {
-  const rows = readExcelRows(buffer);
   const headerRowIndex = findHeaderRowIndex(rows);
 
   if (headerRowIndex === null) {
@@ -314,4 +293,13 @@ export function parseInventoryHealth(
   }
 
   return { ok: true, rows: parsedRows, skippedRowCount };
+}
+
+export function parseInventoryHealth(
+  buffer: ArrayBuffer | Buffer,
+): ParseInventoryHealthResult {
+  const { readExcelRows } =
+    require("@/lib/excel/read-workbook") as typeof import("@/lib/excel/read-workbook");
+  const rows = readExcelRows(buffer);
+  return parseInventoryHealthFromRows(rows);
 }
