@@ -3,7 +3,10 @@ import { requireProfile } from "@/lib/auth/profile";
 import { resolveSellerAccountId } from "@/services/coupang-seller-accounts/get-default-seller-account-id";
 import { listSellerAccounts } from "@/services/coupang-seller-accounts/list-seller-accounts";
 import { listInboundWorkbench } from "@/services/inbound-workbench/list-inbound-workbench";
-import { normalizeInboundWorkbenchPageSize } from "@/services/inbound-workbench/types";
+import {
+  EMPTY_INBOUND_WORKBENCH_RESULT,
+  normalizeInboundWorkbenchPageSize,
+} from "@/services/inbound-workbench/types";
 
 type DashboardPageProps = {
   searchParams: Promise<{
@@ -33,7 +36,7 @@ export default async function DashboardPage({
         pageSize,
         search,
       })
-    : { snapshotDates: null, totalCount: 0, rows: [] };
+    : EMPTY_INBOUND_WORKBENCH_RESULT;
 
   return (
     <div className="space-y-6">

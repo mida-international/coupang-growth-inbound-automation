@@ -18,10 +18,14 @@ type InboundWorkbenchToolbarProps = {
   page: number;
   pageSize: number;
   totalCount: number;
-  snapshotDates: InboundWorkbenchSnapshotDates;
+  snapshotDates: InboundWorkbenchSnapshotDates | null;
 };
 
-function formatSnapshotLine(dates: InboundWorkbenchSnapshotDates): string {
+function formatSnapshotLine(dates: InboundWorkbenchSnapshotDates | null): string {
+  if (!dates) {
+    return "스냅샷 없음";
+  }
+
   const parts = [`템플릿 ${dates.template}`];
 
   if (dates.health) {
@@ -61,14 +65,19 @@ export function InboundWorkbenchToolbar({
         <select
           name="seller"
           defaultValue={sellerId}
+          disabled={activeAccounts.length === 0}
           aria-label="쿠팡 판매자 계정"
-          className="h-9 min-w-[160px] rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+          className="h-9 min-w-[160px] rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
         >
-          {activeAccounts.map((account) => (
-            <option key={account.id} value={account.id}>
-              {account.displayName}
-            </option>
-          ))}
+          {activeAccounts.length === 0 ? (
+            <option value="">판매자 계정 없음</option>
+          ) : (
+            activeAccounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.displayName}
+              </option>
+            ))
+          )}
         </select>
         <Input
           name="q"
