@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { CoupangInboundTemplateSection } from "@/components/deliverables/coupang-inbound-template-section";
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
+import { ShoplingOutboundTemplateSection } from "@/components/deliverables/shopling-outbound-template-section";
 import { WarehouseInboundListSection } from "@/components/deliverables/warehouse-inbound-list-section";
 import { Button } from "@/components/ui/button";
 import type { ListWarehouseInboundRowsResult } from "@/services/deliverables/types";
@@ -78,6 +79,8 @@ export function DeliverablesPanel({
       />
 
       <CoupangInboundTemplateSection sellerId={sellerId} />
+
+      <ShoplingOutboundTemplateSection sellerId={sellerId} />
     </div>
   );
 }
