@@ -13,7 +13,8 @@ export default async function ShoplingSyncPage() {
           샵플링 데이터 동기화
         </h1>
         <p className="text-muted-foreground">
-          샵플링 상품 정보를 외부 API에서 가져와 동기화합니다.
+          샵플링 상품 재고와 패키지-구성단품 매핑을 외부 API에서 가져와
+          동기화합니다.
         </p>
       </div>
       <ShoplingSyncPanel initialStatus={status} />

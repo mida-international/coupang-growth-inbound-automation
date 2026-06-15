@@ -13,7 +13,8 @@ import type { ShoplingSyncStatus } from "@/services/shopling-sync/types";
 export async function getShoplingSyncStatus(): Promise<ShoplingSyncStatus> {
   const snapshotDate = getKstTodayDate();
 
-  const [config, todayRowCount, lastIngestion] = await Promise.all([
+  const [config, todayRowCount, packageMappingRowCount, lastIngestion] =
+    await Promise.all([
     prisma.shoplingApiConfig.findUnique({
       where: { id: "default" },
       select: { id: true },
@@ -21,6 +22,7 @@ export async function getShoplingSyncStatus(): Promise<ShoplingSyncStatus> {
     prisma.shoplingInventory.count({
       where: { snapshotDate },
     }),
+    prisma.shoplingPackageMapping.count(),
     prisma.ingestionLog.findFirst({
       where: { tableName: SHOPLING_INVENTORY_TABLE },
       orderBy: { createdAt: "desc" },
@@ -38,6 +40,7 @@ export async function getShoplingSyncStatus(): Promise<ShoplingSyncStatus> {
     hasApiConfig: config !== null,
     snapshotDate: formatYyyyMmDd(snapshotDate),
     todayRowCount,
+    packageMappingRowCount,
     syncPolicy: {
       chunkMonths: SHOPLING_SYNC_CHUNK_MONTHS,
       maxChunks: SHOPLING_SYNC_MAX_CHUNKS,

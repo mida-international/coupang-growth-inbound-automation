@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ShoplingPackageMappingSyncCard } from "@/components/shopling-sync/shopling-package-mapping-sync-card";
 import { apiPost } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,8 +104,12 @@ export function ShoplingSyncPanel({ initialStatus }: ShoplingSyncPanelProps) {
               <dd>{formatYmd(initialStatus.snapshotDate)}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">오늘 적재 행 수</dt>
+              <dt className="text-muted-foreground">오늘 적재 행 수 (재고)</dt>
               <dd>{initialStatus.todayRowCount.toLocaleString()}건</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">패키지 매핑 DB 행 수</dt>
+              <dd>{initialStatus.packageMappingRowCount.toLocaleString()}건</dd>
             </div>
             <div className="sm:col-span-2">
               <dt className="text-muted-foreground">마지막 동기화</dt>
@@ -217,6 +222,10 @@ export function ShoplingSyncPanel({ initialStatus }: ShoplingSyncPanelProps) {
           ) : null}
         </CardContent>
       </Card>
+
+      <ShoplingPackageMappingSyncCard
+        hasApiConfig={initialStatus.hasApiConfig}
+      />
     </div>
   );
 }
