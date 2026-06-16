@@ -55,6 +55,15 @@ export type LatestInboundTemplateFile = LatestInboundTemplateFileMeta & {
   buffer: Buffer;
 };
 
+export type NormalizeOutboundBoxItemsResult = {
+  qtyByBarcode: Map<string, number>;
+  inputTotal: number;
+  inputWithQty: number;
+  inputBarcodes: number;
+  skippedDummy: number;
+  skippedRows: number;
+};
+
 export type OutboundDeductRow = {
   barcode: string;
   deductQty: number;
