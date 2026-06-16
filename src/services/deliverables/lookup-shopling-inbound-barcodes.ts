@@ -3,6 +3,7 @@ import {
   formatShoplingInboundLookupError,
   resolveShoplingInboundBarcodes,
   type ResolveShoplingInboundBarcodesResult,
+  type ShoplingInboundInventoryRow,
 } from "@/lib/deliverables/resolve-shopling-inbound-barcodes";
 import type { ShoplingInboundListItem } from "@/lib/excel/parsers/parse-shopling-inbound-list";
 
@@ -14,9 +15,7 @@ export type LookupShoplingInboundBarcodesResult = ResolveShoplingInboundBarcodes
 
 export { formatShoplingInboundLookupError };
 
-export async function lookupShoplingInboundBarcodes(
-  items: ShoplingInboundListItem[],
-): Promise<LookupShoplingInboundBarcodesResult> {
+async function getLatestShoplingSnapshotDate(): Promise<Date> {
   const { _max } = await prisma.shoplingInventory.aggregate({
     _max: { snapshotDate: true },
   });
@@ -29,15 +28,30 @@ export async function lookupShoplingInboundBarcodes(
     );
   }
 
-  const inventoryRows = await prisma.shoplingInventory.findMany({
+  return maxSnapshotDate;
+}
+
+export async function loadShoplingInboundInventoryRows(options?: {
+  includeLocation?: boolean;
+}): Promise<ShoplingInboundInventoryRow[]> {
+  const maxSnapshotDate = await getLatestShoplingSnapshotDate();
+
+  return prisma.shoplingInventory.findMany({
     where: { snapshotDate: maxSnapshotDate },
     select: {
       ptnGoodsCd: true,
       productName: true,
       optionValue: true,
       barcode: true,
+      ...(options?.includeLocation ? { location: true } : {}),
     },
   });
+}
+
+export async function lookupShoplingInboundBarcodes(
+  items: ShoplingInboundListItem[],
+): Promise<LookupShoplingInboundBarcodesResult> {
+  const inventoryRows = await loadShoplingInboundInventoryRows();
 
   return resolveShoplingInboundBarcodes(items, inventoryRows);
 }

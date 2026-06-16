@@ -117,3 +117,17 @@ export type GenerateShoplingInboundTemplateResult = {
   stats: ShoplingInboundTemplateStats;
   rows: OutboundDeductRow[];
 };
+
+export type ShoplingInboundOriginalStats = {
+  totalAttempted: number;
+  matched: number;
+  unmapped: number;
+  ambiguous: number;
+  skippedDummy: number;
+};
+
+export type GenerateShoplingInboundOriginalResult = {
+  buffer: Buffer;
+  bookType: string;
+  stats: ShoplingInboundOriginalStats;
+};

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   findBarcodesByOptionCascade,
+  matchShoplingInboundInventoryRow,
   resolveShoplingInboundBarcodes,
 } from "@/lib/deliverables/resolve-shopling-inbound-barcodes";
 
@@ -145,6 +146,52 @@ describe("findBarcodesByOptionCascade", () => {
     assert.equal(match.status, "matched");
     if (match.status === "matched") {
       assert.equal(match.barcode, "8801111111111");
+    }
+  });
+});
+
+describe("matchShoplingInboundInventoryRow", () => {
+  it("returns matched with barcode when location is null", () => {
+    const match = matchShoplingInboundInventoryRow(
+      "气泡袋",
+      "白色，20*30",
+      [
+        {
+          ptnGoodsCd: "CODE-001",
+          productName: "气泡袋",
+          optionValue: "白色,20*30",
+          barcode: "8801111111111",
+          location: null,
+        },
+      ],
+    );
+
+    assert.equal(match.status, "matched");
+    if (match.status === "matched") {
+      assert.equal(match.barcode, "8801111111111");
+      assert.equal(match.location, null);
+    }
+  });
+
+  it("returns location when available", () => {
+    const match = matchShoplingInboundInventoryRow(
+      "테이프",
+      "단품",
+      [
+        {
+          ptnGoodsCd: "CODE-002",
+          productName: "테이프",
+          optionValue: "단품",
+          barcode: "8802222222222",
+          location: "A-01",
+        },
+      ],
+    );
+
+    assert.equal(match.status, "matched");
+    if (match.status === "matched") {
+      assert.equal(match.barcode, "8802222222222");
+      assert.equal(match.location, "A-01");
     }
   });
 });

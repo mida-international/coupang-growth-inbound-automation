@@ -12,6 +12,7 @@ export type ShoplingInboundInventoryRow = {
   productName: string | null;
   optionValue: string | null;
   barcode: string;
+  location?: string | null;
 };
 
 export type ShoplingInboundLookupIssue = {
@@ -36,6 +37,12 @@ type OptionMatchResult =
   | { status: "matched"; barcode: string }
   | { status: "ambiguous" }
   | { status: "unmapped" };
+
+export type ShoplingInboundInventoryMatchResult =
+  | { status: "matched"; barcode: string; location: string | null }
+  | { status: "ambiguous" }
+  | { status: "unmapped" }
+  | { status: "skippedDummy" };
 
 function formatLookupIssue(item: ShoplingInboundListItem): ShoplingInboundLookupIssue {
   return {
@@ -104,12 +111,12 @@ export function filterInventoryByProductLabel(
   return inventoryRows.filter((row) => productLabelMatches(productLabel, row));
 }
 
-export function findBarcodesByOptionCascade(
+export function findInventoryMatchByOptionCascade(
   candidates: ShoplingInboundInventoryRow[],
   inboundOption: string,
-): OptionMatchResult {
+): ShoplingInboundInventoryMatchResult {
   for (const tier of OPTION_MATCH_TIERS) {
-    const barcodes = new Set<string>();
+    const matchedRows: ShoplingInboundInventoryRow[] = [];
 
     for (const row of candidates) {
       if (
@@ -128,11 +135,19 @@ export function findBarcodesByOptionCascade(
         continue;
       }
 
-      barcodes.add(barcode);
+      matchedRows.push(row);
     }
 
+    const barcodes = new Set(matchedRows.map((row) => row.barcode.trim()));
+
     if (barcodes.size === 1) {
-      return { status: "matched", barcode: Array.from(barcodes)[0]! };
+      const barcode = Array.from(barcodes)[0]!;
+      const matchedRow = matchedRows.find(
+        (row) => row.barcode.trim() === barcode,
+      )!;
+      const location = matchedRow.location?.trim() || null;
+
+      return { status: "matched", barcode, location };
     }
 
     if (barcodes.size > 1) {
@@ -141,6 +156,47 @@ export function findBarcodesByOptionCascade(
   }
 
   return { status: "unmapped" };
+}
+
+export function findBarcodesByOptionCascade(
+  candidates: ShoplingInboundInventoryRow[],
+  inboundOption: string,
+): OptionMatchResult {
+  const match = findInventoryMatchByOptionCascade(candidates, inboundOption);
+
+  if (match.status === "matched") {
+    return { status: "matched", barcode: match.barcode };
+  }
+
+  if (match.status === "ambiguous") {
+    return { status: "ambiguous" };
+  }
+
+  return { status: "unmapped" };
+}
+
+export function matchShoplingInboundInventoryRow(
+  productLabel: string,
+  optionValue: string,
+  inventoryRows: ShoplingInboundInventoryRow[],
+): ShoplingInboundInventoryMatchResult {
+  const candidates = filterInventoryByProductLabel(productLabel, inventoryRows);
+
+  if (candidates.length === 0) {
+    return { status: "unmapped" };
+  }
+
+  const match = findInventoryMatchByOptionCascade(candidates, optionValue);
+
+  if (match.status !== "matched") {
+    return match;
+  }
+
+  if (isExcludedOutboundBarcode(match.barcode)) {
+    return { status: "skippedDummy" };
+  }
+
+  return match;
 }
 
 export function resolveShoplingInboundBarcodes(
@@ -153,17 +209,11 @@ export function resolveShoplingInboundBarcodes(
   let skippedDummy = 0;
 
   for (const item of items) {
-    const candidates = filterInventoryByProductLabel(
+    const match = matchShoplingInboundInventoryRow(
       item.ptnGoodsCd,
+      item.optionValue,
       inventoryRows,
     );
-
-    if (candidates.length === 0) {
-      unmapped.push(formatLookupIssue(item));
-      continue;
-    }
-
-    const match = findBarcodesByOptionCascade(candidates, item.optionValue);
 
     if (match.status === "unmapped") {
       unmapped.push(formatLookupIssue(item));
@@ -175,7 +225,7 @@ export function resolveShoplingInboundBarcodes(
       continue;
     }
 
-    if (isExcludedOutboundBarcode(match.barcode)) {
+    if (match.status === "skippedDummy") {
       skippedDummy += 1;
       continue;
     }
