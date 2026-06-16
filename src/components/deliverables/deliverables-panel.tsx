@@ -61,7 +61,7 @@ export function DeliverablesPanel({
               ))}
             </select>
             <Button type="submit" size="sm" className="shrink-0">
-              조회
+              선택
             </Button>
           </form>
         )}
