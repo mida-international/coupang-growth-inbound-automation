@@ -1,7 +1,8 @@
 import { isExcludedOutboundBarcode } from "@/lib/deliverables/normalize-outbound-box-items";
 import {
-  buildShoplingInboundLookupKey,
+  compareShoplingInboundOptions,
   normalizeShoplingInboundProductLabel,
+  type ShoplingInboundOptionMatchTier,
 } from "@/lib/deliverables/normalize-shopling-inbound-option";
 import type { ShoplingInboundListItem } from "@/lib/excel/parsers/parse-shopling-inbound-list";
 import type { OutboundDeductRow } from "@/services/deliverables/types";
@@ -24,6 +25,17 @@ export type ResolveShoplingInboundBarcodesResult = {
   ambiguous: ShoplingInboundLookupIssue[];
   skippedDummy: number;
 };
+
+const OPTION_MATCH_TIERS: ShoplingInboundOptionMatchTier[] = [
+  "exact",
+  "ignoreWhitespace",
+  "ignoreCase",
+];
+
+type OptionMatchResult =
+  | { status: "matched"; barcode: string }
+  | { status: "ambiguous" }
+  | { status: "unmapped" };
 
 function formatLookupIssue(item: ShoplingInboundListItem): ShoplingInboundLookupIssue {
   return {
@@ -69,77 +81,108 @@ export function formatShoplingInboundLookupError(
   return `샵플링 바코드를 찾지 못했습니다. ${parts.join(" · ")}`;
 }
 
-function addBarcodeToIndex(
-  index: Map<string, Set<string>>,
-  productLabel: string | null | undefined,
-  optionValue: string | null | undefined,
-  barcode: string,
-) {
-  const label = normalizeShoplingInboundProductLabel(productLabel ?? "");
+function productLabelMatches(
+  inboundLabel: string,
+  row: ShoplingInboundInventoryRow,
+): boolean {
+  const normalized = normalizeShoplingInboundProductLabel(inboundLabel);
 
-  if (!label) {
-    return;
+  if (!normalized) {
+    return false;
   }
 
-  const key = buildShoplingInboundLookupKey(label, optionValue ?? "");
-  const existing = index.get(key) ?? new Set<string>();
-  existing.add(barcode);
-  index.set(key, existing);
+  const ptnGoodsCd = normalizeShoplingInboundProductLabel(row.ptnGoodsCd ?? "");
+  const productName = normalizeShoplingInboundProductLabel(row.productName ?? "");
+
+  return normalized === ptnGoodsCd || normalized === productName;
 }
 
-export function buildShoplingInboundBarcodeIndex(
+export function filterInventoryByProductLabel(
+  productLabel: string,
   inventoryRows: ShoplingInboundInventoryRow[],
-): Map<string, Set<string>> {
-  const index = new Map<string, Set<string>>();
+): ShoplingInboundInventoryRow[] {
+  return inventoryRows.filter((row) => productLabelMatches(productLabel, row));
+}
 
-  for (const row of inventoryRows) {
-    const barcode = row.barcode.trim();
+export function findBarcodesByOptionCascade(
+  candidates: ShoplingInboundInventoryRow[],
+  inboundOption: string,
+): OptionMatchResult {
+  for (const tier of OPTION_MATCH_TIERS) {
+    const barcodes = new Set<string>();
 
-    if (!barcode || isExcludedOutboundBarcode(barcode)) {
-      continue;
+    for (const row of candidates) {
+      if (
+        !compareShoplingInboundOptions(
+          inboundOption,
+          row.optionValue ?? "",
+          tier,
+        )
+      ) {
+        continue;
+      }
+
+      const barcode = row.barcode.trim();
+
+      if (!barcode || isExcludedOutboundBarcode(barcode)) {
+        continue;
+      }
+
+      barcodes.add(barcode);
     }
 
-    addBarcodeToIndex(index, row.ptnGoodsCd, row.optionValue, barcode);
-    addBarcodeToIndex(index, row.productName, row.optionValue, barcode);
+    if (barcodes.size === 1) {
+      return { status: "matched", barcode: Array.from(barcodes)[0]! };
+    }
+
+    if (barcodes.size > 1) {
+      return { status: "ambiguous" };
+    }
   }
 
-  return index;
+  return { status: "unmapped" };
 }
 
 export function resolveShoplingInboundBarcodes(
   items: ShoplingInboundListItem[],
   inventoryRows: ShoplingInboundInventoryRow[],
 ): ResolveShoplingInboundBarcodesResult {
-  const barcodesByKey = buildShoplingInboundBarcodeIndex(inventoryRows);
   const qtyByBarcode = new Map<string, number>();
   const unmapped: ShoplingInboundLookupIssue[] = [];
   const ambiguous: ShoplingInboundLookupIssue[] = [];
   let skippedDummy = 0;
 
   for (const item of items) {
-    const key = buildShoplingInboundLookupKey(item.ptnGoodsCd, item.optionValue);
-    const barcodes = barcodesByKey.get(key);
+    const candidates = filterInventoryByProductLabel(
+      item.ptnGoodsCd,
+      inventoryRows,
+    );
 
-    if (!barcodes || barcodes.size === 0) {
+    if (candidates.length === 0) {
       unmapped.push(formatLookupIssue(item));
       continue;
     }
 
-    if (barcodes.size > 1) {
+    const match = findBarcodesByOptionCascade(candidates, item.optionValue);
+
+    if (match.status === "unmapped") {
+      unmapped.push(formatLookupIssue(item));
+      continue;
+    }
+
+    if (match.status === "ambiguous") {
       ambiguous.push(formatLookupIssue(item));
       continue;
     }
 
-    const barcode = Array.from(barcodes)[0];
-
-    if (isExcludedOutboundBarcode(barcode)) {
+    if (isExcludedOutboundBarcode(match.barcode)) {
       skippedDummy += 1;
       continue;
     }
 
     qtyByBarcode.set(
-      barcode,
-      (qtyByBarcode.get(barcode) ?? 0) + item.quantity,
+      match.barcode,
+      (qtyByBarcode.get(match.barcode) ?? 0) + item.quantity,
     );
   }
 
