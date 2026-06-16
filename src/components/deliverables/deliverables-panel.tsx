@@ -23,11 +23,6 @@ export function DeliverablesPanel({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">산출물 생성</h1>
-        <p className="text-muted-foreground">단계별 산출물을 생성합니다.</p>
-      </div>
-
       <DeliverablesSection
         title="쿠팡 판매자 계정"
         description="산출물을 생성할 쿠팡 판매자 계정을 하나 선택합니다."
@@ -50,7 +45,7 @@ export function DeliverablesPanel({
         ) : (
           <form
             method="GET"
-            action="/downloads"
+            action="/downloads/coupang-growth-inbound"
             className="flex flex-col gap-2 sm:flex-row sm:items-center"
           >
             <select
