@@ -44,8 +44,13 @@ export function WarehouseInboundListSection({
 }: WarehouseInboundListSectionProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [inboundRotation, setInboundRotation] = useState("");
   const hasSeller = sellerId.trim().length > 0;
+
+  function handleRecordClick() {
+    // API 연동 예정 — UI만
+  }
 
   async function handleDownloadClick() {
     if (!hasSeller) {
@@ -128,14 +133,25 @@ export function WarehouseInboundListSection({
           스냅샷 {formatSnapshotLabel(snapshotDates)} · 다운로드 가능{" "}
           {hasSeller ? `${rowCount}건` : "-"}
         </p>
-        <Button
-          type="button"
-          size="sm"
-          disabled={!hasSeller || isDownloading}
-          onClick={handleDownloadClick}
-        >
-          {isDownloading ? "생성 중..." : "다운로드"}
-        </Button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!hasSeller || isRecording || isDownloading}
+            onClick={handleRecordClick}
+          >
+            {isRecording ? "기록 중..." : "기록하기"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={!hasSeller || isDownloading || isRecording}
+            onClick={handleDownloadClick}
+          >
+            {isDownloading ? "생성 중..." : "다운로드"}
+          </Button>
+        </div>
       </div>
 
       {!hasSeller ? (
