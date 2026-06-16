@@ -30,6 +30,19 @@ function isMissingChromiumExecutableError(error: unknown): boolean {
   );
 }
 
+function isLocatorError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+
+  return (
+    message.includes("strict mode violation") ||
+    message.includes("locator")
+  );
+}
+
 export async function loginShoplingWms(
   userId: string,
 ): Promise<ShoplingWmsLoginResult> {
@@ -50,21 +63,16 @@ export async function loginShoplingWms(
       timeout: 60_000,
     });
 
-    const idInput = page.getByLabel("아이디");
-    const passwordInput = page.getByLabel("비밀번호", { exact: false });
+    const idInput = page.locator("#login_id");
+    const passwordInput = page.locator("#login_pw").or(
+      page.locator('input[name="login_pw"]'),
+    );
 
     await idInput.waitFor({ state: "visible", timeout: 30_000 });
     await passwordInput.waitFor({ state: "visible", timeout: 30_000 });
 
     await idInput.fill(loginId);
     await passwordInput.fill(loginPassword);
-
-    const loginButton = page
-      .getByRole("button", { name: /로그인/i })
-      .or(page.locator('input[type="submit"]'))
-      .first();
-
-    await loginButton.click();
 
     await page.waitForURL((url) => !isLoginPageUrl(url), {
       timeout: timeoutMs,
@@ -80,6 +88,9 @@ export async function loginShoplingWms(
     const storageState = await context.storageState();
     saveShoplingWmsSession(userId, storageState);
 
+    await browser.close();
+    browser = undefined;
+
     return { ok: true };
   } catch (error) {
     if (isMissingChromiumExecutableError(error)) {
@@ -87,6 +98,14 @@ export async function loginShoplingWms(
         ok: false,
         message:
           "Playwright Chromium이 설치되지 않았습니다. 터미널에서 `npm run playwright:install`을 실행한 뒤 다시 시도해 주세요.",
+      };
+    }
+
+    if (isLocatorError(error)) {
+      return {
+        ok: false,
+        message:
+          "로그인 페이지 요소를 찾지 못했습니다. 브라우저에서 직접 로그인을 시도해 주세요.",
       };
     }
 
@@ -105,7 +124,5 @@ export async function loginShoplingWms(
       error instanceof Error ? error.message : "로그인에 실패했습니다.";
 
     return { ok: false, message };
-  } finally {
-    await browser?.close();
   }
 }
