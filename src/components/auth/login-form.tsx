@@ -14,6 +14,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { APP_NAME } from "@/config/navigation";
+import { normalizeLoginEmail } from "@/lib/auth/normalize-login-email";
 import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
@@ -30,7 +31,7 @@ export function LoginForm() {
 
     const supabase = createClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizeLoginEmail(email),
       password,
     });
 
@@ -55,12 +56,12 @@ export function LoginForm() {
         <form onSubmit={handleSubmit}>
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="email">이메일</FieldLabel>
+              <FieldLabel htmlFor="email">아이디</FieldLabel>
               <Input
                 id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="admin@example.com"
+                type="text"
+                autoComplete="username"
+                placeholder="admin"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
