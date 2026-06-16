@@ -74,7 +74,7 @@ export const deliverablesTabGroup: PageTabGroup = {
       href: "/downloads/coupang-growth-inbound",
     },
     {
-      title: "입고 리스트 관리",
+      title: "샵플링 입고",
       href: "/downloads/inbound-list",
     },
   ],
