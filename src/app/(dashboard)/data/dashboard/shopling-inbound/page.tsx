@@ -1,4 +1,3 @@
-import { InboundListManagementPanel } from "@/components/deliverables/inbound-list-management-panel";
 import { ShoplingInboundRecordHistorySection } from "@/components/deliverables/shopling-inbound-record-history-section";
 import { requireProfile } from "@/lib/auth/profile";
 import { listShoplingInboundDeliverables } from "@/services/deliverables/list-shopling-inbound-deliverables";
@@ -20,10 +19,5 @@ export default async function DashboardShoplingInboundPage({
   );
   const history = await listShoplingInboundDeliverables({ page, pageSize });
 
-  return (
-    <div className="space-y-6">
-      <InboundListManagementPanel />
-      <ShoplingInboundRecordHistorySection data={history} />
-    </div>
-  );
+  return <ShoplingInboundRecordHistorySection data={history} />;
 }
