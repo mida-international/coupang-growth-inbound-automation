@@ -33,6 +33,7 @@ type RawWorkbenchRow = {
   offer_condition: string | null;
   days_of_cover: string | null;
   safety_stock: number;
+  has_safety_stock_override: boolean;
   calculated_growth_inbound_recommend: number;
   growth_inbound_recommend: number;
   rotation_1_qty: number | null;
@@ -78,6 +79,7 @@ function mapRow(row: RawWorkbenchRow): InboundWorkbenchRowView {
     daysOfCover: row.days_of_cover,
     location: row.location,
     safetyStock: row.safety_stock,
+    hasSafetyStockOverride: row.has_safety_stock_override,
     calculatedGrowthInboundRecommend: row.calculated_growth_inbound_recommend,
     growthInboundRecommend: row.growth_inbound_recommend,
     rotation1Qty: row.rotation_1_qty,
@@ -131,10 +133,10 @@ function buildSearchCondition(search?: string) {
   const pattern = `%${trimmed}%`;
 
   return Prisma.sql`AND (
-    registered_product_name ILIKE ${pattern}
-    OR option_name ILIKE ${pattern}
-    OR product_barcode ILIKE ${pattern}
-    OR ptn_goods_cd ILIKE ${pattern}
+    d.registered_product_name ILIKE ${pattern}
+    OR d.option_name ILIKE ${pattern}
+    OR d.product_barcode ILIKE ${pattern}
+    OR d.ptn_goods_cd ILIKE ${pattern}
   )`;
 }
 
@@ -157,7 +159,7 @@ export async function listInboundWorkbench(
   }
 
   const baseWhere = Prisma.sql`
-    WHERE coupang_seller_account_id = ${sellerId}
+    WHERE d.coupang_seller_account_id = ${sellerId}
     ${searchCondition}
   `;
 
@@ -165,45 +167,52 @@ export async function listInboundWorkbench(
     prisma.$queryRaw<[{ count: bigint }]>(
       Prisma.sql`
         SELECT COUNT(*)::bigint AS count
-        FROM inbound_workbench_display_v
+        FROM inbound_workbench_display_v d
         ${baseWhere}
       `,
     ),
     prisma.$queryRaw<RawWorkbenchRow[]>(
       Prisma.sql`
         SELECT
-          template_id,
-          option_id,
-          registered_product_name,
-          option_name,
-          product_barcode,
-          shopling_row_key,
-          shopling_available_stock,
-          ptn_goods_cd,
-          location,
-          orderable_quantity,
-          sales_qty_60days,
-          recent_sales_qty_7days,
-          recent_sales_qty_30days,
-          recommended_inbound_qty,
-          pending_inbounds,
-          offer_condition,
-          days_of_cover,
-          safety_stock,
-          calculated_growth_inbound_recommend,
-          growth_inbound_recommend,
-          rotation_1_qty,
-          rotation_1_date,
-          rotation_2_qty,
-          rotation_2_date,
-          rotation_3_qty,
-          rotation_3_date,
-          template_snapshot_date,
-          health_snapshot_date,
-          shopling_snapshot_date
-        FROM inbound_workbench_display_v
+          d.template_id,
+          d.option_id,
+          d.registered_product_name,
+          d.option_name,
+          d.product_barcode,
+          d.shopling_row_key,
+          d.shopling_available_stock,
+          d.ptn_goods_cd,
+          d.location,
+          d.orderable_quantity,
+          d.sales_qty_60days,
+          d.recent_sales_qty_7days,
+          d.recent_sales_qty_30days,
+          d.recommended_inbound_qty,
+          d.pending_inbounds,
+          d.offer_condition,
+          d.days_of_cover,
+          d.safety_stock,
+          (o.safety_stock IS NOT NULL) AS has_safety_stock_override,
+          d.calculated_growth_inbound_recommend,
+          d.growth_inbound_recommend,
+          d.rotation_1_qty,
+          d.rotation_1_date,
+          d.rotation_2_qty,
+          d.rotation_2_date,
+          d.rotation_3_qty,
+          d.rotation_3_date,
+          d.template_snapshot_date,
+          d.health_snapshot_date,
+          d.shopling_snapshot_date
+        FROM inbound_workbench_display_v d
+        LEFT JOIN inbound_planning_override o
+          ON d.coupang_seller_account_id = o.coupang_seller_account_id
+          AND (
+            (d.option_id IS NOT NULL AND d.option_id = o.option_id)
+            OR (d.option_id IS NULL AND d.template_id = o.template_id)
+          )
         ${baseWhere}
-        ORDER BY registered_product_name ASC NULLS LAST, option_id ASC NULLS LAST, shopling_row_key ASC
+        ORDER BY d.registered_product_name ASC NULLS LAST, d.option_id ASC NULLS LAST, d.shopling_row_key ASC
         LIMIT ${pageSize}
         OFFSET ${(page - 1) * pageSize}
       `,
