@@ -6,6 +6,7 @@ import { DeliverablesSection } from "@/components/deliverables/deliverables-sect
 import { Button } from "@/components/ui/button";
 import { apiPost } from "@/lib/api-client";
 import type { ShoplingWmsLoginData } from "@/services/shopling-wms-automation/login-shopling-wms";
+import type { NegativeStockRunData } from "@/services/shopling-wms-automation/run-negative-stock";
 
 export function ShoplingNegativeStockSection() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -44,7 +45,22 @@ export function ShoplingNegativeStockSection() {
     setIsSubtracting(true);
 
     try {
-      // API 연동은 후속 커밋
+      const response = await apiPost<NegativeStockRunData>(
+        "/api/automation/shopling-negative-stock/run",
+        {},
+      );
+
+      if (!response.ok) {
+        window.alert(response.error);
+        return;
+      }
+
+      const { rowCount, memo, message } = response.data;
+      const summary =
+        message ??
+        `처리 완료: ${rowCount}건\n메모: ${memo}`;
+
+      window.alert(summary);
     } finally {
       setIsSubtracting(false);
     }
