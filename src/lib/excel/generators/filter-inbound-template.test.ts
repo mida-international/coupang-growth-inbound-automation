@@ -66,6 +66,7 @@ describe("filter-inbound-template", () => {
     assert.equal(result.stats.finalRows, 1);
     assert.deepEqual(result.stats.unmatched, []);
     assert.equal(result.matchedItems.length, 1);
+    assert.equal(result.matchedItems[0].productBarcode, BARCODE_A);
     assert.equal(result.matchedItems[0].coupangOptionId, OPTION_A);
     assert.equal(result.matchedItems[0].quantity, 3);
 

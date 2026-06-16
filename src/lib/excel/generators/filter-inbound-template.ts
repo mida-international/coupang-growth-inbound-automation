@@ -239,12 +239,11 @@ export async function filterInboundTemplateWithModeC(
         const optionId =
           optionCell.value != null ? String(optionCell.value).trim() : "";
 
-        if (optionId) {
-          matchedItems.push({
-            coupangOptionId: optionId,
-            quantity: qty,
-          });
-        }
+        matchedItems.push({
+          productBarcode: barcode,
+          coupangOptionId: optionId,
+          quantity: qty,
+        });
       } else {
         rowsToRemove.push(rowIndex);
       }

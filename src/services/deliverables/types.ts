@@ -35,8 +35,28 @@ export type FilterInboundTemplateStats = {
 };
 
 export type MatchedInboundTemplateItem = {
+  productBarcode: string;
   coupangOptionId: string;
   quantity: number;
+};
+
+export type AggregatedInboundRecordItem = {
+  productBarcode: string;
+  coupangOptionId: string | null;
+  quantity: number;
+};
+
+export type RecordCoupangInboundInput = {
+  coupangSellerAccountId: string;
+  recordedById: string;
+  templateBuffer: Buffer;
+  boxListInput: import("@/lib/excel/generators/filter-inbound-template").BoxListInput;
+};
+
+export type RecordCoupangInboundResult = {
+  batchId: string;
+  recordedCount: number;
+  matchedBarcodeCount: number;
 };
 
 export type GenerateCoupangInboundTemplateResult = {
