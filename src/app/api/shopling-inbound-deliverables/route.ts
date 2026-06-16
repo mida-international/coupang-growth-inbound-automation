@@ -2,7 +2,33 @@ import { requireApiProfile } from "@/lib/api/auth";
 import { logRouteError } from "@/lib/api/log-route-error";
 import { jsonError, jsonSuccess } from "@/lib/api/response";
 import { resolveShoplingInboundErrorStatus } from "@/lib/deliverables/resolve-shopling-inbound-error-status";
+import { listShoplingInboundDeliverables } from "@/services/deliverables/list-shopling-inbound-deliverables";
 import { recordShoplingInboundDeliverable } from "@/services/deliverables/record-shopling-inbound-deliverable";
+
+export async function GET(request: Request) {
+  try {
+    const auth = await requireApiProfile();
+
+    if ("response" in auth) {
+      return auth.response;
+    }
+
+    const url = new URL(request.url);
+    const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+    const pageSize = Number(url.searchParams.get("pageSize")) || undefined;
+
+    const result = await listShoplingInboundDeliverables({ page, pageSize });
+
+    return jsonSuccess(result);
+  } catch (error) {
+    logRouteError(error, {
+      route: "/api/shopling-inbound-deliverables",
+      method: "GET",
+    });
+
+    return jsonError("입고 기록 목록 조회에 실패했습니다.", 500);
+  }
+}
 
 export async function POST(request: Request) {
   try {

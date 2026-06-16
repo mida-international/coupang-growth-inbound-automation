@@ -142,3 +142,51 @@ export type RecordShoplingInboundDeliverableResult = {
   deliverableId: string;
   recordedCount: number;
 };
+
+export type ShoplingInboundDeliverableItemView = {
+  barcode: string;
+  quantity: number;
+};
+
+export type ShoplingInboundDeliverableListItem = {
+  id: string;
+  outputFileName: string;
+  sourceFileName: string | null;
+  recordedAt: string;
+  recordedByName: string | null;
+  barcodeCount: number;
+  totalQuantity: number;
+  items: ShoplingInboundDeliverableItemView[];
+};
+
+export type ListShoplingInboundDeliverablesResult = {
+  rowCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  rows: ShoplingInboundDeliverableListItem[];
+};
+
+export const SHOPLING_INBOUND_DELIVERABLE_PAGE_SIZE_DEFAULT = 20;
+export const SHOPLING_INBOUND_DELIVERABLE_PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+
+export function normalizeShoplingInboundDeliverablePageSize(value?: number): number {
+  if (!value || Number.isNaN(value)) {
+    return SHOPLING_INBOUND_DELIVERABLE_PAGE_SIZE_DEFAULT;
+  }
+
+  return SHOPLING_INBOUND_DELIVERABLE_PAGE_SIZE_OPTIONS.includes(
+    value as (typeof SHOPLING_INBOUND_DELIVERABLE_PAGE_SIZE_OPTIONS)[number],
+  )
+    ? value
+    : SHOPLING_INBOUND_DELIVERABLE_PAGE_SIZE_DEFAULT;
+}
+
+export type ShoplingInboundDeliverableFile = {
+  outputFileName: string;
+  buffer: Buffer;
+};
+
+export type ShoplingInboundDeliverableServiceResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };

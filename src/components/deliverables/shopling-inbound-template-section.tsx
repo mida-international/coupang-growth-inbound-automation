@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
@@ -7,6 +8,7 @@ import { ExcelDropzone } from "@/components/excel/excel-dropzone";
 import { Button } from "@/components/ui/button";
 
 export function ShoplingInboundTemplateSection() {
+  const router = useRouter();
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -47,6 +49,7 @@ export function ShoplingInboundTemplateSection() {
       setNotice(
         `${payload.data.recordedCount}개 바코드 입고를 기록했습니다.`,
       );
+      router.refresh();
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : "입고 기록에 실패했습니다.",

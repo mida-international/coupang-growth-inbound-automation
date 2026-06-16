@@ -47,6 +47,18 @@ export async function downloadExcelFile(path: string) {
   return Buffer.from(await data.arrayBuffer());
 }
 
+export async function deleteExcelFile(path: string) {
+  const supabase = createAdminClient();
+
+  const { error } = await supabase.storage
+    .from(EXCEL_UPLOADS_BUCKET)
+    .remove([path]);
+
+  if (error) {
+    throw new Error(`Storage 삭제에 실패했습니다: ${error.message}`);
+  }
+}
+
 export async function getExcelFileMetadata(path: string) {
   const supabase = createAdminClient();
   const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
