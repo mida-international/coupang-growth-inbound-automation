@@ -24,11 +24,30 @@ export type NegativeStockRunResult =
       ok: false;
       message: string;
       phase?: "session" | "phase1" | "phase2" | "phase3";
+      cancelled?: boolean;
     };
+
+export type RunNegativeStockOptions = {
+  /** 진행 단계 메시지 콜백 (스트리밍 표시용) */
+  onProgress?: (message: string) => void;
+  /** 중지 신호. abort 시 브라우저를 닫고 중단한다. */
+  signal?: AbortSignal;
+};
+
+const CANCELLED_MESSAGE = "사용자가 작업을 중지했습니다.";
 
 export async function runNegativeStock(
   userId: string,
+  options: RunNegativeStockOptions = {},
 ): Promise<NegativeStockRunResult> {
+  const { onProgress, signal } = options;
+  const progress = (message: string) => onProgress?.(message);
+
+  if (signal?.aborted) {
+    return { ok: false, message: CANCELLED_MESSAGE, cancelled: true };
+  }
+
+  progress("로그인 세션 확인 및 브라우저 시작 중...");
   const browserSession = await launchShoplingWmsBrowser(userId);
 
   if (!browserSession) {
@@ -39,6 +58,12 @@ export async function runNegativeStock(
     };
   }
 
+  // 중지 신호가 오면 브라우저를 즉시 닫아 진행 중인 작업을 중단시킨다.
+  const onAbort = () => {
+    void browserSession.browser.close().catch(() => undefined);
+  };
+  signal?.addEventListener("abort", onAbort);
+
   const timestamp = formatKstTimestamp();
   const memo = buildNegativeStockMemo(timestamp);
 
@@ -46,11 +71,15 @@ export async function runNegativeStock(
     let inventoryBuffer: Buffer;
 
     try {
+      progress("샵플링 WMS 접속 · 음수 재고 조회 및 엑셀 다운로드 중...");
       inventoryBuffer = await downloadNegativeInventoryExcel(
         browserSession.page,
         browserSession.downloadDir,
       );
     } catch (error) {
+      if (signal?.aborted) {
+        return { ok: false, message: CANCELLED_MESSAGE, cancelled: true };
+      }
       const message =
         error instanceof Error
           ? error.message
@@ -63,10 +92,12 @@ export async function runNegativeStock(
     let rowCount = 0;
 
     try {
+      progress("음수 재고 분석 중...");
       const parsed = parseNegativeInventoryFile(inventoryBuffer);
 
       if (parsed.empty) {
         await closeShoplingWmsBrowser(browserSession);
+        progress("음수 재고 0건 — 처리할 항목이 없습니다.");
 
         return {
           ok: true,
@@ -79,6 +110,7 @@ export async function runNegativeStock(
       }
 
       rowCount = parsed.rows.length;
+      progress(`입고등록 파일 생성 중... (음수 재고 ${rowCount}건)`);
 
       const filled = await fillStockImportTemplate(
         parsed.rows,
@@ -88,6 +120,9 @@ export async function runNegativeStock(
 
       filledFilePath = filled.filePath;
     } catch (error) {
+      if (signal?.aborted) {
+        return { ok: false, message: CANCELLED_MESSAGE, cancelled: true };
+      }
       const message =
         error instanceof Error
           ? error.message
@@ -97,12 +132,16 @@ export async function runNegativeStock(
     }
 
     try {
+      progress("입고등록 업로드 및 재고 반영 중...");
       await uploadStockImportAndApply(
         browserSession.page,
         filledFilePath,
         memo,
       );
     } catch (error) {
+      if (signal?.aborted) {
+        return { ok: false, message: CANCELLED_MESSAGE, cancelled: true };
+      }
       const message =
         error instanceof Error
           ? error.message
@@ -112,6 +151,7 @@ export async function runNegativeStock(
     }
 
     await closeShoplingWmsBrowser(browserSession);
+    progress(`완료 — 음수 재고 ${rowCount}건 반영`);
 
     return {
       ok: true,
@@ -121,9 +161,14 @@ export async function runNegativeStock(
       runDir: browserSession.runDir,
     };
   } catch (error) {
+    if (signal?.aborted) {
+      return { ok: false, message: CANCELLED_MESSAGE, cancelled: true };
+    }
     const message =
       error instanceof Error ? error.message : "음수 재고 빼기에 실패했습니다.";
 
     return { ok: false, message };
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
   }
 }
