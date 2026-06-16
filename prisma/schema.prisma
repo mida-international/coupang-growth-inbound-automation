@@ -41,8 +41,9 @@ model Profile {
   ingestionLogs            IngestionLog[]
   shoplingApiConfigUpdates ShoplingApiConfig[]
   inboundPlanningOverrides InboundPlanningOverride[]
-  coupangInboundRecords    CoupangInboundRecord[]
-  shoplingWmsSession       ShoplingWmsSession?
+  coupangInboundRecords         CoupangInboundRecord[]
+  shoplingInboundDeliverables   ShoplingInboundDeliverable[]
+  shoplingWmsSession            ShoplingWmsSession?
 }
 
 model CoupangSellerAccount {
@@ -366,6 +367,37 @@ model CoupangInboundRecord {
   @@index([coupangSellerAccountId, productBarcode, recordedAt], map: "idx_inbound_record_seller_barcode_at")
   @@index([batchId], map: "idx_inbound_record_batch_id")
   @@map("coupang_inbound_record")
+}
+
+/// 샵플링 입고 기록 배치 (생성된 WMS 엑셀 1건 = 1행)
+model ShoplingInboundDeliverable {
+  id             String   @id @default(cuid())
+  storagePath    String   @map("storage_path")
+  outputFileName String   @map("output_file_name")
+  sourceFileName String?  @map("source_file_name")
+  recordedById   String   @map("recorded_by_id")
+  recordedAt     DateTime @default(now()) @map("recorded_at")
+
+  recordedBy Profile                        @relation(fields: [recordedById], references: [id], onDelete: Restrict)
+  items      ShoplingInboundDeliverableItem[]
+
+  @@index([recordedById, recordedAt], map: "idx_shopling_inbound_deliverable_by_at")
+  @@map("shopling_inbound_deliverable")
+}
+
+/// 샵플링 입고 기록 바코드별 수량 (바코드합)
+model ShoplingInboundDeliverableItem {
+  id            String   @id @default(cuid())
+  deliverableId String   @map("deliverable_id")
+  barcode       String
+  quantity      Int
+  recordedAt    DateTime @default(now()) @map("recorded_at")
+
+  deliverable ShoplingInboundDeliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+
+  @@index([deliverableId], map: "idx_shopling_inbound_deliverable_item_deliverable")
+  @@index([barcode, recordedAt], map: "idx_shopling_inbound_deliverable_item_barcode_at")
+  @@map("shopling_inbound_deliverable_item")
 }
 
 model AuditLog {

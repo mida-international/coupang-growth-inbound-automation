@@ -2,27 +2,9 @@ import { requireApiProfile } from "@/lib/api/auth";
 import { encodeContentDispositionFilename } from "@/lib/api/download-helpers";
 import { logRouteError } from "@/lib/api/log-route-error";
 import { jsonError } from "@/lib/api/response";
+import { resolveShoplingInboundErrorStatus } from "@/lib/deliverables/resolve-shopling-inbound-error-status";
 import { buildShoplingInboundFilename } from "@/lib/excel/generators/build-shopling-inbound-filename";
 import { generateShoplingInboundTemplate } from "@/services/deliverables/generate-shopling-inbound-template";
-
-function resolveInboundErrorStatus(message: string): number {
-  if (
-    message.includes("미매핑") ||
-    message.includes("모호한 매칭") ||
-    message.includes("입고 템플릿에 넣을 샵플링 바코드가 없습니다")
-  ) {
-    return 422;
-  }
-
-  if (
-    message.includes("[입고 리스트 오류]") ||
-    message.includes("입고 리스트에서 유효한")
-  ) {
-    return 400;
-  }
-
-  return 500;
-}
 
 export async function POST(request: Request) {
   try {
@@ -72,6 +54,6 @@ export async function POST(request: Request) {
         ? error.message
         : "샵플링 입고 템플릿 생성에 실패했습니다.";
 
-    return jsonError(message, resolveInboundErrorStatus(message));
+    return jsonError(message, resolveShoplingInboundErrorStatus(message));
   }
 }

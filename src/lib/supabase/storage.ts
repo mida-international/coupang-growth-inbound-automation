@@ -6,10 +6,18 @@ export function getInboundTemplateStoragePath(coupangSellerAccountId: string) {
   return `latest-inbound-template/${coupangSellerAccountId}.xlsx`;
 }
 
+export function getShoplingInboundDeliverableStoragePath(
+  deliverableId: string,
+  outputFileName: string,
+) {
+  return `shopling-inbound-deliverables/${deliverableId}/${outputFileName}`;
+}
+
 export async function uploadExcelFile(
   path: string,
   buffer: Buffer,
   contentType: string,
+  options?: { upsert?: boolean },
 ) {
   const supabase = createAdminClient();
 
@@ -17,7 +25,7 @@ export async function uploadExcelFile(
     .from(EXCEL_UPLOADS_BUCKET)
     .upload(path, buffer, {
       contentType,
-      upsert: true,
+      upsert: options?.upsert ?? true,
     });
 
   if (error) {

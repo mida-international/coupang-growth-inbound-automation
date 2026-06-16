@@ -131,3 +131,14 @@ export type GenerateShoplingInboundOriginalResult = {
   bookType: string;
   stats: ShoplingInboundOriginalStats;
 };
+
+export type RecordShoplingInboundDeliverableInput = {
+  inboundListBuffer: Buffer;
+  sourceFileName?: string | null;
+  recordedById: string;
+};
+
+export type RecordShoplingInboundDeliverableResult = {
+  deliverableId: string;
+  recordedCount: number;
+};
