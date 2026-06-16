@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test \"src/lib/shopling/**/*.test.ts\" \"src/lib/excel/**/*.test.ts\" \"src/lib/coupang-growth-sync/**/*.test.ts\" \"src/lib/deliverables/**/*.test.ts\"",
+    "test": "node --import tsx --test \"src/lib/shopling/**/*.test.ts\" \"src/lib/excel/**/*.test.ts\" \"src/lib/coupang-growth-sync/**/*.test.ts\" \"src/lib/deliverables/**/*.test.ts\" \"src/lib/inbound/**/*.test.ts\"",
     "db:seed:master": "tsx scripts/seed-master.ts"
   },
   "dependencies": {
