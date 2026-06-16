@@ -17,6 +17,7 @@ export type NegativeStockRunResult =
       rowCount: number;
       memo: string;
       filledFilePath: string;
+      runDir: string;
       message?: string;
     }
   | {
@@ -47,7 +48,7 @@ export async function runNegativeStock(
     try {
       inventoryBuffer = await downloadNegativeInventoryExcel(
         browserSession.page,
-        browserSession.workDir,
+        browserSession.downloadDir,
       );
     } catch (error) {
       const message =
@@ -72,6 +73,7 @@ export async function runNegativeStock(
           rowCount: 0,
           memo,
           filledFilePath: "",
+          runDir: browserSession.runDir,
           message: "음수 재고 0건",
         };
       }
@@ -80,7 +82,7 @@ export async function runNegativeStock(
 
       const filled = await fillStockImportTemplate(
         parsed.rows,
-        browserSession.workDir,
+        browserSession.outputDir,
         timestamp,
       );
 
@@ -116,6 +118,7 @@ export async function runNegativeStock(
       rowCount,
       memo,
       filledFilePath,
+      runDir: browserSession.runDir,
     };
   } catch (error) {
     const message =

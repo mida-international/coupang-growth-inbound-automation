@@ -1,0 +1,12 @@
+{
+  "functions": {
+    "src/app/api/automation/shopling-negative-stock/login/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/automation/shopling-negative-stock/run/route.ts": {
+      "maxDuration": 300,
+      "memory": 3008
+    }
+  }
+}

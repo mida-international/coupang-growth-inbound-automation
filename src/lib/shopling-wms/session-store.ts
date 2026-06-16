@@ -1,41 +1,51 @@
 import type { BrowserContext } from "playwright";
 
-type ShoplingWmsStorageState = Awaited<
+import { prisma } from "@/lib/db";
+
+export type ShoplingWmsStorageState = Awaited<
   ReturnType<BrowserContext["storageState"]>
 >;
 
 const SESSION_TTL_MS = 30 * 60 * 1000;
 
-type SessionEntry = {
-  storageState: ShoplingWmsStorageState;
-  createdAt: number;
-};
-
-const sessions = new Map<string, SessionEntry>();
-
-export function saveShoplingWmsSession(
+export async function saveShoplingWmsSession(
   userId: string,
   storageState: ShoplingWmsStorageState,
-): void {
-  sessions.set(userId, {
-    storageState,
-    createdAt: Date.now(),
+): Promise<void> {
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+
+  await prisma.shoplingWmsSession.upsert({
+    where: { userId },
+    create: {
+      userId,
+      storageState: storageState as object,
+      expiresAt,
+    },
+    update: {
+      storageState: storageState as object,
+      expiresAt,
+    },
   });
 }
 
-export function getShoplingWmsSession(
+export async function getShoplingWmsSession(
   userId: string,
-): ShoplingWmsStorageState | null {
-  const entry = sessions.get(userId);
+): Promise<ShoplingWmsStorageState | null> {
+  const row = await prisma.shoplingWmsSession.findUnique({
+    where: { userId },
+  });
 
-  if (!entry) {
+  if (!row) {
     return null;
   }
 
-  if (Date.now() - entry.createdAt > SESSION_TTL_MS) {
-    sessions.delete(userId);
+  if (row.expiresAt.getTime() <= Date.now()) {
+    await prisma.shoplingWmsSession
+      .delete({ where: { userId } })
+      .catch(() => undefined);
+
     return null;
   }
 
-  return entry.storageState;
+  return row.storageState as ShoplingWmsStorageState;
 }

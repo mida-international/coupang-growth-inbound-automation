@@ -3,7 +3,7 @@ import "server-only";
 import type { ApiResult } from "@/lib/api/types";
 import { runNegativeStock as runNegativeStockLib } from "@/lib/shopling-wms/negative-stock/run-negative-stock";
 import {
-  isShoplingWmsAutomationAvailable,
+  isShoplingWmsRunAvailable,
   SHOPLING_WMS_AUTOMATION_UNAVAILABLE_MESSAGE,
 } from "@/lib/shopling-wms/runtime";
 
@@ -11,6 +11,7 @@ export type NegativeStockRunData = {
   rowCount: number;
   memo: string;
   filledFilePath: string;
+  runDir: string;
   message?: string;
 };
 
@@ -19,7 +20,7 @@ export type NegativeStockRunServiceResult = ApiResult<NegativeStockRunData>;
 export async function runNegativeStock(
   userId: string,
 ): Promise<NegativeStockRunServiceResult> {
-  if (!isShoplingWmsAutomationAvailable()) {
+  if (!isShoplingWmsRunAvailable()) {
     return { ok: false, error: SHOPLING_WMS_AUTOMATION_UNAVAILABLE_MESSAGE };
   }
 
@@ -36,6 +37,7 @@ export async function runNegativeStock(
         rowCount: result.rowCount,
         memo: result.memo,
         filledFilePath: result.filledFilePath,
+        runDir: result.runDir,
         message: result.message,
       },
     };

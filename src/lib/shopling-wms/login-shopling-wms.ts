@@ -1,5 +1,6 @@
-import { chromium } from "playwright";
+import path from "path";
 
+import { launchShoplingBrowser } from "@/lib/shopling-wms/browser/launch";
 import {
   getShoplingWmsLoginId,
   getShoplingWmsLoginPassword,
@@ -7,6 +8,7 @@ import {
   getShoplingWmsLoginUrl,
 } from "@/lib/shopling-wms/constants";
 import { saveShoplingWmsSession } from "@/lib/shopling-wms/session-store";
+import type { Browser } from "playwright-core";
 
 export type ShoplingWmsLoginResult =
   | { ok: true }
@@ -46,7 +48,7 @@ function isLocatorError(error: unknown): boolean {
 export async function loginShoplingWms(
   userId: string,
 ): Promise<ShoplingWmsLoginResult> {
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+  let browser: Browser | undefined;
 
   try {
     const loginUrl = getShoplingWmsLoginUrl();
@@ -54,7 +56,7 @@ export async function loginShoplingWms(
     const loginPassword = getShoplingWmsLoginPassword();
     const timeoutMs = getShoplingWmsLoginTimeoutMs();
 
-    browser = await chromium.launch({ headless: false });
+    browser = await launchShoplingBrowser();
     const context = await browser.newContext({ ignoreHTTPSErrors: true });
     const page = await context.newPage();
 
@@ -86,7 +88,7 @@ export async function loginShoplingWms(
     }
 
     const storageState = await context.storageState();
-    saveShoplingWmsSession(userId, storageState);
+    await saveShoplingWmsSession(userId, storageState);
 
     await browser.close();
     browser = undefined;

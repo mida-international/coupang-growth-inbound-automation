@@ -38,6 +38,7 @@ model Profile {
   shoplingApiConfigUpdates ShoplingApiConfig[]
   inboundPlanningOverrides InboundPlanningOverride[]
   coupangInboundRecords    CoupangInboundRecord[]
+  shoplingWmsSession       ShoplingWmsSession?
 }
 
 model CoupangSellerAccount {
@@ -381,4 +382,16 @@ model AuditLog {
 model HealthCheck {
   id        String   @id @default(cuid())
   checkedAt DateTime @default(now())
+}
+
+model ShoplingWmsSession {
+  userId       String   @id @map("user_id")
+  storageState Json     @map("storage_state")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("shopling_wms_session")
 }

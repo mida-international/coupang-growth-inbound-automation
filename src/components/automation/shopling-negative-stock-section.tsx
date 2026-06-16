@@ -55,10 +55,10 @@ export function ShoplingNegativeStockSection() {
         return;
       }
 
-      const { rowCount, memo, message } = response.data;
+      const { rowCount, memo, message, runDir } = response.data;
       const summary =
         message ??
-        `처리 완료: ${rowCount}건\n메모: ${memo}`;
+        `처리 완료: ${rowCount}건\n메모: ${memo}\n작업 폴더: ${runDir}`;
 
       window.alert(summary);
     } finally {
