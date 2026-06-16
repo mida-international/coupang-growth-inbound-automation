@@ -27,6 +27,7 @@ const SAFETY_STOCK_TOOLTIP =
 
 const SAFETY_STOCK_HIGHLIGHT_CLASS = "bg-yellow-50";
 const GROWTH_INBOUND_RECOMMEND_HIGHLIGHT_CLASS = "bg-green-50";
+const SHOPLING_STOCK_LOW_CLASS = "bg-red-50 text-destructive";
 
 const ROTATION_TOOLTIPS = {
   1: "바코드별 KST 기준 최근 입고일 1번째 일자의 입고 수량 합계",
@@ -101,6 +102,13 @@ function formatCell(value: string | null | undefined): string {
   }
 
   return value;
+}
+
+function isShoplingStockBelowSafetyStock(
+  shoplingAvailableStock: number,
+  safetyStock: number,
+): boolean {
+  return safetyStock > 0 && shoplingAvailableStock < safetyStock;
 }
 
 function isSafetyStockHighlighted(
@@ -211,6 +219,10 @@ export function InboundWorkbenchTable({
                   row,
                   draft,
                 );
+                const shoplingBelowSafety = isShoplingStockBelowSafetyStock(
+                  row.shoplingAvailableStock,
+                  row.safetyStock,
+                );
 
                 return (
                   <TableRow key={`${row.templateId}|${row.shoplingRowKey}`}>
@@ -221,8 +233,26 @@ export function InboundWorkbenchTable({
                       {formatCell(row.optionName)}
                     </TableCell>
                     <TableCell>{formatCell(row.productBarcode)}</TableCell>
-                    <TableCell className="text-right">
-                      {row.shoplingAvailableStock.toLocaleString()}
+                    <TableCell
+                      className={cn(
+                        "text-right",
+                        shoplingBelowSafety && SHOPLING_STOCK_LOW_CLASS,
+                      )}
+                    >
+                      {shoplingBelowSafety ? (
+                        <Tooltip>
+                          <TooltipTrigger className="cursor-help">
+                            {row.shoplingAvailableStock.toLocaleString()}
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-sm text-left">
+                            샵플링 가용재고(
+                            {row.shoplingAvailableStock.toLocaleString()})가
+                            안전재고({row.safetyStock.toLocaleString()}) 미만입니다.
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        row.shoplingAvailableStock.toLocaleString()
+                      )}
                     </TableCell>
                     <TableCell>{formatCell(row.ptnGoodsCd)}</TableCell>
                     <TableCell className="text-right">
