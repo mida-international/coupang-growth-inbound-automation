@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Bot,
   Database,
   FileSpreadsheet,
   LayoutDashboard,
@@ -31,6 +32,7 @@ export type NavGroup = {
 export const mainNavItems: NavItem[] = [
   { title: "대시보드", href: "/", icon: LayoutDashboard },
   { title: "산출물 생성", href: "/downloads", icon: FileSpreadsheet },
+  { title: "자동화", href: "/automation", icon: Bot },
   { title: "소통 게시판", href: "/board", icon: MessageSquare },
 ];
 
