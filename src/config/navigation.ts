@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  ClipboardList,
   Database,
   FileSpreadsheet,
   LayoutDashboard,
@@ -9,7 +8,6 @@ import {
   RefreshCw,
   Settings,
   TrendingUp,
-  Upload,
   User,
   UserCog,
   Users,
@@ -32,10 +30,7 @@ export type NavGroup = {
 
 export const mainNavItems: NavItem[] = [
   { title: "대시보드", href: "/", icon: LayoutDashboard },
-  { title: "추세 관리", href: "/trends", icon: TrendingUp },
-  { title: "엑셀 업로드", href: "/excel-upload", icon: Upload },
   { title: "산출물 생성", href: "/downloads", icon: FileSpreadsheet },
-  { title: "입고 관리하기", href: "/inbound", icon: ClipboardList },
   { title: "소통 게시판", href: "/board", icon: MessageSquare },
 ];
 
