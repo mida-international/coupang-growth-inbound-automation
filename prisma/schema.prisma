@@ -46,16 +46,17 @@ model Profile {
 }
 
 model CoupangSellerAccount {
-  id          String   @id @default(cuid())
-  displayName String
-  isActive    Boolean  @default(true)
-  createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                     String    @id @default(cuid())
+  displayName            String
+  isActive               Boolean   @default(true)
+  createdById            String
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  actualPackedQtyResetAt DateTime? @map("actual_packed_qty_reset_at")
 
-  createdBy            Profile                        @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  inboundTemplates     CoupangGrowthInboundTemplate[]
-  inventoryHealthRows  CoupangGrowthInventoryHealth[]
+  createdBy                Profile                        @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  inboundTemplates         CoupangGrowthInboundTemplate[]
+  inventoryHealthRows      CoupangGrowthInventoryHealth[]
   inboundPlanningOverrides InboundPlanningOverride[]
   coupangInboundRecords    CoupangInboundRecord[]
 

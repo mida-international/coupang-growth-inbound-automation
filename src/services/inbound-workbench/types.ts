@@ -26,6 +26,7 @@ export type InboundWorkbenchRowView = {
   hasSafetyStockOverride: boolean;
   calculatedGrowthInboundRecommend: number;
   growthInboundRecommend: number;
+  actualPackedQty: number;
   rotation1Qty: number | null;
   rotation2Qty: number | null;
   rotation3Qty: number | null;

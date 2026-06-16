@@ -22,6 +22,9 @@ import { getInboundWorkbenchOverrideKey } from "@/services/inbound-workbench/typ
 const GROWTH_INBOUND_RECOMMEND_TOOLTIP =
   "판매기준수요(max(30일, 7일×3)) − 쿠팡입고예정 − 쿠팡윙재고, 음수면 0, 샵플링 가용재고로 상한. 클릭하여 수정 가능.";
 
+const ACTUAL_PACKED_QTY_TOOLTIP =
+  "바코드별 입고 기록 누적. 재고 현황 업로드 시 리셋. 0보다 크면 노란색 표시.";
+
 const SAFETY_STOCK_TOOLTIP =
   "안전재고 (수동 입력). 가용재고가 안전재고 미만이면 적색 경고. 클릭하여 수정 가능.";
 
@@ -125,6 +128,10 @@ function isSafetyStockHighlighted(
   return row.safetyStock !== 0;
 }
 
+function isActualPackedQtyHighlighted(actualPackedQty: number): boolean {
+  return actualPackedQty > 0;
+}
+
 function isGrowthInboundRecommendHighlighted(
   row: InboundWorkbenchRowView,
   draft?: InboundWorkbenchDraftEntry,
@@ -200,6 +207,16 @@ export function InboundWorkbenchTable({
                     </TooltipContent>
                   </Tooltip>
                 </TableHead>
+                <TableHead className="text-right">
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-4">
+                      실포장수량
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-sm text-left">
+                      {ACTUAL_PACKED_QTY_TOOLTIP}
+                    </TooltipContent>
+                  </Tooltip>
+                </TableHead>
                 <RotationTableHead label="1회전" rank={1} />
                 <RotationTableHead label="2회전" rank={2} />
                 <RotationTableHead label="3회전" rank={3} />
@@ -222,6 +239,9 @@ export function InboundWorkbenchTable({
                 const shoplingBelowSafety = isShoplingStockBelowSafetyStock(
                   row.shoplingAvailableStock,
                   row.safetyStock,
+                );
+                const actualPackedHighlighted = isActualPackedQtyHighlighted(
+                  row.actualPackedQty,
                 );
 
                 return (
@@ -313,6 +333,14 @@ export function InboundWorkbenchTable({
                           )
                         }
                       />
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right",
+                        actualPackedHighlighted && SAFETY_STOCK_HIGHLIGHT_CLASS,
+                      )}
+                    >
+                      {row.actualPackedQty.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <RotationCell
