@@ -49,6 +49,7 @@ export function CoupangInboundTemplateSection({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [activeTab, setActiveTab] = useState<InputTab>("excel");
   const [templateMeta, setTemplateMeta] = useState<TemplateMeta | null>(null);
   const [isLoadingTemplateMeta, setIsLoadingTemplateMeta] = useState(false);
@@ -221,12 +222,47 @@ export function CoupangInboundTemplateSection({
     }
   }
 
-  function handleRecordInboundClick() {
-    if (!canRecordInbound) {
+  async function handleRecordInboundClick() {
+    if (!canRecordInbound || !excelFile || !hasSeller) {
       return;
     }
 
-    setNotice("기능 연동 예정입니다.");
+    setIsRecording(true);
+    setNotice(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("seller", sellerId);
+      formData.append("boxListFile", excelFile);
+
+      const response = await fetch("/api/inbound-records", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | { ok: true; data: { recordedCount: number } }
+        | { ok: false; error?: string }
+        | null;
+
+      if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
+        throw new Error(
+          payload && "error" in payload && payload.error
+            ? payload.error
+            : "입고 기록에 실패했습니다.",
+        );
+      }
+
+      setNotice(
+        `${payload.data.recordedCount}개 바코드 입고를 기록했습니다.`,
+      );
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "입고 기록에 실패했습니다.",
+      );
+    } finally {
+      setIsRecording(false);
+    }
   }
 
   return (
@@ -405,15 +441,15 @@ export function CoupangInboundTemplateSection({
             type="button"
             variant="outline"
             size="sm"
-            disabled={!canRecordInbound}
+            disabled={!canRecordInbound || isRecording || isDownloading}
             onClick={handleRecordInboundClick}
           >
-            입고 기록하기
+            {isRecording ? "기록 중..." : "입고 기록하기"}
           </Button>
           <Button
             type="button"
             size="sm"
-            disabled={downloadDisabled}
+            disabled={downloadDisabled || isRecording}
             onClick={handleDownloadClick}
           >
             {isDownloading ? "생성 중..." : "다운로드"}
