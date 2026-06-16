@@ -17,6 +17,10 @@ export const coupangGrowthTabGroup: PageTabGroup = {
       title: "쿠팡 판매자 계정 관리",
       href: "/data/coupang-growth/seller-accounts",
     },
+    {
+      title: "재고 현황",
+      href: "/data/coupang-growth/inventory-health",
+    },
   ],
 };
 
