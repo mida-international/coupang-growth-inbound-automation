@@ -9,6 +9,17 @@ export type PageTabGroup = {
   tabs: PageTab[];
 };
 
+export const dashboardTabGroup: PageTabGroup = {
+  id: "dashboard",
+  basePath: "/data/dashboard",
+  tabs: [
+    {
+      title: "샵플링 입고",
+      href: "/data/dashboard/shopling-inbound",
+    },
+  ],
+};
+
 export const coupangGrowthTabGroup: PageTabGroup = {
   id: "coupang-growth",
   basePath: "/data/coupang-growth",
@@ -81,6 +92,7 @@ export const deliverablesTabGroup: PageTabGroup = {
 };
 
 export const pageTabGroups: PageTabGroup[] = [
+  dashboardTabGroup,
   coupangGrowthTabGroup,
   shoplingDataTabGroup,
   coupangGrowthSyncTabGroup,

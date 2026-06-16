@@ -57,6 +57,7 @@ export const dataNavGroup: NavGroup = {
   title: "데이터 관리",
   icon: Database,
   items: [
+    { title: "대시보드", href: "/data/dashboard", icon: LayoutDashboard },
     { title: "쿠팡 Growth", href: "/data/coupang-growth", icon: TrendingUp },
     { title: "샵플링", href: "/data/shopling", icon: Database },
   ],
