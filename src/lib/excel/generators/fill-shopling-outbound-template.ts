@@ -42,6 +42,7 @@ export async function fillShoplingOutboundTemplate(
     const excelRow = sheet.getRow(rowNum);
     excelRow.getCell(SHOPLING_OUTBOUND_LAYOUT.barcodeCol).value = barcode;
     excelRow.getCell(SHOPLING_OUTBOUND_LAYOUT.deductQtyCol).value = deductQty;
+    excelRow.commit();
     rowNum += 1;
   }
 

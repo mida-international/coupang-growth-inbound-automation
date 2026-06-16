@@ -102,3 +102,18 @@ export type GenerateShoplingOutboundTemplateResult = {
   stats: DecomposeOutboundStats;
   rows: OutboundDeductRow[];
 };
+
+export type ShoplingInboundTemplateStats = {
+  inputRows: number;
+  outputRows: number;
+  skippedRows: number;
+  skippedDummy: number;
+  unmapped: Array<{ ptnGoodsCd: string; optionValue: string }>;
+  ambiguous: Array<{ ptnGoodsCd: string; optionValue: string }>;
+};
+
+export type GenerateShoplingInboundTemplateResult = {
+  buffer: Buffer;
+  stats: ShoplingInboundTemplateStats;
+  rows: OutboundDeductRow[];
+};
