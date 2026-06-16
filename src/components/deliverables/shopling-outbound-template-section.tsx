@@ -27,9 +27,12 @@ export function ShoplingOutboundTemplateSection({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [isImageDragging, setIsImageDragging] = useState(false);
   const hasSeller = sellerId.trim().length > 0;
-  const hasInputFile =
-    activeTab === "excel" ? excelFile !== null : imageFile !== null;
-  const canDownload = hasSeller && hasInputFile && !isDownloading;
+  const canDownloadExcel =
+    hasSeller && excelFile !== null && !isDownloading;
+  const downloadDisabled =
+    activeTab === "excel"
+      ? !canDownloadExcel
+      : !hasSeller || isDownloading;
 
   useEffect(() => {
     if (!imageFile) {
@@ -60,16 +63,86 @@ export function ShoplingOutboundTemplateSection({
     setNotice(null);
   }
 
-  function handleDownloadClick() {
-    if (!canDownload) {
+  async function handleDownloadClick() {
+    if (!hasSeller) {
+      return;
+    }
+
+    if (activeTab === "image") {
+      setNotice("준비 중입니다. 이미지 OCR 연동은 곧 제공됩니다.");
+      return;
+    }
+
+    if (!canDownloadExcel || !excelFile) {
       return;
     }
 
     setIsDownloading(true);
     setNotice(null);
 
-    setNotice("기능 연동 예정입니다.");
-    setIsDownloading(false);
+    try {
+      const formData = new FormData();
+      formData.append("seller", sellerId);
+      formData.append("boxListFile", excelFile);
+
+      const response = await fetch("/api/downloads/shopling-outbound-template", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(
+          payload?.error ?? "샵플링 출고 템플릿 생성에 실패했습니다.",
+        );
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") ?? "";
+      const filenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      const filename = filenameMatch
+        ? decodeURIComponent(filenameMatch[1])
+        : "shopling_gross_outbound.xlsx";
+
+      const outboundRows = response.headers.get("X-Outbound-Rows");
+      const packagesDecomposed = response.headers.get(
+        "X-Outbound-Packages-Decomposed",
+      );
+      const skippedPackages = response.headers.get("X-Outbound-Skipped-Packages");
+
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+
+      const statsParts = [
+        outboundRows !== null ? `출고 ${outboundRows}건` : null,
+        packagesDecomposed !== null && Number(packagesDecomposed) > 0
+          ? `패키지 분해 ${packagesDecomposed}건`
+          : null,
+        skippedPackages !== null && Number(skippedPackages) > 0
+          ? `미매핑 패키지 ${skippedPackages}건 스킵`
+          : null,
+      ].filter(Boolean);
+
+      setNotice(
+        statsParts.length > 0
+          ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
+          : "샵플링 출고 템플릿 파일을 다운로드했습니다.",
+      );
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "샵플링 출고 템플릿 생성에 실패했습니다.",
+      );
+    } finally {
+      setIsDownloading(false);
+    }
   }
 
   return (
@@ -223,7 +296,7 @@ export function ShoplingOutboundTemplateSection({
           <Button
             type="button"
             size="sm"
-            disabled={!canDownload}
+            disabled={downloadDisabled}
             onClick={handleDownloadClick}
           >
             {isDownloading ? "생성 중..." : "다운로드"}
@@ -234,11 +307,13 @@ export function ShoplingOutboundTemplateSection({
           <p className="text-sm text-muted-foreground">
             판매자 계정을 선택해 주세요.
           </p>
-        ) : hasSeller && !hasInputFile ? (
+        ) : hasSeller && activeTab === "excel" && !excelFile ? (
           <p className="text-sm text-muted-foreground">
-            {activeTab === "excel"
-              ? "출고 리스트 엑셀 파일을 선택해 주세요."
-              : "출고 리스트 이미지를 선택해 주세요."}
+            출고 리스트 엑셀 파일을 선택해 주세요.
+          </p>
+        ) : hasSeller && activeTab === "image" && !imageFile ? (
+          <p className="text-sm text-muted-foreground">
+            출고 리스트 이미지를 선택해 주세요.
           </p>
         ) : null}
 
