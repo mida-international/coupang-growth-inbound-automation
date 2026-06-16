@@ -3,7 +3,10 @@
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
-import { InboundWorkbenchTable } from "@/components/inbound-workbench/inbound-workbench-table";
+import {
+  InboundWorkbenchTable,
+  type InboundWorkbenchDraftEntry,
+} from "@/components/inbound-workbench/inbound-workbench-table";
 import { InboundWorkbenchToolbar } from "@/components/inbound-workbench/inbound-workbench-toolbar";
 import { apiPatch } from "@/lib/api-client";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
@@ -13,11 +16,10 @@ import type {
 } from "@/services/inbound-workbench/types";
 import { getInboundWorkbenchOverrideKey } from "@/services/inbound-workbench/types";
 
-type DraftEntry = {
+type DraftEntry = InboundWorkbenchDraftEntry & {
   optionId: string | null;
   templateId: string;
-  safetyStock: number;
-  growthInboundRecommend: number;
+  calculatedGrowthInboundRecommend: number;
 };
 
 type DraftMap = Record<string, DraftEntry>;
@@ -44,6 +46,9 @@ function buildDraftMap(rows: InboundWorkbenchRowView[]): DraftMap {
         templateId: row.templateId,
         safetyStock: row.safetyStock,
         growthInboundRecommend: row.growthInboundRecommend,
+        initialSafetyStock: row.safetyStock,
+        initialGrowthInboundRecommend: row.growthInboundRecommend,
+        calculatedGrowthInboundRecommend: row.calculatedGrowthInboundRecommend,
       };
     }
   }
@@ -130,13 +135,41 @@ export function InboundWorkbenchPanelClient({
 
     setSaveError(null);
 
-    const items = Object.values(drafts).map((draft) => ({
-      ...(draft.optionId
-        ? { optionId: draft.optionId, templateId: draft.templateId }
-        : { templateId: draft.templateId }),
-      safetyStock: draft.safetyStock,
-      growthInboundRecommendQty: draft.growthInboundRecommend,
-    }));
+    const items = Object.values(drafts)
+      .map((draft) => {
+        const item: {
+          optionId?: string;
+          templateId?: string;
+          safetyStock?: number;
+          growthInboundRecommendQty?: number;
+        } = draft.optionId
+          ? { optionId: draft.optionId, templateId: draft.templateId }
+          : { templateId: draft.templateId };
+
+        if (draft.safetyStock !== draft.initialSafetyStock) {
+          item.safetyStock = draft.safetyStock;
+        }
+
+        if (
+          draft.growthInboundRecommend !==
+          draft.calculatedGrowthInboundRecommend
+        ) {
+          item.growthInboundRecommendQty = draft.growthInboundRecommend;
+        }
+
+        const hasPayload =
+          item.safetyStock !== undefined ||
+          item.growthInboundRecommendQty !== undefined;
+
+        return hasPayload ? item : null;
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    if (items.length === 0) {
+      setEditMode(false);
+      setDrafts({});
+      return;
+    }
 
     const result = await apiPatch<void>("/api/inbound-workbench/overrides", {
       coupangSellerAccountId: sellerId,
@@ -179,6 +212,7 @@ export function InboundWorkbenchPanelClient({
         <InboundWorkbenchTable
           rows={displayRows}
           editMode={editMode}
+          drafts={editMode ? drafts : undefined}
           onDraftChange={updateDraft}
         />
       ) : (

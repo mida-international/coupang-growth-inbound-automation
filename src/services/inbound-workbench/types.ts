@@ -23,6 +23,7 @@ export type InboundWorkbenchRowView = {
   daysOfCover: string | null;
   location: string | null;
   safetyStock: number;
+  hasSafetyStockOverride: boolean;
   calculatedGrowthInboundRecommend: number;
   growthInboundRecommend: number;
   rotation1Qty: number | null;

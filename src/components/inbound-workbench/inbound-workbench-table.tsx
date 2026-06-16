@@ -1,6 +1,6 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
+import { EditableIntegerCell } from "@/components/inbound-workbench/editable-integer-cell";
 import {
   Table,
   TableBody,
@@ -15,17 +15,32 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import type { InboundWorkbenchRowView } from "@/services/inbound-workbench/types";
 import { getInboundWorkbenchOverrideKey } from "@/services/inbound-workbench/types";
 
 const GROWTH_INBOUND_RECOMMEND_TOOLTIP =
   "판매기준수요(max(30일, 7일×3)) − 쿠팡입고예정 − 쿠팡윙재고, 음수면 0, 샵플링 가용재고로 상한. 클릭하여 수정 가능.";
 
+const SAFETY_STOCK_TOOLTIP =
+  "안전재고 (수동 입력). 가용재고가 안전재고 미만이면 적색 경고. 클릭하여 수정 가능.";
+
+const SAFETY_STOCK_HIGHLIGHT_CLASS = "bg-yellow-50";
+const GROWTH_INBOUND_RECOMMEND_HIGHLIGHT_CLASS = "bg-green-50";
+const SHOPLING_STOCK_LOW_CLASS = "bg-red-50 text-destructive";
+
 const ROTATION_TOOLTIPS = {
   1: "바코드별 KST 기준 최근 입고일 1번째 일자의 입고 수량 합계",
   2: "바코드별 KST 기준 최근 입고일 2번째 일자의 입고 수량 합계",
   3: "바코드별 KST 기준 최근 입고일 3번째 일자의 입고 수량 합계",
 } as const;
+
+export type InboundWorkbenchDraftEntry = {
+  safetyStock: number;
+  growthInboundRecommend: number;
+  initialSafetyStock: number;
+  initialGrowthInboundRecommend: number;
+};
 
 function formatRotationQty(qty: number | null): string {
   if (qty === null) {
@@ -89,19 +104,45 @@ function formatCell(value: string | null | undefined): string {
   return value;
 }
 
-function parseDraftNumber(value: string): number {
-  const parsed = Number(value);
+function isShoplingStockBelowSafetyStock(
+  shoplingAvailableStock: number,
+  safetyStock: number,
+): boolean {
+  return safetyStock > 0 && shoplingAvailableStock < safetyStock;
+}
 
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return 0;
+function isSafetyStockHighlighted(
+  row: InboundWorkbenchRowView,
+  draft?: InboundWorkbenchDraftEntry,
+): boolean {
+  if (draft) {
+    return (
+      draft.safetyStock !== draft.initialSafetyStock ||
+      draft.initialSafetyStock !== 0
+    );
   }
 
-  return Math.floor(parsed);
+  return row.safetyStock !== 0;
+}
+
+function isGrowthInboundRecommendHighlighted(
+  row: InboundWorkbenchRowView,
+  draft?: InboundWorkbenchDraftEntry,
+): boolean {
+  if (
+    draft &&
+    draft.growthInboundRecommend !== draft.initialGrowthInboundRecommend
+  ) {
+    return true;
+  }
+
+  return row.growthInboundRecommend !== row.calculatedGrowthInboundRecommend;
 }
 
 type InboundWorkbenchTableProps = {
   rows: InboundWorkbenchRowView[];
   editMode?: boolean;
+  drafts?: Record<string, InboundWorkbenchDraftEntry>;
   onDraftChange?: (
     key: string,
     field: "safetyStock" | "growthInboundRecommend",
@@ -112,6 +153,7 @@ type InboundWorkbenchTableProps = {
 export function InboundWorkbenchTable({
   rows,
   editMode = false,
+  drafts,
   onDraftChange,
 }: InboundWorkbenchTableProps) {
   if (rows.length === 0) {
@@ -138,7 +180,16 @@ export function InboundWorkbenchTable({
                 <TableHead className="text-right">30일판매</TableHead>
                 <TableHead className="text-right">쿠팡자체추천</TableHead>
                 <TableHead className="text-right">쿠팡입고예정</TableHead>
-                <TableHead className="text-right">안전재고</TableHead>
+                <TableHead className="text-right">
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-4">
+                      안전재고
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-sm text-left">
+                      {SAFETY_STOCK_TOOLTIP}
+                    </TooltipContent>
+                  </Tooltip>
+                </TableHead>
                 <TableHead className="text-right">
                   <Tooltip>
                     <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-4">
@@ -162,6 +213,16 @@ export function InboundWorkbenchTable({
                 const overrideKey = getInboundWorkbenchOverrideKey(row);
                 const isFirstForKey = !editedKeys.has(overrideKey);
                 editedKeys.add(overrideKey);
+                const draft = drafts?.[overrideKey];
+                const safetyHighlighted = isSafetyStockHighlighted(row, draft);
+                const growthHighlighted = isGrowthInboundRecommendHighlighted(
+                  row,
+                  draft,
+                );
+                const shoplingBelowSafety = isShoplingStockBelowSafetyStock(
+                  row.shoplingAvailableStock,
+                  row.safetyStock,
+                );
 
                 return (
                   <TableRow key={`${row.templateId}|${row.shoplingRowKey}`}>
@@ -172,8 +233,26 @@ export function InboundWorkbenchTable({
                       {formatCell(row.optionName)}
                     </TableCell>
                     <TableCell>{formatCell(row.productBarcode)}</TableCell>
-                    <TableCell className="text-right">
-                      {row.shoplingAvailableStock.toLocaleString()}
+                    <TableCell
+                      className={cn(
+                        "text-right",
+                        shoplingBelowSafety && SHOPLING_STOCK_LOW_CLASS,
+                      )}
+                    >
+                      {shoplingBelowSafety ? (
+                        <Tooltip>
+                          <TooltipTrigger className="cursor-help">
+                            {row.shoplingAvailableStock.toLocaleString()}
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-sm text-left">
+                            샵플링 가용재고(
+                            {row.shoplingAvailableStock.toLocaleString()})가
+                            안전재고({row.safetyStock.toLocaleString()}) 미만입니다.
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        row.shoplingAvailableStock.toLocaleString()
+                      )}
                     </TableCell>
                     <TableCell>{formatCell(row.ptnGoodsCd)}</TableCell>
                     <TableCell className="text-right">
@@ -194,53 +273,46 @@ export function InboundWorkbenchTable({
                     <TableCell className="text-right">
                       {row.pendingInbounds.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right">
-                      {editMode && isFirstForKey ? (
-                        <Input
-                          type="number"
-                          min={0}
-                          step={1}
-                          className="ml-auto h-8 w-24 text-right"
-                          value={row.safetyStock}
-                          onChange={(event) =>
-                            onDraftChange?.(
-                              overrideKey,
-                              "safetyStock",
-                              parseDraftNumber(event.target.value),
-                            )
-                          }
-                        />
-                      ) : editMode ? (
-                        <span className="text-muted-foreground">
-                          {row.safetyStock.toLocaleString()}
-                        </span>
-                      ) : (
-                        row.safetyStock.toLocaleString()
+                    <TableCell
+                      className={cn(
+                        "text-right",
+                        safetyHighlighted && SAFETY_STOCK_HIGHLIGHT_CLASS,
                       )}
+                    >
+                      <EditableIntegerCell
+                        value={row.safetyStock}
+                        editable={editMode && isFirstForKey}
+                        highlighted={safetyHighlighted}
+                        highlightClassName={SAFETY_STOCK_HIGHLIGHT_CLASS}
+                        muted={editMode && !isFirstForKey}
+                        onChange={(value) =>
+                          onDraftChange?.(overrideKey, "safetyStock", value)
+                        }
+                      />
                     </TableCell>
-                    <TableCell className="text-right">
-                      {editMode && isFirstForKey ? (
-                        <Input
-                          type="number"
-                          min={0}
-                          step={1}
-                          className="ml-auto h-8 w-24 text-right"
-                          value={row.growthInboundRecommend}
-                          onChange={(event) =>
-                            onDraftChange?.(
-                              overrideKey,
-                              "growthInboundRecommend",
-                              parseDraftNumber(event.target.value),
-                            )
-                          }
-                        />
-                      ) : editMode ? (
-                        <span className="text-muted-foreground">
-                          {row.growthInboundRecommend.toLocaleString()}
-                        </span>
-                      ) : (
-                        row.growthInboundRecommend.toLocaleString()
+                    <TableCell
+                      className={cn(
+                        "text-right",
+                        growthHighlighted &&
+                          GROWTH_INBOUND_RECOMMEND_HIGHLIGHT_CLASS,
                       )}
+                    >
+                      <EditableIntegerCell
+                        value={row.growthInboundRecommend}
+                        editable={editMode && isFirstForKey}
+                        highlighted={growthHighlighted}
+                        highlightClassName={
+                          GROWTH_INBOUND_RECOMMEND_HIGHLIGHT_CLASS
+                        }
+                        muted={editMode && !isFirstForKey}
+                        onChange={(value) =>
+                          onDraftChange?.(
+                            overrideKey,
+                            "growthInboundRecommend",
+                            value,
+                          )
+                        }
+                      />
                     </TableCell>
                     <TableCell className="text-right">
                       <RotationCell
