@@ -57,7 +57,9 @@ export function WarehouseInboundListSection({
 
     try {
       const response = await fetch(
-        `/api/downloads/warehouse-inbound-list?seller=${encodeURIComponent(sellerId)}`,
+        `/api/downloads/warehouse-inbound-list?seller=${encodeURIComponent(sellerId)}${
+          inboundRotation ? `&rotation=${encodeURIComponent(inboundRotation)}` : ""
+        }`,
       );
 
       if (!response.ok) {

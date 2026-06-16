@@ -6,7 +6,27 @@ import {
   generateWarehouseInboundListBuffer,
 } from "@/lib/excel/generators/warehouse-inbound-list";
 import { listSellerAccounts } from "@/services/coupang-seller-accounts/list-seller-accounts";
+import { loadOutboundDecomposeContext } from "@/services/deliverables/load-outbound-decompose-context";
+import { loadShoplingInboundRotationBatches } from "@/services/deliverables/load-shopling-inbound-rotation-batches";
 import { listWarehouseInboundRows } from "@/services/deliverables/list-warehouse-inbound-rows";
+
+function parseWarehouseInboundRotation(
+  value: string | null | undefined,
+): 0 | 1 | 2 | 3 {
+  if (value === "1") {
+    return 1;
+  }
+
+  if (value === "2") {
+    return 2;
+  }
+
+  if (value === "3") {
+    return 3;
+  }
+
+  return 0;
+}
 
 function encodeContentDispositionFilename(filename: string): string {
   const encoded = encodeURIComponent(filename);
@@ -22,7 +42,9 @@ export async function GET(request: Request) {
       return auth.response;
     }
 
-    const sellerId = new URL(request.url).searchParams.get("seller")?.trim();
+    const searchParams = new URL(request.url).searchParams;
+    const sellerId = searchParams.get("seller")?.trim();
+    const rotation = parseWarehouseInboundRotation(searchParams.get("rotation"));
 
     if (!sellerId) {
       return jsonError("판매자 계정을 선택해 주세요.", 400);
@@ -41,7 +63,20 @@ export async function GET(request: Request) {
       coupangSellerAccountId: sellerId,
     });
 
-    const buffer = generateWarehouseInboundListBuffer(result.rows);
+    const [rotationBatches, decomposeContext] =
+      rotation > 0
+        ? await Promise.all([
+            loadShoplingInboundRotationBatches(rotation),
+            loadOutboundDecomposeContext(),
+          ])
+        : [[], null];
+
+    const buffer = generateWarehouseInboundListBuffer(result.rows, {
+      rotationCount: rotation,
+      rotationBatches,
+      packageMappingsByBarcode:
+        decomposeContext?.packageMappingsByBarcode ?? new Map(),
+    });
     const filename = buildWarehouseInboundListFilename(seller.displayName);
 
     return new Response(new Uint8Array(buffer), {
