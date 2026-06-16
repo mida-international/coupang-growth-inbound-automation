@@ -63,7 +63,11 @@ export const deliverablesTabGroup: PageTabGroup = {
   tabs: [
     {
       title: "쿠팡 그로스 입고",
-      href: "/downloads",
+      href: "/downloads/coupang-growth-inbound",
+    },
+    {
+      title: "입고 리스트 관리",
+      href: "/downloads/inbound-list",
     },
   ],
 };

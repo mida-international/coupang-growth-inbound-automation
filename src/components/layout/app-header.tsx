@@ -57,6 +57,24 @@ function findInGroup(pathname: string, group: NavGroup) {
 function getNavContext(pathname: string): NavContext {
   const mainItem = findActiveItem(pathname, mainNavItems);
   if (mainItem) {
+    if (isNavItemActive(pathname, "/downloads")) {
+      const tabGroup = findPageTabGroup(pathname);
+      if (tabGroup) {
+        const activeTabHref = getActivePageTabHref(pathname, tabGroup.tabs);
+        const activeTab = tabGroup.tabs.find(
+          (tab) => tab.href === activeTabHref,
+        );
+
+        if (activeTab) {
+          return {
+            groupTitle: mainItem.title,
+            pageTitle: activeTab.title,
+            pageHref: activeTab.href,
+          };
+        }
+      }
+    }
+
     return {
       pageTitle: mainItem.title,
       pageHref: mainItem.href,
