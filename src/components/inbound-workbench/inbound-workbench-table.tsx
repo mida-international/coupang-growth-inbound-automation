@@ -21,6 +21,66 @@ import { getInboundWorkbenchOverrideKey } from "@/services/inbound-workbench/typ
 const GROWTH_INBOUND_RECOMMEND_TOOLTIP =
   "판매기준수요(max(30일, 7일×3)) − 쿠팡입고예정 − 쿠팡윙재고, 음수면 0, 샵플링 가용재고로 상한. 클릭하여 수정 가능.";
 
+const ROTATION_TOOLTIPS = {
+  1: "바코드별 KST 기준 최근 입고일 1번째 일자의 입고 수량 합계",
+  2: "바코드별 KST 기준 최근 입고일 2번째 일자의 입고 수량 합계",
+  3: "바코드별 KST 기준 최근 입고일 3번째 일자의 입고 수량 합계",
+} as const;
+
+function formatRotationQty(qty: number | null): string {
+  if (qty === null) {
+    return "-";
+  }
+
+  return qty.toLocaleString();
+}
+
+function RotationTableHead({
+  label,
+  rank,
+}: {
+  label: string;
+  rank: keyof typeof ROTATION_TOOLTIPS;
+}) {
+  return (
+    <TableHead className="text-right">
+      <Tooltip>
+        <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-4">
+          {label}
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-sm text-left">
+          {ROTATION_TOOLTIPS[rank]}
+        </TooltipContent>
+      </Tooltip>
+    </TableHead>
+  );
+}
+
+function RotationCell({
+  qty,
+  date,
+}: {
+  qty: number | null;
+  date: string | null;
+}) {
+  if (qty === null) {
+    return "-";
+  }
+
+  const formatted = formatRotationQty(qty);
+
+  if (!date) {
+    return formatted;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger>{formatted}</TooltipTrigger>
+      <TooltipContent>입고일: {date}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function formatCell(value: string | null | undefined): string {
   if (value === null || value === undefined || value.trim() === "") {
     return "-";
@@ -89,6 +149,9 @@ export function InboundWorkbenchTable({
                     </TooltipContent>
                   </Tooltip>
                 </TableHead>
+                <RotationTableHead label="1회전" rank={1} />
+                <RotationTableHead label="2회전" rank={2} />
+                <RotationTableHead label="3회전" rank={3} />
                 <TableHead>등급</TableHead>
                 <TableHead>소진예상일</TableHead>
                 <TableHead>위치</TableHead>
@@ -178,6 +241,24 @@ export function InboundWorkbenchTable({
                       ) : (
                         row.growthInboundRecommend.toLocaleString()
                       )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <RotationCell
+                        qty={row.rotation1Qty}
+                        date={row.rotation1Date}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <RotationCell
+                        qty={row.rotation2Qty}
+                        date={row.rotation2Date}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <RotationCell
+                        qty={row.rotation3Qty}
+                        date={row.rotation3Date}
+                      />
                     </TableCell>
                     <TableCell>{formatCell(row.offerCondition)}</TableCell>
                     <TableCell>{formatCell(row.daysOfCover)}</TableCell>
