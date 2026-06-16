@@ -78,12 +78,16 @@ function menuListClassName(isCollapsed: boolean) {
   return cn(iconRailMenuClassName, !isCollapsed && expandedMenuClassName);
 }
 
-function isNavItemActive(pathname: string, href: string) {
-  if (href === "/") {
+function isNavItemActive(pathname: string, item: NavItem) {
+  if (item.external || item.href.startsWith("http")) {
+    return false;
+  }
+
+  if (item.href === "/") {
     return pathname === "/";
   }
 
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
 function NavIconMenuItem({
@@ -103,14 +107,25 @@ function NavIconMenuItem({
       <SidebarMenuButton
         className={menuButtonClassName(isCollapsed)}
         tooltip={item.title}
-        isActive={isNavItemActive(pathname, item.href)}
+        isActive={isNavItemActive(pathname, item)}
         render={
-          <Link
-            href={item.href}
-            onClick={(event) => {
-              event.stopPropagation();
-            }}
-          />
+          item.external ? (
+            <a
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+            />
+          ) : (
+            <Link
+              href={item.href}
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+            />
+          )
         }
       >
         <item.icon />
@@ -130,7 +145,7 @@ function NavCollapsibleGroup({
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const isGroupActive = group.items.some((item) =>
-    isNavItemActive(pathname, item.href),
+    isNavItemActive(pathname, item),
   );
   const [open, setOpen] = React.useState(isGroupActive);
 
@@ -176,7 +191,7 @@ function NavCollapsibleGroup({
                   <SidebarMenuSubItem key={item.href}>
                     <SidebarMenuSubButton
                       className={expandedSubButtonClassName}
-                      isActive={isNavItemActive(pathname, item.href)}
+                      isActive={isNavItemActive(pathname, item)}
                       render={
           <Link
             href={item.href}
