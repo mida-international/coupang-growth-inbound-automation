@@ -9,6 +9,7 @@ import type {
   IngestInventoryHealthResult,
   IngestServiceResult,
 } from "@/services/coupang-growth-sync/types";
+import { resetGrowthInboundRecommendOverrides } from "@/services/inbound-workbench/reset-growth-inbound-recommend-overrides";
 
 const CREATE_MANY_BATCH_SIZE = 1000;
 const INGEST_TX_BASE_MS = 30_000;
@@ -131,6 +132,11 @@ export async function ingestInventoryHealth(
             ),
           });
         }
+
+        await resetGrowthInboundRecommendOverrides(
+          tx,
+          input.coupangSellerAccountId,
+        );
 
         return {
           ingestionId: ingestionLog.id,
