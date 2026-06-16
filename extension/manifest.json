@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "샵플링 WMS 세션 연동",
+  "version": "1.0.0",
+  "description": "샵플링 WMS 로그인 세션을 쿠팡그로스 입고 자동화 앱으로 전송합니다.",
+  "permissions": ["cookies"],
+  "host_permissions": [
+    "https://*.shopling.co.kr/*",
+    "https://coupang-growth-inbound-automation.vercel.app/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "샵플링 세션 연동"
+  }
+}

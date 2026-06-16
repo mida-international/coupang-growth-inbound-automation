@@ -11,9 +11,8 @@ const SESSION_TTL_MS = 30 * 60 * 1000;
 export async function saveShoplingWmsSession(
   userId: string,
   storageState: ShoplingWmsStorageState,
+  expiresAt: Date = new Date(Date.now() + SESSION_TTL_MS),
 ): Promise<void> {
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-
   await prisma.shoplingWmsSession.upsert({
     where: { userId },
     create: {

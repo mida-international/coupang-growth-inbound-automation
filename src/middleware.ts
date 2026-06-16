@@ -11,6 +11,15 @@ function copyCookies(from: NextResponse, to: NextResponse) {
 }
 
 export async function middleware(request: NextRequest) {
+  // 확장 프로그램의 세션 전송 라우트는 쿠키 세션이 없고 Bearer 토큰으로
+  // 자체 인증하므로, 미들웨어의 쿠키 기반 인증 게이트를 건너뛴다.
+  if (
+    request.nextUrl.pathname ===
+    "/api/automation/shopling-negative-stock/session"
+  ) {
+    return NextResponse.next();
+  }
+
   const { url, anonKey } = getSupabaseEnv();
 
   let supabaseResponse = NextResponse.next({ request });
