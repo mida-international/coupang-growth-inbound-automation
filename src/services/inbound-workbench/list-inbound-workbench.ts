@@ -35,6 +35,12 @@ type RawWorkbenchRow = {
   safety_stock: number;
   calculated_growth_inbound_recommend: number;
   growth_inbound_recommend: number;
+  rotation_1_qty: number | null;
+  rotation_2_qty: number | null;
+  rotation_3_qty: number | null;
+  rotation_1_date: Date | null;
+  rotation_2_date: Date | null;
+  rotation_3_date: Date | null;
   template_snapshot_date: Date;
   health_snapshot_date: Date | null;
   shopling_snapshot_date: Date | null;
@@ -42,6 +48,14 @@ type RawWorkbenchRow = {
 
 function formatSnapshotDate(value: Date): string {
   return value.toISOString().slice(0, 10);
+}
+
+function formatRotationDate(value: Date | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  return formatSnapshotDate(value);
 }
 
 function mapRow(row: RawWorkbenchRow): InboundWorkbenchRowView {
@@ -66,6 +80,12 @@ function mapRow(row: RawWorkbenchRow): InboundWorkbenchRowView {
     safetyStock: row.safety_stock,
     calculatedGrowthInboundRecommend: row.calculated_growth_inbound_recommend,
     growthInboundRecommend: row.growth_inbound_recommend,
+    rotation1Qty: row.rotation_1_qty,
+    rotation2Qty: row.rotation_2_qty,
+    rotation3Qty: row.rotation_3_qty,
+    rotation1Date: formatRotationDate(row.rotation_1_date),
+    rotation2Date: formatRotationDate(row.rotation_2_date),
+    rotation3Date: formatRotationDate(row.rotation_3_date),
   };
 }
 
@@ -172,6 +192,12 @@ export async function listInboundWorkbench(
           safety_stock,
           calculated_growth_inbound_recommend,
           growth_inbound_recommend,
+          rotation_1_qty,
+          rotation_1_date,
+          rotation_2_qty,
+          rotation_2_date,
+          rotation_3_qty,
+          rotation_3_date,
           template_snapshot_date,
           health_snapshot_date,
           shopling_snapshot_date

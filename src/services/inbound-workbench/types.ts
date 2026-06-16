@@ -25,6 +25,12 @@ export type InboundWorkbenchRowView = {
   safetyStock: number;
   calculatedGrowthInboundRecommend: number;
   growthInboundRecommend: number;
+  rotation1Qty: number | null;
+  rotation2Qty: number | null;
+  rotation3Qty: number | null;
+  rotation1Date: string | null;
+  rotation2Date: string | null;
+  rotation3Date: string | null;
 };
 
 export type ListInboundWorkbenchResult = {
