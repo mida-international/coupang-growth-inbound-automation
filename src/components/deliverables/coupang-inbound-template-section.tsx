@@ -52,6 +52,7 @@ export function CoupangInboundTemplateSection({
   const [activeTab, setActiveTab] = useState<InputTab>("excel");
   const [templateMeta, setTemplateMeta] = useState<TemplateMeta | null>(null);
   const [isLoadingTemplateMeta, setIsLoadingTemplateMeta] = useState(false);
+  const [canRecordInbound, setCanRecordInbound] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [isImageDragging, setIsImageDragging] = useState(false);
   const hasSeller = sellerId.trim().length > 0;
@@ -130,6 +131,10 @@ export function CoupangInboundTemplateSection({
     };
   }, [hasSeller, sellerId]);
 
+  useEffect(() => {
+    setCanRecordInbound(false);
+  }, [sellerId, excelFile, activeTab]);
+
   function handleImageFiles(fileList: FileList | null) {
     if (!hasSeller || !fileList?.length) {
       return;
@@ -206,6 +211,7 @@ export function CoupangInboundTemplateSection({
           ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
           : "입고 템플릿 파일을 다운로드했습니다.",
       );
+      setCanRecordInbound(true);
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : "입고 템플릿 생성에 실패했습니다.",
@@ -213,6 +219,14 @@ export function CoupangInboundTemplateSection({
     } finally {
       setIsDownloading(false);
     }
+  }
+
+  function handleRecordInboundClick() {
+    if (!canRecordInbound) {
+      return;
+    }
+
+    setNotice("기능 연동 예정입니다.");
   }
 
   return (
@@ -387,6 +401,15 @@ export function CoupangInboundTemplateSection({
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!canRecordInbound}
+            onClick={handleRecordInboundClick}
+          >
+            입고 기록하기
+          </Button>
           <Button
             type="button"
             size="sm"

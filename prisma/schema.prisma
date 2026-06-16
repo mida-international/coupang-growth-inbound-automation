@@ -37,6 +37,7 @@ model Profile {
   ingestionLogs            IngestionLog[]
   shoplingApiConfigUpdates ShoplingApiConfig[]
   inboundPlanningOverrides InboundPlanningOverride[]
+  coupangInboundRecords    CoupangInboundRecord[]
 }
 
 model CoupangSellerAccount {
@@ -51,6 +52,7 @@ model CoupangSellerAccount {
   inboundTemplates     CoupangGrowthInboundTemplate[]
   inventoryHealthRows  CoupangGrowthInventoryHealth[]
   inboundPlanningOverrides InboundPlanningOverride[]
+  coupangInboundRecords    CoupangInboundRecord[]
 
   @@index([createdById])
   @@index([createdAt])
@@ -339,6 +341,25 @@ model InboundPlanningOverride {
   @@unique([coupangSellerAccountId, optionId], map: "uq_inbound_override_seller_option")
   @@index([coupangSellerAccountId, templateId], map: "idx_inbound_override_seller_template")
   @@map("inbound_planning_override")
+}
+
+/// 쿠팡그로스 입고 기록 이벤트 (바코드·수량·시각). 회전 통계는 조회 시 집계.
+model CoupangInboundRecord {
+  id                     String               @id @default(cuid())
+  coupangSellerAccountId String               @map("coupang_seller_account_id")
+  productBarcode         String               @map("product_barcode")
+  coupangOptionId        BigInt?              @map("coupang_option_id")
+  quantity               Int
+  recordedAt             DateTime             @default(now()) @map("recorded_at")
+  recordedById           String               @map("recorded_by_id")
+  batchId                String?              @map("batch_id")
+
+  coupangSellerAccount CoupangSellerAccount @relation(fields: [coupangSellerAccountId], references: [id], onDelete: Cascade)
+  recordedBy           Profile              @relation(fields: [recordedById], references: [id], onDelete: Restrict)
+
+  @@index([coupangSellerAccountId, productBarcode, recordedAt], map: "idx_inbound_record_seller_barcode_at")
+  @@index([batchId], map: "idx_inbound_record_batch_id")
+  @@map("coupang_inbound_record")
 }
 
 model AuditLog {
