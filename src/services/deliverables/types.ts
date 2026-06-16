@@ -54,3 +54,22 @@ export type LatestInboundTemplateFileMeta = {
 export type LatestInboundTemplateFile = LatestInboundTemplateFileMeta & {
   buffer: Buffer;
 };
+
+export type OutboundDeductRow = {
+  barcode: string;
+  deductQty: number;
+};
+
+export type DecomposeOutboundStats = {
+  inputBarcodes: number;
+  outputRows: number;
+  packagesDecomposed: number;
+  skippedUnmappedPackages: string[];
+  skippedDummy: number;
+};
+
+export type GenerateShoplingOutboundTemplateResult = {
+  buffer: Buffer;
+  stats: DecomposeOutboundStats;
+  rows: OutboundDeductRow[];
+};
