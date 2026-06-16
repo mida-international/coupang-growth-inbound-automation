@@ -17,6 +17,19 @@ function isLoginPageUrl(url: string | URL): boolean {
   return href.includes("login.phtml");
 }
 
+function isMissingChromiumExecutableError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+
+  return (
+    message.includes("executable doesn't exist") ||
+    message.includes("playwright install")
+  );
+}
+
 export async function loginShoplingWms(
   userId: string,
 ): Promise<ShoplingWmsLoginResult> {
@@ -69,6 +82,14 @@ export async function loginShoplingWms(
 
     return { ok: true };
   } catch (error) {
+    if (isMissingChromiumExecutableError(error)) {
+      return {
+        ok: false,
+        message:
+          "Playwright Chromium이 설치되지 않았습니다. 터미널에서 `npm run playwright:install`을 실행한 뒤 다시 시도해 주세요.",
+      };
+    }
+
     if (
       error instanceof Error &&
       (error.name === "TimeoutError" || error.message.includes("Timeout"))
