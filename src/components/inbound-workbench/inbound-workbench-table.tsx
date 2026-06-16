@@ -22,6 +22,9 @@ import { getInboundWorkbenchOverrideKey } from "@/services/inbound-workbench/typ
 const GROWTH_INBOUND_RECOMMEND_TOOLTIP =
   "판매기준수요(max(30일, 7일×3)) − 쿠팡입고예정 − 쿠팡윙재고, 음수면 0, 샵플링 가용재고로 상한. 클릭하여 수정 가능.";
 
+const SAFETY_STOCK_TOOLTIP =
+  "안전재고 (수동 입력). 가용재고가 안전재고 미만이면 적색 경고. 클릭하여 수정 가능.";
+
 const SAFETY_STOCK_HIGHLIGHT_CLASS = "bg-yellow-50";
 const GROWTH_INBOUND_RECOMMEND_HIGHLIGHT_CLASS = "bg-green-50";
 
@@ -169,7 +172,16 @@ export function InboundWorkbenchTable({
                 <TableHead className="text-right">30일판매</TableHead>
                 <TableHead className="text-right">쿠팡자체추천</TableHead>
                 <TableHead className="text-right">쿠팡입고예정</TableHead>
-                <TableHead className="text-right">안전재고</TableHead>
+                <TableHead className="text-right">
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-4">
+                      안전재고
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-sm text-left">
+                      {SAFETY_STOCK_TOOLTIP}
+                    </TooltipContent>
+                  </Tooltip>
+                </TableHead>
                 <TableHead className="text-right">
                   <Tooltip>
                     <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-4">
