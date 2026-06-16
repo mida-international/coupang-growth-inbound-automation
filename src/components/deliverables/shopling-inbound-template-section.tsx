@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
@@ -7,10 +8,56 @@ import { ExcelDropzone } from "@/components/excel/excel-dropzone";
 import { Button } from "@/components/ui/button";
 
 export function ShoplingInboundTemplateSection() {
+  const router = useRouter();
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const canDownload = excelFile !== null && !isDownloading;
+  const [isRecording, setIsRecording] = useState(false);
+  const [canRecordInbound, setCanRecordInbound] = useState(false);
+  const canDownload = excelFile !== null && !isDownloading && !isRecording;
+
+  async function handleRecordInboundClick() {
+    if (!canRecordInbound || isRecording || isDownloading || !excelFile) {
+      return;
+    }
+
+    setIsRecording(true);
+    setNotice(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("inboundListFile", excelFile);
+
+      const response = await fetch("/api/shopling-inbound-deliverables", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | { ok: true; data: { recordedCount: number } }
+        | { ok: false; error?: string }
+        | null;
+
+      if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
+        throw new Error(
+          payload && "error" in payload && payload.error
+            ? payload.error
+            : "입고 기록에 실패했습니다.",
+        );
+      }
+
+      setNotice(
+        `${payload.data.recordedCount}개 바코드 입고를 기록했습니다.`,
+      );
+      router.refresh();
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "입고 기록에 실패했습니다.",
+      );
+    } finally {
+      setIsRecording(false);
+    }
+  }
 
   async function handleDownloadClick() {
     if (!canDownload || !excelFile) {
@@ -77,6 +124,7 @@ export function ShoplingInboundTemplateSection() {
           ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
           : "샵플링 입고 템플릿 파일을 다운로드했습니다.",
       );
+      setCanRecordInbound(true);
     } catch (error) {
       setNotice(
         error instanceof Error
@@ -110,6 +158,7 @@ export function ShoplingInboundTemplateSection() {
             onFilesSelected={(files) => {
               setExcelFile(files[0] ?? null);
               setNotice(null);
+              setCanRecordInbound(false);
             }}
           />
           <p className="mt-2 text-xs text-muted-foreground">
@@ -118,6 +167,15 @@ export function ShoplingInboundTemplateSection() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!canRecordInbound || isRecording || isDownloading}
+            onClick={handleRecordInboundClick}
+          >
+            {isRecording ? "기록 중..." : "입고 기록하기"}
+          </Button>
           <Button
             type="button"
             size="sm"

@@ -88,6 +88,24 @@ function getNavContext(pathname: string): NavContext {
 
   const dataMatch = findInGroup(pathname, dataNavGroup);
   if (dataMatch) {
+    if (isNavItemActive(pathname, "/data/dashboard")) {
+      const tabGroup = findPageTabGroup(pathname);
+      if (tabGroup) {
+        const activeTabHref = getActivePageTabHref(pathname, tabGroup.tabs);
+        const activeTab = tabGroup.tabs.find(
+          (tab) => tab.href === activeTabHref,
+        );
+
+        if (activeTab) {
+          return {
+            groupTitle: dataNavGroup.title,
+            pageTitle: activeTab.title,
+            pageHref: activeTab.href,
+          };
+        }
+      }
+    }
+
     return dataMatch;
   }
 
