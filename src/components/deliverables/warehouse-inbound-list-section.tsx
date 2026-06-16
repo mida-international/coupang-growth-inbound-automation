@@ -12,6 +12,16 @@ type WarehouseInboundListSectionProps = {
   snapshotDates: WarehouseInboundListSnapshotDates | null;
 };
 
+const WAREHOUSE_INBOUND_ROTATION_OPTIONS = [
+  { value: "", label: "없음" },
+  { value: "1", label: "1회전" },
+  { value: "2", label: "2회전" },
+  { value: "3", label: "3회전" },
+] as const;
+
+const sellerSelectClassName =
+  "h-9 min-w-[120px] rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+
 function formatSnapshotLabel(
   snapshotDates: WarehouseInboundListSnapshotDates | null,
 ): string {
@@ -34,6 +44,7 @@ export function WarehouseInboundListSection({
 }: WarehouseInboundListSectionProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [inboundRotation, setInboundRotation] = useState("");
   const hasSeller = sellerId.trim().length > 0;
 
   async function handleDownloadClick() {
@@ -90,6 +101,26 @@ export function WarehouseInboundListSection({
       description="대시보드 입고추천 수량 기준, 샵플링 로케이션·바코드가 반영된 창고 전달용 엑셀입니다."
       variant="plain"
     >
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+          <span className="shrink-0 text-sm font-medium text-foreground">
+            입고 회차
+          </span>
+          <select
+            value={inboundRotation}
+            onChange={(event) => setInboundRotation(event.target.value)}
+            aria-label="입고 회차"
+            className={sellerSelectClassName}
+          >
+            {WAREHOUSE_INBOUND_ROTATION_OPTIONS.map((option) => (
+              <option key={option.value || "none"} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           스냅샷 {formatSnapshotLabel(snapshotDates)} · 다운로드 가능{" "}
