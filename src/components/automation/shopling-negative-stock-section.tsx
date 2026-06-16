@@ -38,7 +38,7 @@ export function ShoplingNegativeStockSection() {
   }
 
   async function handleSubtractClick() {
-    if (!isLoggedIn || isSubtracting) {
+    if (isSubtracting) {
       return;
     }
 
@@ -84,7 +84,7 @@ export function ShoplingNegativeStockSection() {
         <Button
           type="button"
           size="sm"
-          disabled={!isLoggedIn || isSubtracting}
+          disabled={isSubtracting}
           onClick={handleSubtractClick}
         >
           {isSubtracting ? "처리 중..." : "재고 음수빼기"}

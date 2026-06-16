@@ -94,8 +94,8 @@ function base64UrlDecodeToString(b64url) {
 
 // 앱 도메인의 모든 sb-*-auth-token(청크 포함) 쿠키에서 access_token 추출.
 // 진단을 위해 { token, diag } 반환.
-async function getAppAccessToken() {
-  const all = await getCookiesRobust(APP_URL + "/", APP_HOST);
+async function getAppAccessToken(appUrl, appHost) {
+  const all = await getCookiesRobust(appUrl.replace(/\/?$/, "/"), appHost);
   const auth = all.filter((c) => /^sb-.*-auth-token(\.\d+)?$/.test(c.name));
   const diag = {
     appCookieCount: all.length,
@@ -153,7 +153,18 @@ async function run() {
   btn.disabled = true;
   setStatus("세션 수집 중...");
   try {
-    const { token, diag } = await getAppAccessToken();
+    const rawUrl = (document.getElementById("appUrl").value || APP_URL).trim();
+    let appUrl, appHost;
+    try {
+      const u = new URL(rawUrl);
+      appUrl = u.origin;
+      appHost = u.host;
+    } catch {
+      setStatus("대상 앱 주소가 올바르지 않습니다. 예: http://localhost:3000", "err");
+      return;
+    }
+
+    const { token, diag } = await getAppAccessToken(appUrl, appHost);
     const shoplingCookies = await collectShoplingCookies();
 
     if (!token) {
@@ -177,7 +188,7 @@ async function run() {
       `전송 중... (앱 토큰 OK, 샵플링 쿠키 ${shoplingCookies.length}개)`,
     );
     const res = await fetch(
-      `${APP_URL}/api/automation/shopling-negative-stock/session`,
+      `${appUrl}/api/automation/shopling-negative-stock/session`,
       {
         method: "POST",
         headers: {
