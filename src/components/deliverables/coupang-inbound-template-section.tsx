@@ -8,6 +8,7 @@ import { DeliverablesSection } from "@/components/deliverables/deliverables-sect
 import { ExcelDropzone } from "@/components/excel/excel-dropzone";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { downloadShoplingOutboundTemplate } from "@/lib/deliverables/client/download-shopling-outbound-template";
 import { cn } from "@/lib/utils";
 
 type CoupangInboundTemplateSectionProps = {
@@ -49,6 +50,8 @@ export function CoupangInboundTemplateSection({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloadingShoplingOutbound, setIsDownloadingShoplingOutbound] =
+    useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [activeTab, setActiveTab] = useState<InputTab>("excel");
   const [templateMeta, setTemplateMeta] = useState<TemplateMeta | null>(null);
@@ -60,6 +63,11 @@ export function CoupangInboundTemplateSection({
   const hasStoredTemplate = templateMeta?.exists === true;
   const canDownloadExcel =
     hasSeller && hasStoredTemplate && excelFile !== null && !isDownloading;
+  const canDownloadShoplingOutbound =
+    hasSeller &&
+    excelFile !== null &&
+    activeTab === "excel" &&
+    !isDownloadingShoplingOutbound;
   const downloadDisabled =
     activeTab === "excel"
       ? !canDownloadExcel
@@ -219,6 +227,31 @@ export function CoupangInboundTemplateSection({
       );
     } finally {
       setIsDownloading(false);
+    }
+  }
+
+  async function handleShoplingOutboundClick() {
+    if (!canDownloadShoplingOutbound || !excelFile) {
+      return;
+    }
+
+    setIsDownloadingShoplingOutbound(true);
+    setNotice(null);
+
+    try {
+      const noticeMessage = await downloadShoplingOutboundTemplate(
+        sellerId,
+        excelFile,
+      );
+      setNotice(noticeMessage);
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "샵플링 출고 템플릿 생성에 실패했습니다.",
+      );
+    } finally {
+      setIsDownloadingShoplingOutbound(false);
     }
   }
 
@@ -441,15 +474,30 @@ export function CoupangInboundTemplateSection({
             type="button"
             variant="outline"
             size="sm"
-            disabled={!canRecordInbound || isRecording || isDownloading}
+            disabled={!canRecordInbound || isRecording || isDownloading || isDownloadingShoplingOutbound}
             onClick={handleRecordInboundClick}
           >
             {isRecording ? "기록 중..." : "입고 기록하기"}
           </Button>
           <Button
             type="button"
+            variant="outline"
             size="sm"
-            disabled={downloadDisabled || isRecording}
+            disabled={
+              !canDownloadShoplingOutbound ||
+              isDownloading ||
+              isRecording
+            }
+            onClick={handleShoplingOutboundClick}
+          >
+            {isDownloadingShoplingOutbound
+              ? "생성 중..."
+              : "샵플링 출고 템플릿 생성"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={downloadDisabled || isRecording || isDownloadingShoplingOutbound}
             onClick={handleDownloadClick}
           >
             {isDownloading ? "생성 중..." : "다운로드"}
