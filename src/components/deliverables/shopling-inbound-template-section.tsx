@@ -10,7 +10,19 @@ export function ShoplingInboundTemplateSection() {
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const canDownload = excelFile !== null && !isDownloading;
+  const [isRecording, setIsRecording] = useState(false);
+  const [canRecordInbound, setCanRecordInbound] = useState(false);
+  const canDownload = excelFile !== null && !isDownloading && !isRecording;
+
+  function handleRecordInboundClick() {
+    if (!canRecordInbound || isRecording || isDownloading) {
+      return;
+    }
+
+    setIsRecording(true);
+    setNotice("입고 기록 기능은 준비 중입니다.");
+    setIsRecording(false);
+  }
 
   async function handleDownloadClick() {
     if (!canDownload || !excelFile) {
@@ -77,6 +89,7 @@ export function ShoplingInboundTemplateSection() {
           ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
           : "샵플링 입고 템플릿 파일을 다운로드했습니다.",
       );
+      setCanRecordInbound(true);
     } catch (error) {
       setNotice(
         error instanceof Error
@@ -110,6 +123,7 @@ export function ShoplingInboundTemplateSection() {
             onFilesSelected={(files) => {
               setExcelFile(files[0] ?? null);
               setNotice(null);
+              setCanRecordInbound(false);
             }}
           />
           <p className="mt-2 text-xs text-muted-foreground">
@@ -118,6 +132,15 @@ export function ShoplingInboundTemplateSection() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!canRecordInbound || isRecording || isDownloading}
+            onClick={handleRecordInboundClick}
+          >
+            {isRecording ? "기록 중..." : "입고 기록하기"}
+          </Button>
           <Button
             type="button"
             size="sm"
