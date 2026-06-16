@@ -147,7 +147,7 @@ export function resolveShoplingInboundBarcodes(
   items: ShoplingInboundListItem[],
   inventoryRows: ShoplingInboundInventoryRow[],
 ): ResolveShoplingInboundBarcodesResult {
-  const qtyByBarcode = new Map<string, number>();
+  const rows: OutboundDeductRow[] = [];
   const unmapped: ShoplingInboundLookupIssue[] = [];
   const ambiguous: ShoplingInboundLookupIssue[] = [];
   let skippedDummy = 0;
@@ -180,16 +180,11 @@ export function resolveShoplingInboundBarcodes(
       continue;
     }
 
-    qtyByBarcode.set(
-      match.barcode,
-      (qtyByBarcode.get(match.barcode) ?? 0) + item.quantity,
-    );
+    rows.push({
+      barcode: match.barcode,
+      deductQty: item.quantity,
+    });
   }
-
-  const rows = Array.from(qtyByBarcode.entries())
-    .filter(([, deductQty]) => deductQty > 0)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([barcode, deductQty]) => ({ barcode, deductQty }));
 
   return {
     rows,

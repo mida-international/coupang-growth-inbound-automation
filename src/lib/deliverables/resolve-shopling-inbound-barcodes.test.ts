@@ -110,6 +110,23 @@ describe("resolveShoplingInboundBarcodes", () => {
     assert.equal(result.rows.length, 0);
     assert.equal(result.ambiguous.length, 1);
   });
+
+  it("keeps duplicate barcodes as separate rows in list order", () => {
+    const result = resolveShoplingInboundBarcodes(
+      [
+        { ptnGoodsCd: "气泡袋", optionValue: "白色，20*30", quantity: 10 },
+        { ptnGoodsCd: "气泡袋", optionValue: "白色，20*30", quantity: 5 },
+        { ptnGoodsCd: "테이프", optionValue: "단품", quantity: 3 },
+      ],
+      inventoryRows,
+    );
+
+    assert.deepEqual(result.rows, [
+      { barcode: "8801111111111", deductQty: 10 },
+      { barcode: "8801111111111", deductQty: 5 },
+      { barcode: "8802222222222", deductQty: 3 },
+    ]);
+  });
 });
 
 describe("findBarcodesByOptionCascade", () => {

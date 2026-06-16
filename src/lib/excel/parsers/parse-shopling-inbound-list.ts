@@ -55,7 +55,7 @@ export function parseShoplingInboundList(
   }
 
   const range = XLSX.utils.decode_range(firstSheet["!ref"]);
-  const qtyByKey = new Map<string, ShoplingInboundListItem>();
+  const items: ShoplingInboundListItem[] = [];
   let skippedRows = 0;
 
   for (let rowIndex = range.s.r; rowIndex <= range.e.r; rowIndex++) {
@@ -76,15 +76,7 @@ export function parseShoplingInboundList(
       continue;
     }
 
-    const key = `${ptnGoodsCd}\0${optionValue}`;
-    const existing = qtyByKey.get(key);
-
-    if (existing) {
-      existing.quantity += quantity;
-      continue;
-    }
-
-    qtyByKey.set(key, {
+    items.push({
       ptnGoodsCd,
       optionValue,
       quantity,
@@ -92,7 +84,7 @@ export function parseShoplingInboundList(
   }
 
   return {
-    items: Array.from(qtyByKey.values()),
+    items,
     skippedRows,
   };
 }

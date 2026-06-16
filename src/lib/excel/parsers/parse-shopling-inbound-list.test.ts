@@ -20,7 +20,7 @@ function buildInboundListWorkbook(rows: unknown[][]): Buffer {
 }
 
 describe("parseShoplingInboundList", () => {
-  it("reads D/E/I columns and aggregates duplicate keys", () => {
+  it("reads D/E/I columns and preserves row order without merging duplicates", () => {
     const buffer = buildInboundListWorkbook([
       ["收货人", "", "", "0519잡화입고리스트"],
       [],
@@ -34,7 +34,7 @@ describe("parseShoplingInboundList", () => {
 
     const result = parseShoplingInboundList(buffer);
 
-    assert.equal(result.items.length, 2);
+    assert.equal(result.items.length, 3);
     assert.deepEqual(result.items[0], {
       ptnGoodsCd: "气泡袋",
       optionValue: "白色，20*30",
@@ -43,7 +43,12 @@ describe("parseShoplingInboundList", () => {
     assert.deepEqual(result.items[1], {
       ptnGoodsCd: "气泡袋",
       optionValue: "白色，26*30",
-      quantity: 200,
+      quantity: 160,
+    });
+    assert.deepEqual(result.items[2], {
+      ptnGoodsCd: "气泡袋",
+      optionValue: "白色，26*30",
+      quantity: 40,
     });
     assert.equal(result.skippedRows, 4);
   });
