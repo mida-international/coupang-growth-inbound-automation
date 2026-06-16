@@ -57,11 +57,23 @@ export const shoplingDataTabGroup: PageTabGroup = {
   ],
 };
 
+export const deliverablesTabGroup: PageTabGroup = {
+  id: "deliverables",
+  basePath: "/downloads",
+  tabs: [
+    {
+      title: "쿠팡 그로스 입고",
+      href: "/downloads",
+    },
+  ],
+};
+
 export const pageTabGroups: PageTabGroup[] = [
   coupangGrowthTabGroup,
   shoplingDataTabGroup,
   coupangGrowthSyncTabGroup,
   integrationsTabGroup,
+  deliverablesTabGroup,
 ];
 
 export function isPageTabActive(pathname: string, href: string) {
