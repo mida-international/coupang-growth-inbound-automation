@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Barcode,
   Bot,
   Database,
   FileSpreadsheet,
@@ -21,6 +22,7 @@ export type NavItem = {
   href: string;
   icon: LucideIcon;
   masterOnly?: boolean;
+  external?: boolean;
 };
 
 export type NavGroup = {
@@ -33,6 +35,12 @@ export const mainNavItems: NavItem[] = [
   { title: "대시보드", href: "/", icon: LayoutDashboard },
   { title: "산출물 생성", href: "/downloads", icon: FileSpreadsheet },
   { title: "자동화", href: "/automation", icon: Bot },
+  {
+    title: "바코드 출력",
+    href: "https://mida-international-label-printer.vercel.app/",
+    icon: Barcode,
+    external: true,
+  },
   { title: "소통 게시판", href: "/board", icon: MessageSquare },
 ];
 
