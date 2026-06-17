@@ -12,6 +12,8 @@ type InboundWorkbenchPanelProps = {
   search: string;
   page: number;
   pageSize: number;
+  sort: string | null;
+  dir: string | null;
 };
 
 function EmptyState({ children }: { children: ReactNode }) {
@@ -29,6 +31,8 @@ export function InboundWorkbenchPanel({
   search,
   page,
   pageSize,
+  sort,
+  dir,
 }: InboundWorkbenchPanelProps) {
   const hasAccounts = accounts.some((account) => account.isActive);
   const isSearchEmpty = search.trim().length === 0;
@@ -101,6 +105,8 @@ export function InboundWorkbenchPanel({
       search={search}
       page={page}
       pageSize={pageSize}
+      sort={sort}
+      dir={dir}
     >
       {emptyContent}
     </InboundWorkbenchPanelClient>

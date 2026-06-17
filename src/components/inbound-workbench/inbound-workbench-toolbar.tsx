@@ -10,6 +10,10 @@ import { cn } from "@/lib/utils";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
 import type { InboundWorkbenchSnapshotDates } from "@/services/inbound-workbench/types";
 import { INBOUND_WORKBENCH_PAGE_SIZE_OPTIONS } from "@/services/inbound-workbench/types";
+import type {
+  InboundWorkbenchSortColumn,
+  InboundWorkbenchSortDirection,
+} from "@/services/inbound-workbench/inbound-workbench-sort";
 
 type InboundWorkbenchToolbarProps = {
   accounts: SellerAccountView[];
@@ -17,6 +21,8 @@ type InboundWorkbenchToolbarProps = {
   search: string;
   page: number;
   pageSize: number;
+  sort: InboundWorkbenchSortColumn | null;
+  dir: InboundWorkbenchSortDirection | null;
   totalCount: number;
   snapshotDates: InboundWorkbenchSnapshotDates | null;
   editMode?: boolean;
@@ -51,6 +57,8 @@ export function InboundWorkbenchToolbar({
   search,
   page,
   pageSize,
+  sort,
+  dir,
   totalCount,
   snapshotDates,
   editMode = false,
@@ -101,6 +109,8 @@ export function InboundWorkbenchToolbar({
             className="min-w-[200px] flex-1 lg:max-w-md"
           />
           <input type="hidden" name="pageSize" value={pageSize} />
+          {sort ? <input type="hidden" name="sort" value={sort} /> : null}
+          {dir ? <input type="hidden" name="dir" value={dir} /> : null}
           <Button type="submit" size="sm" className="shrink-0" disabled={editMode}>
             조회
           </Button>
@@ -160,6 +170,8 @@ export function InboundWorkbenchToolbar({
                     q: search,
                     page: 1,
                     pageSize: nextPageSize,
+                    sort,
+                    dir,
                   })}`,
                 );
               }}
@@ -182,6 +194,8 @@ export function InboundWorkbenchToolbar({
                     q: search,
                     page: page - 1,
                     pageSize,
+                    sort,
+                    dir,
                   })}`}
                   className={cn(
                     buttonVariants({ variant: "outline", size: "sm" }),
@@ -201,6 +215,8 @@ export function InboundWorkbenchToolbar({
                     q: search,
                     page: page + 1,
                     pageSize,
+                    sort,
+                    dir,
                   })}`}
                   className={cn(
                     buttonVariants({ variant: "outline", size: "sm" }),

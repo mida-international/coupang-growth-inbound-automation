@@ -14,6 +14,8 @@ type DashboardPageProps = {
     q?: string;
     page?: string;
     pageSize?: string;
+    sort?: string;
+    dir?: string;
   }>;
 };
 
@@ -35,6 +37,8 @@ export default async function DashboardPage({
         page,
         pageSize,
         search,
+        sort: params.sort,
+        dir: params.dir,
       })
     : EMPTY_INBOUND_WORKBENCH_RESULT;
 
@@ -54,6 +58,8 @@ export default async function DashboardPage({
         search={search}
         page={page}
         pageSize={pageSize}
+        sort={params.sort ?? null}
+        dir={params.dir ?? null}
       />
     </div>
   );

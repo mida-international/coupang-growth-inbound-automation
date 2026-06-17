@@ -7,6 +7,7 @@ import {
   InboundWorkbenchTable,
   type InboundWorkbenchDraftEntry,
 } from "@/components/inbound-workbench/inbound-workbench-table";
+import { buildWorkbenchQuery } from "@/components/inbound-workbench/build-workbench-query";
 import { InboundWorkbenchToolbar } from "@/components/inbound-workbench/inbound-workbench-toolbar";
 import { apiPatch } from "@/lib/api-client";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
@@ -15,6 +16,11 @@ import type {
   ListInboundWorkbenchResult,
 } from "@/services/inbound-workbench/types";
 import { getInboundWorkbenchOverrideKey } from "@/services/inbound-workbench/types";
+import {
+  cycleInboundWorkbenchSort,
+  parseInboundWorkbenchSort,
+  type InboundWorkbenchSortColumn,
+} from "@/services/inbound-workbench/inbound-workbench-sort";
 
 type DraftEntry = InboundWorkbenchDraftEntry & {
   optionId: string | null;
@@ -31,6 +37,8 @@ type InboundWorkbenchPanelClientProps = {
   search: string;
   page: number;
   pageSize: number;
+  sort: string | null;
+  dir: string | null;
   children: ReactNode;
 };
 
@@ -63,6 +71,8 @@ export function InboundWorkbenchPanelClient({
   search,
   page,
   pageSize,
+  sort,
+  dir,
   children,
 }: InboundWorkbenchPanelClientProps) {
   const router = useRouter();
@@ -71,7 +81,30 @@ export function InboundWorkbenchPanelClient({
   const [drafts, setDrafts] = useState<DraftMap>({});
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const parsedSort = parseInboundWorkbenchSort(sort ?? undefined, dir ?? undefined);
+
   const canEdit = data.totalCount > 0 && Boolean(sellerId);
+
+  function handleSort(column: InboundWorkbenchSortColumn) {
+    const next = cycleInboundWorkbenchSort(
+      parsedSort.sort,
+      parsedSort.dir,
+      column,
+    );
+
+    startTransition(() => {
+      router.push(
+        `/${buildWorkbenchQuery({
+          seller: sellerId,
+          q: search,
+          page: 1,
+          pageSize,
+          sort: next.sort,
+          dir: next.dir,
+        })}`,
+      );
+    });
+  }
 
   const displayRows = useMemo(() => {
     if (!editMode) {
@@ -196,6 +229,8 @@ export function InboundWorkbenchPanelClient({
         search={search}
         page={page}
         pageSize={pageSize}
+        sort={parsedSort.sort}
+        dir={parsedSort.dir}
         totalCount={data.totalCount}
         snapshotDates={data.snapshotDates}
         editMode={editMode}
@@ -212,6 +247,9 @@ export function InboundWorkbenchPanelClient({
         <InboundWorkbenchTable
           rows={displayRows}
           editMode={editMode}
+          sort={parsedSort.sort}
+          dir={parsedSort.dir}
+          onSort={handleSort}
           drafts={editMode ? drafts : undefined}
           onDraftChange={updateDraft}
         />

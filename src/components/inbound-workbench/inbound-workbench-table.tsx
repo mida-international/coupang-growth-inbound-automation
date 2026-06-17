@@ -1,11 +1,11 @@
 "use client";
 
 import { EditableIntegerCell } from "@/components/inbound-workbench/editable-integer-cell";
+import { SortableTableHead } from "@/components/inbound-workbench/sortable-table-head";
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -18,6 +18,10 @@ import {
 import { cn } from "@/lib/utils";
 import type { InboundWorkbenchRowView } from "@/services/inbound-workbench/types";
 import { getInboundWorkbenchOverrideKey } from "@/services/inbound-workbench/types";
+import type {
+  InboundWorkbenchSortColumn,
+  InboundWorkbenchSortDirection,
+} from "@/services/inbound-workbench/inbound-workbench-sort";
 
 const GROWTH_INBOUND_RECOMMEND_TOOLTIP =
   "판매기준수요(max(30일, 7일×3)) − 쿠팡입고예정 − 쿠팡윙재고, 음수면 0, 샵플링 가용재고로 상한. 클릭하여 수정 가능.";
@@ -56,21 +60,31 @@ function formatRotationQty(qty: number | null): string {
 function RotationTableHead({
   label,
   rank,
+  column,
+  sort,
+  dir,
+  onSort,
+  disabled,
 }: {
   label: string;
   rank: keyof typeof ROTATION_TOOLTIPS;
+  column: InboundWorkbenchSortColumn;
+  sort: InboundWorkbenchSortColumn | null;
+  dir: InboundWorkbenchSortDirection | null;
+  onSort: (column: InboundWorkbenchSortColumn) => void;
+  disabled?: boolean;
 }) {
   return (
-    <TableHead className="text-right">
-      <Tooltip>
-        <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-4">
-          {label}
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-sm text-left">
-          {ROTATION_TOOLTIPS[rank]}
-        </TooltipContent>
-      </Tooltip>
-    </TableHead>
+    <SortableTableHead
+      column={column}
+      label={label}
+      sort={sort}
+      dir={dir}
+      onSort={onSort}
+      disabled={disabled}
+      align="right"
+      tooltip={ROTATION_TOOLTIPS[rank]}
+    />
   );
 }
 
@@ -149,6 +163,9 @@ function isGrowthInboundRecommendHighlighted(
 type InboundWorkbenchTableProps = {
   rows: InboundWorkbenchRowView[];
   editMode?: boolean;
+  sort?: InboundWorkbenchSortColumn | null;
+  dir?: InboundWorkbenchSortDirection | null;
+  onSort?: (column: InboundWorkbenchSortColumn) => void;
   drafts?: Record<string, InboundWorkbenchDraftEntry>;
   onDraftChange?: (
     key: string,
@@ -160,6 +177,9 @@ type InboundWorkbenchTableProps = {
 export function InboundWorkbenchTable({
   rows,
   editMode = false,
+  sort = null,
+  dir = null,
+  onSort,
   drafts,
   onDraftChange,
 }: InboundWorkbenchTableProps) {
@@ -168,6 +188,13 @@ export function InboundWorkbenchTable({
   }
 
   const editedKeys = new Set<string>();
+  const sortDisabled = editMode || !onSort;
+
+  const handleSort = (column: InboundWorkbenchSortColumn) => {
+    if (!sortDisabled) {
+      onSort?.(column);
+    }
+  };
 
   return (
     <TooltipProvider>
@@ -176,53 +203,182 @@ export function InboundWorkbenchTable({
           <Table>
             <TableHeader className="bg-muted/40">
               <TableRow className="hover:bg-transparent">
-                <TableHead>상품명</TableHead>
-                <TableHead>옵션명</TableHead>
-                <TableHead>바코드</TableHead>
-                <TableHead className="text-right">샵플링재고</TableHead>
-                <TableHead>자사상품코드</TableHead>
-                <TableHead className="text-right">쿠팡윙재고</TableHead>
-                <TableHead className="text-right">60일판매</TableHead>
-                <TableHead className="text-right">7일판매</TableHead>
-                <TableHead className="text-right">30일판매</TableHead>
-                <TableHead className="text-right">쿠팡자체추천</TableHead>
-                <TableHead className="text-right">쿠팡입고예정</TableHead>
-                <TableHead className="text-right">
-                  <Tooltip>
-                    <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-4">
-                      안전재고
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-sm text-left">
-                      {SAFETY_STOCK_TOOLTIP}
-                    </TooltipContent>
-                  </Tooltip>
-                </TableHead>
-                <TableHead className="text-right">
-                  <Tooltip>
-                    <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-4">
-                      쿠팡그로스 입고추천
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-sm text-left">
-                      {GROWTH_INBOUND_RECOMMEND_TOOLTIP}
-                    </TooltipContent>
-                  </Tooltip>
-                </TableHead>
-                <TableHead className="text-right">
-                  <Tooltip>
-                    <TooltipTrigger className="cursor-help underline decoration-dotted underline-offset-4">
-                      실포장수량
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-sm text-left">
-                      {ACTUAL_PACKED_QTY_TOOLTIP}
-                    </TooltipContent>
-                  </Tooltip>
-                </TableHead>
-                <RotationTableHead label="1회전" rank={1} />
-                <RotationTableHead label="2회전" rank={2} />
-                <RotationTableHead label="3회전" rank={3} />
-                <TableHead>등급</TableHead>
-                <TableHead>소진예상일</TableHead>
-                <TableHead>위치</TableHead>
+                <SortableTableHead
+                  column="registeredProductName"
+                  label="상품명"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                />
+                <SortableTableHead
+                  column="optionName"
+                  label="옵션명"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                />
+                <SortableTableHead
+                  column="productBarcode"
+                  label="바코드"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                />
+                <SortableTableHead
+                  column="shoplingAvailableStock"
+                  label="샵플링재고"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                  align="right"
+                />
+                <SortableTableHead
+                  column="ptnGoodsCd"
+                  label="자사상품코드"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                />
+                <SortableTableHead
+                  column="orderableQuantity"
+                  label="쿠팡윙재고"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                  align="right"
+                />
+                <SortableTableHead
+                  column="salesQty60days"
+                  label="60일판매"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                  align="right"
+                />
+                <SortableTableHead
+                  column="recentSalesQty7days"
+                  label="7일판매"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                  align="right"
+                />
+                <SortableTableHead
+                  column="recentSalesQty30days"
+                  label="30일판매"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                  align="right"
+                />
+                <SortableTableHead
+                  column="recommendedInboundQty"
+                  label="쿠팡자체추천"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                  align="right"
+                />
+                <SortableTableHead
+                  column="pendingInbounds"
+                  label="쿠팡입고예정"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                  align="right"
+                />
+                <SortableTableHead
+                  column="safetyStock"
+                  label="안전재고"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                  align="right"
+                  tooltip={SAFETY_STOCK_TOOLTIP}
+                />
+                <SortableTableHead
+                  column="growthInboundRecommend"
+                  label="쿠팡그로스 입고추천"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                  align="right"
+                  tooltip={GROWTH_INBOUND_RECOMMEND_TOOLTIP}
+                />
+                <SortableTableHead
+                  column="actualPackedQty"
+                  label="실포장수량"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                  align="right"
+                  tooltip={ACTUAL_PACKED_QTY_TOOLTIP}
+                />
+                <RotationTableHead
+                  label="1회전"
+                  rank={1}
+                  column="rotation1Qty"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                />
+                <RotationTableHead
+                  label="2회전"
+                  rank={2}
+                  column="rotation2Qty"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                />
+                <RotationTableHead
+                  label="3회전"
+                  rank={3}
+                  column="rotation3Qty"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                />
+                <SortableTableHead
+                  column="offerCondition"
+                  label="등급"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                />
+                <SortableTableHead
+                  column="daysOfCover"
+                  label="소진예상일"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                />
+                <SortableTableHead
+                  column="location"
+                  label="위치"
+                  sort={sort}
+                  dir={dir}
+                  onSort={handleSort}
+                  disabled={sortDisabled}
+                />
               </TableRow>
             </TableHeader>
             <TableBody>

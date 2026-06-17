@@ -6,12 +6,20 @@ import type {
   ListInboundWorkbenchResult,
 } from "@/services/inbound-workbench/types";
 import { normalizeInboundWorkbenchPageSize } from "@/services/inbound-workbench/types";
+import {
+  buildInboundWorkbenchOrderBy,
+} from "@/services/inbound-workbench/build-inbound-workbench-order-by";
+import {
+  parseInboundWorkbenchSort,
+} from "@/services/inbound-workbench/inbound-workbench-sort";
 
 type ListInboundWorkbenchOptions = {
   coupangSellerAccountId: string;
   page?: number;
   pageSize?: number;
   search?: string;
+  sort?: string;
+  dir?: string;
 };
 
 type RawWorkbenchRow = {
@@ -149,6 +157,8 @@ export async function listInboundWorkbench(
   const pageSize = normalizeInboundWorkbenchPageSize(options.pageSize);
   const sellerId = options.coupangSellerAccountId;
   const searchCondition = buildSearchCondition(options.search);
+  const { sort, dir } = parseInboundWorkbenchSort(options.sort, options.dir);
+  const orderBy = buildInboundWorkbenchOrderBy(sort, dir);
 
   const snapshotDates = await fetchSnapshotDates(sellerId);
 
@@ -215,7 +225,7 @@ export async function listInboundWorkbench(
             OR (d.option_id IS NULL AND d.template_id = o.template_id)
           )
         ${baseWhere}
-        ORDER BY d.registered_product_name ASC NULLS LAST, d.option_id ASC NULLS LAST, d.shopling_row_key ASC
+        ORDER BY ${orderBy}
         LIMIT ${pageSize}
         OFFSET ${(page - 1) * pageSize}
       `,

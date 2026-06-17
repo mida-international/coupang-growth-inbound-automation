@@ -3,6 +3,8 @@ type BuildWorkbenchQueryOptions = {
   q?: string;
   page?: number;
   pageSize?: number;
+  sort?: string | null;
+  dir?: string | null;
 };
 
 export function buildWorkbenchQuery({
@@ -10,6 +12,8 @@ export function buildWorkbenchQuery({
   q,
   page,
   pageSize,
+  sort,
+  dir,
 }: BuildWorkbenchQueryOptions): string {
   const params = new URLSearchParams();
 
@@ -20,6 +24,14 @@ export function buildWorkbenchQuery({
   const trimmed = q?.trim();
   if (trimmed) {
     params.set("q", trimmed);
+  }
+
+  if (sort) {
+    params.set("sort", sort);
+  }
+
+  if (dir) {
+    params.set("dir", dir);
   }
 
   if (page !== undefined && page > 1) {
