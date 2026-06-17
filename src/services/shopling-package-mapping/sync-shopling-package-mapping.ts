@@ -193,31 +193,33 @@ async function upsertPackageMappingRows(
 
     try {
       await prisma.$transaction(
-        batch.map((row) =>
-          prisma.shoplingPackageMapping.upsert({
-            where: {
-              packageOptId_singleOptId: {
-                packageOptId: row.packageOptId,
-                singleOptId: row.singleOptId,
+        async (tx) => {
+          for (const row of batch) {
+            await tx.shoplingPackageMapping.upsert({
+              where: {
+                packageOptId_singleOptId: {
+                  packageOptId: row.packageOptId,
+                  singleOptId: row.singleOptId,
+                },
               },
-            },
-            create: {
-              ...row,
-              manuallyEdited: false,
-            },
-            update: {
-              packageBarcode: row.packageBarcode,
-              packageGoodsKey: row.packageGoodsKey,
-              packagePtnGoodsCd: row.packagePtnGoodsCd,
-              packageOptValue: row.packageOptValue,
-              singleBarcode: row.singleBarcode,
-              singleGoodsKey: row.singleGoodsKey,
-              singleOptValue: row.singleOptValue,
-              singlePtnGoodsCd: row.singlePtnGoodsCd,
-              mapCnt: row.mapCnt,
-            },
-          }),
-        ),
+              create: {
+                ...row,
+                manuallyEdited: false,
+              },
+              update: {
+                packageBarcode: row.packageBarcode,
+                packageGoodsKey: row.packageGoodsKey,
+                packagePtnGoodsCd: row.packagePtnGoodsCd,
+                packageOptValue: row.packageOptValue,
+                singleBarcode: row.singleBarcode,
+                singleGoodsKey: row.singleGoodsKey,
+                singleOptValue: row.singleOptValue,
+                singlePtnGoodsCd: row.singlePtnGoodsCd,
+                mapCnt: row.mapCnt,
+              },
+            });
+          }
+        },
         {
           maxWait: UPSERT_TX_MAX_WAIT_MS,
           timeout: computeUpsertTransactionTimeoutMs(batch.length),

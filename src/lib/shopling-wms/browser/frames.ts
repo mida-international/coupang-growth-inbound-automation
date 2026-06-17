@@ -51,6 +51,43 @@ export async function findFrameBySelector(
   throw new Error(`셀렉터를 찾을 수 없습니다: ${selector}`);
 }
 
+export async function findFrameByAnySelector(
+  page: Page,
+  selectors: readonly string[],
+  timeoutMs = getShoplingWmsFrameWaitMs(),
+): Promise<Frame> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    for (const frame of page.frames()) {
+      for (const selector of selectors) {
+        const count = await frame.locator(selector).count();
+
+        if (count > 0) {
+          return frame;
+        }
+      }
+    }
+
+    await delay(250);
+  }
+
+  throw new Error(`셀렉터를 찾을 수 없습니다: ${selectors.join(", ")}`);
+}
+
+function isShoplingWmsLoginPage(url: string | URL): boolean {
+  const href = typeof url === "string" ? url : url.href;
+  return href.includes("login.phtml");
+}
+
+export async function assertShoplingWmsAuthenticated(page: Page): Promise<void> {
+  if (isShoplingWmsLoginPage(page.url())) {
+    throw new Error(
+      "샵플링 WMS 로그인이 필요합니다. 자동화 실행 전 로그인을 완료해 주세요.",
+    );
+  }
+}
+
 export async function gotoShoplingPath(
   page: Page,
   shoplingPath: string,

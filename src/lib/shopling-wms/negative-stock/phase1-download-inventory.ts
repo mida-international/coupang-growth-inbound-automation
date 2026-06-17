@@ -4,11 +4,15 @@ import type { Page } from "playwright";
 
 import {
   dismissMainOrderDelay,
-  findFrameBySelector,
   gotoShoplingPath,
-  stepDelay,
 } from "@/lib/shopling-wms/browser/frames";
 import { getShoplingWmsFrameWaitMs } from "@/lib/shopling-wms/constants";
+import {
+  clickInventoryExcelDownload,
+  clickInventorySearch,
+  configureNegativeStockSearch,
+  findInventorySearchFrame,
+} from "@/lib/shopling-wms/negative-stock/inventory-search-form";
 import { getShoplingWmsDownloadDir } from "@/lib/shopling-wms/paths";
 
 const INVENTORY_LIST_PATH = "/invntryn/goods_inventory_list.phtml";
@@ -19,28 +23,12 @@ export async function downloadNegativeInventoryExcel(
 ): Promise<Buffer> {
   await gotoShoplingPath(page, INVENTORY_LIST_PATH);
 
-  const frame = await findFrameBySelector(
-    page,
-    'select[name="srch_opt_cnt"]',
-    getShoplingWmsFrameWaitMs(),
-  );
-
-  await frame.locator('select[name="srch_opt_cnt"]').selectOption("A");
-  await stepDelay();
-  await frame.locator("#srch_opt_s_cnt").fill("-999");
-  await stepDelay();
-  await frame.locator("#srch_opt_e_cnt").fill("-1");
-  await stepDelay();
-
-  await frame.locator('input[type="button"][value="검색"]').click();
-  await stepDelay();
+  const frame = await findInventorySearchFrame(page);
+  await configureNegativeStockSearch(frame);
+  await clickInventorySearch(frame);
   await dismissMainOrderDelay(page);
 
-  const excelButton = frame.locator('input[onclick="stock_excel_save();"]');
-  await excelButton.waitFor({
-    state: "visible",
-    timeout: getShoplingWmsFrameWaitMs(),
-  });
+  const excelButton = await clickInventoryExcelDownload(frame);
 
   const downloadPromise = page.waitForEvent("download", {
     timeout: getShoplingWmsFrameWaitMs(),
