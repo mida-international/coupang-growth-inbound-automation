@@ -1,7 +1,8 @@
 import "dotenv/config";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { PrismaClient } from "../src/generated/prisma/client";
+
+import { disconnectDatabase, prisma } from "../src/lib/db";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -44,7 +45,6 @@ async function main() {
   const email = requireEnv("MASTER_ADMIN_EMAIL");
   const password = requireEnv("MASTER_ADMIN_PASSWORD");
 
-  const prisma = new PrismaClient();
   const supabase = createClient(url, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
@@ -113,7 +113,7 @@ async function main() {
 
     console.log("마스터 관리자 Profile을 생성했습니다.");
   } finally {
-    await prisma.$disconnect();
+    await disconnectDatabase();
   }
 }
 
