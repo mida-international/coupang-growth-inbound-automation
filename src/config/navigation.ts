@@ -5,6 +5,7 @@ import {
   Database,
   FileSpreadsheet,
   LayoutDashboard,
+  LineChart,
   MessageSquare,
   Plug,
   RefreshCw,
@@ -34,6 +35,7 @@ export type NavGroup = {
 export const mainNavItems: NavItem[] = [
   { title: "대시보드", href: "/", icon: LayoutDashboard },
   { title: "산출물 생성", href: "/downloads", icon: FileSpreadsheet },
+  { title: "추세조회", href: "/trends", icon: LineChart },
   { title: "자동화", href: "/automation", icon: Bot },
   {
     title: "바코드 출력",
