@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { buildWorkbenchQuery } from "@/components/inbound-workbench/build-workbench-query";
+import { SellerAccountCheckboxList } from "@/components/inbound-workbench/seller-account-checkbox-list";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -17,7 +18,10 @@ import type {
 
 type InboundWorkbenchToolbarProps = {
   accounts: SellerAccountView[];
-  sellerId: string;
+  appliedSellerIds: string[];
+  draftSellerIds: string[];
+  onDraftSellerIdsChange: (nextIds: string[]) => void;
+  onApplySellers: () => void;
   search: string;
   page: number;
   pageSize: number;
@@ -34,9 +38,15 @@ type InboundWorkbenchToolbarProps = {
   onResetColumns?: () => void;
 };
 
-function formatSnapshotLine(dates: InboundWorkbenchSnapshotDates | null): string {
+function formatSnapshotLine(
+  dates: InboundWorkbenchSnapshotDates | null,
+  sellerCount: number,
+): string {
+  const sellerPrefix =
+    sellerCount > 1 ? `${sellerCount}개 판매자 계정 · ` : "";
+
   if (!dates) {
-    return "스냅샷 없음";
+    return `${sellerPrefix}스냅샷 없음`;
   }
 
   const parts = [`템플릿 ${dates.template}`];
@@ -49,12 +59,15 @@ function formatSnapshotLine(dates: InboundWorkbenchSnapshotDates | null): string
     parts.push(`샵플링 ${dates.shopling}`);
   }
 
-  return parts.join(" · ");
+  return `${sellerPrefix}${parts.join(" · ")}`;
 }
 
 export function InboundWorkbenchToolbar({
   accounts,
-  sellerId,
+  appliedSellerIds,
+  draftSellerIds,
+  onDraftSellerIdsChange,
+  onApplySellers,
   search,
   page,
   pageSize,
@@ -75,48 +88,28 @@ export function InboundWorkbenchToolbar({
   const hasPrev = page > 1;
   const hasNext = page < totalPages;
   const showPagination = totalCount > 0;
-  const activeAccounts = accounts.filter((account) => account.isActive);
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-muted/30 px-3 py-3">
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <form
-          method="GET"
-          action="/"
-          className="flex flex-col gap-2 lg:flex-row lg:items-center"
-        >
-          <select
-            name="seller"
-            defaultValue={sellerId}
-            disabled={activeAccounts.length === 0 || editMode}
-            aria-label="쿠팡 판매자 계정"
-            className="h-9 min-w-[160px] rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
-          >
-            {activeAccounts.length === 0 ? (
-              <option value="">판매자 계정 없음</option>
-            ) : (
-              activeAccounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.displayName}
-                </option>
-              ))
-            )}
-          </select>
-          <Input
-            name="q"
-            type="search"
-            defaultValue={search}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <SellerAccountCheckboxList
+            accounts={accounts}
+            selectedIds={draftSellerIds}
+            appliedIds={appliedSellerIds}
             disabled={editMode}
-            placeholder="상품명 · 옵션명 · 바코드 · 자사상품코드 검색"
-            className="min-w-[200px] flex-1 lg:max-w-md"
+            onChange={onDraftSellerIdsChange}
           />
-          <input type="hidden" name="pageSize" value={pageSize} />
-          {sort ? <input type="hidden" name="sort" value={sort} /> : null}
-          {dir ? <input type="hidden" name="dir" value={dir} /> : null}
-          <Button type="submit" size="sm" className="shrink-0" disabled={editMode}>
-            조회
+          <Button
+            type="button"
+            size="sm"
+            className="w-fit"
+            disabled={editMode || draftSellerIds.length === 0}
+            onClick={onApplySellers}
+          >
+            선택
           </Button>
-        </form>
+        </div>
 
         <div className="flex shrink-0 gap-2">
           <Button
@@ -162,9 +155,34 @@ export function InboundWorkbenchToolbar({
         </div>
       </div>
 
+      <form
+        method="GET"
+        action="/"
+        className="flex flex-col gap-2 lg:flex-row lg:items-center"
+      >
+        <Input
+          name="q"
+          type="search"
+          defaultValue={search}
+          disabled={editMode}
+          placeholder="상품명 · 옵션명 · 바코드 · 자사상품코드 검색"
+          className="min-w-[200px] flex-1 lg:max-w-md"
+        />
+        <input type="hidden" name="pageSize" value={pageSize} />
+        {appliedSellerIds.map((sellerId) => (
+          <input key={sellerId} type="hidden" name="seller" value={sellerId} />
+        ))}
+        {sort ? <input type="hidden" name="sort" value={sort} /> : null}
+        {dir ? <input type="hidden" name="dir" value={dir} /> : null}
+        <Button type="submit" size="sm" className="shrink-0" disabled={editMode}>
+          조회
+        </Button>
+      </form>
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          {formatSnapshotLine(snapshotDates)} · {totalCount.toLocaleString()}건
+          {formatSnapshotLine(snapshotDates, appliedSellerIds.length)} ·{" "}
+          {totalCount.toLocaleString()}건
           {editMode ? " · 편집 모드" : null}
         </p>
 
@@ -177,7 +195,7 @@ export function InboundWorkbenchToolbar({
                 const nextPageSize = Number(event.target.value);
                 router.push(
                   `/${buildWorkbenchQuery({
-                    seller: sellerId,
+                    sellers: appliedSellerIds,
                     q: search,
                     page: 1,
                     pageSize: nextPageSize,
@@ -201,7 +219,7 @@ export function InboundWorkbenchToolbar({
               {hasPrev ? (
                 <Link
                   href={`/${buildWorkbenchQuery({
-                    seller: sellerId,
+                    sellers: appliedSellerIds,
                     q: search,
                     page: page - 1,
                     pageSize,
@@ -222,7 +240,7 @@ export function InboundWorkbenchToolbar({
               {hasNext ? (
                 <Link
                   href={`/${buildWorkbenchQuery({
-                    seller: sellerId,
+                    sellers: appliedSellerIds,
                     q: search,
                     page: page + 1,
                     pageSize,

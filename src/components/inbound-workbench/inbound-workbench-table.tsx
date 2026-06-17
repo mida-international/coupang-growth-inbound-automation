@@ -16,6 +16,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -28,6 +29,8 @@ import { getInboundWorkbenchOverrideKey } from "@/services/inbound-workbench/typ
 
 export type { InboundWorkbenchDraftEntry };
 
+const SELLER_COLUMN_WIDTH = 120;
+
 type InboundWorkbenchTableProps = {
   rows: InboundWorkbenchRowView[];
   columnOrder: InboundWorkbenchSortColumn[];
@@ -37,6 +40,7 @@ type InboundWorkbenchTableProps = {
     toId: InboundWorkbenchSortColumn,
   ) => void;
   onResizeColumn: (columnId: InboundWorkbenchSortColumn, width: number) => void;
+  showSellerColumn?: boolean;
   editMode?: boolean;
   sort?: InboundWorkbenchSortColumn | null;
   dir?: InboundWorkbenchSortDirection | null;
@@ -55,6 +59,7 @@ export function InboundWorkbenchTable({
   getColumnWidth,
   onReorderColumn,
   onResizeColumn,
+  showSellerColumn = false,
   editMode = false,
   sort = null,
   dir = null,
@@ -83,6 +88,18 @@ export function InboundWorkbenchTable({
           <Table className="table-fixed">
             <TableHeader className="bg-muted/40">
               <TableRow className="hover:bg-transparent">
+                {showSellerColumn ? (
+                  <TableHead
+                    className="whitespace-nowrap"
+                    style={{
+                      width: SELLER_COLUMN_WIDTH,
+                      minWidth: SELLER_COLUMN_WIDTH,
+                      maxWidth: SELLER_COLUMN_WIDTH,
+                    }}
+                  >
+                    판매자
+                  </TableHead>
+                ) : null}
                 {columnOrder.map((columnId) => {
                   const def = getInboundWorkbenchColumnDef(columnId);
                   const width = getColumnWidth(columnId);
@@ -139,7 +156,21 @@ export function InboundWorkbenchTable({
                 };
 
                 return (
-                  <TableRow key={`${row.templateId}|${row.shoplingRowKey}`}>
+                  <TableRow
+                    key={`${row.coupangSellerAccountId}|${row.templateId}|${row.shoplingRowKey}`}
+                  >
+                    {showSellerColumn ? (
+                      <TableCell
+                        className="overflow-hidden text-ellipsis whitespace-nowrap"
+                        style={{
+                          width: SELLER_COLUMN_WIDTH,
+                          minWidth: SELLER_COLUMN_WIDTH,
+                          maxWidth: SELLER_COLUMN_WIDTH,
+                        }}
+                      >
+                        {row.sellerDisplayName}
+                      </TableCell>
+                    ) : null}
                     {columnOrder.map((columnId) => {
                       const def = getInboundWorkbenchColumnDef(columnId);
                       const width = getColumnWidth(columnId);

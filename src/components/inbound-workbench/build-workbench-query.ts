@@ -1,5 +1,5 @@
 type BuildWorkbenchQueryOptions = {
-  seller?: string;
+  sellers?: string[];
   q?: string;
   page?: number;
   pageSize?: number;
@@ -8,7 +8,7 @@ type BuildWorkbenchQueryOptions = {
 };
 
 export function buildWorkbenchQuery({
-  seller,
+  sellers,
   q,
   page,
   pageSize,
@@ -17,8 +17,10 @@ export function buildWorkbenchQuery({
 }: BuildWorkbenchQueryOptions): string {
   const params = new URLSearchParams();
 
-  if (seller) {
-    params.set("seller", seller);
+  if (sellers) {
+    for (const sellerId of sellers) {
+      params.append("seller", sellerId);
+    }
   }
 
   const trimmed = q?.trim();

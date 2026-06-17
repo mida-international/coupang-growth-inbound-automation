@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -34,7 +34,7 @@ type DraftMap = Record<string, DraftEntry>;
 
 type InboundWorkbenchPanelClientProps = {
   accounts: SellerAccountView[];
-  sellerId: string;
+  sellerIds: string[];
   data: ListInboundWorkbenchResult;
   search: string;
   page: number;
@@ -69,7 +69,7 @@ function buildDraftMap(rows: InboundWorkbenchRowView[]): DraftMap {
 
 export function InboundWorkbenchPanelClient({
   accounts,
-  sellerId,
+  sellerIds,
   data,
   search,
   page,
@@ -84,6 +84,11 @@ export function InboundWorkbenchPanelClient({
   const [editMode, setEditMode] = useState(false);
   const [drafts, setDrafts] = useState<DraftMap>({});
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [draftSellerIds, setDraftSellerIds] = useState<string[]>(sellerIds);
+
+  useEffect(() => {
+    setDraftSellerIds(sellerIds);
+  }, [sellerIds]);
 
   const parsedSort = parseInboundWorkbenchSort(sort ?? undefined, dir ?? undefined);
   const {
@@ -97,7 +102,8 @@ export function InboundWorkbenchPanelClient({
     disabled: editMode,
   });
 
-  const canEdit = data.totalCount > 0 && Boolean(sellerId);
+  const canEdit = data.totalCount > 0 && sellerIds.length === 1;
+  const showSellerColumn = sellerIds.length > 1;
 
   function handleSort(column: InboundWorkbenchSortColumn) {
     const next = cycleInboundWorkbenchSort(
@@ -109,12 +115,31 @@ export function InboundWorkbenchPanelClient({
     startTransition(() => {
       router.push(
         `/${buildWorkbenchQuery({
-          seller: sellerId,
+          sellers: sellerIds,
           q: search,
           page: 1,
           pageSize,
           sort: next.sort,
           dir: next.dir,
+        })}`,
+      );
+    });
+  }
+
+  function handleApplySellers() {
+    if (draftSellerIds.length === 0) {
+      return;
+    }
+
+    startTransition(() => {
+      router.push(
+        `/${buildWorkbenchQuery({
+          sellers: draftSellerIds,
+          q: search,
+          page: 1,
+          pageSize,
+          sort: parsedSort.sort,
+          dir: parsedSort.dir,
         })}`,
       );
     });
@@ -176,6 +201,8 @@ export function InboundWorkbenchPanelClient({
   }
 
   async function saveEdits() {
+    const sellerId = sellerIds[0];
+
     if (!sellerId || Object.keys(drafts).length === 0) {
       return;
     }
@@ -239,7 +266,10 @@ export function InboundWorkbenchPanelClient({
     <div className="space-y-4">
       <InboundWorkbenchToolbar
         accounts={accounts}
-        sellerId={sellerId}
+        appliedSellerIds={sellerIds}
+        draftSellerIds={draftSellerIds}
+        onDraftSellerIdsChange={setDraftSellerIds}
+        onApplySellers={handleApplySellers}
         search={search}
         page={page}
         pageSize={pageSize}
@@ -265,6 +295,7 @@ export function InboundWorkbenchPanelClient({
           getColumnWidth={getColumnWidth}
           onReorderColumn={reorderColumn}
           onResizeColumn={resizeColumn}
+          showSellerColumn={showSellerColumn}
           editMode={editMode}
           sort={parsedSort.sort}
           dir={parsedSort.dir}

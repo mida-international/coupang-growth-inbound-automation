@@ -8,7 +8,7 @@ import type { InboundWorkbenchColumnLayout } from "@/services/inbound-workbench/
 
 type InboundWorkbenchPanelProps = {
   accounts: SellerAccountView[];
-  sellerId: string;
+  sellerIds: string[];
   data: ListInboundWorkbenchResult;
   search: string;
   page: number;
@@ -28,7 +28,7 @@ function EmptyState({ children }: { children: ReactNode }) {
 
 export function InboundWorkbenchPanel({
   accounts,
-  sellerId,
+  sellerIds,
   data,
   search,
   page,
@@ -59,7 +59,7 @@ export function InboundWorkbenchPanel({
         </p>
       </EmptyState>
     );
-  } else if (!sellerId) {
+  } else if (sellerIds.length === 0) {
     emptyContent = (
       <EmptyState>
         <p className="text-sm text-muted-foreground">
@@ -103,7 +103,7 @@ export function InboundWorkbenchPanel({
   return (
     <InboundWorkbenchPanelClient
       accounts={accounts}
-      sellerId={sellerId}
+      sellerIds={sellerIds}
       data={data}
       search={search}
       page={page}

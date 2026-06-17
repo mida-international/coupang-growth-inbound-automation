@@ -5,6 +5,8 @@ export type InboundWorkbenchSnapshotDates = {
 };
 
 export type InboundWorkbenchRowView = {
+  coupangSellerAccountId: string;
+  sellerDisplayName: string;
   templateId: string;
   shoplingRowKey: string;
   optionId: string | null;
@@ -64,8 +66,10 @@ export function normalizeInboundWorkbenchPageSize(value?: number): number {
 }
 
 export function getInboundWorkbenchOverrideKey(row: {
+  coupangSellerAccountId: string;
   optionId: string | null;
   templateId: string;
 }): string {
-  return row.optionId ?? `template:${row.templateId}`;
+  const itemKey = row.optionId ?? `template:${row.templateId}`;
+  return `${row.coupangSellerAccountId}|${itemKey}`;
 }
