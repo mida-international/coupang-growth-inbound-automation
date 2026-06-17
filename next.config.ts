@@ -1,18 +1,31 @@
 import type { NextConfig } from "next";
 
+const AUTOMATION_API_ROUTES = [
+  "/api/automation/shopling-negative-stock/run",
+  "/api/automation/shopling-negative-stock/login",
+] as const;
+
+// playwright-core/** 전체는 Turbopack NFT가 repo 전체를 추적한다고 경고한다.
+// 런타임에 필요한 파일만 명시한다 (browsers.json 동적 require 대응).
+const PLAYWRIGHT_CORE_TRACE = [
+  "./node_modules/playwright-core/browsers.json",
+  "./node_modules/playwright-core/package.json",
+  "./node_modules/playwright-core/index.js",
+  "./node_modules/playwright-core/index.mjs",
+  "./node_modules/playwright-core/lib/**",
+] as const;
+
+const AUTOMATION_TRACE_INCLUDES = [
+  ...PLAYWRIGHT_CORE_TRACE,
+  "./public/templates/stockIpReg.xlsx",
+] as const;
+
+const outputFileTracingIncludes = Object.fromEntries(
+  AUTOMATION_API_ROUTES.map((route) => [route, [...AUTOMATION_TRACE_INCLUDES]]),
+) satisfies NextConfig["outputFileTracingIncludes"];
+
 const nextConfig: NextConfig = {
-  // playwright-core는 런타임에 browsers.json 등 패키지 루트 파일을 동적으로
-  // 읽는데, Next의 파일 추적(NFT)이 lib만 포함하고 이를 빠뜨려 서버리스에서
-  // "Cannot find module .../playwright-core/browsers.json" 오류가 난다.
-  // 브라우저 자동화 라우트에 playwright-core 패키지 전체를 강제 포함한다.
-  outputFileTracingIncludes: {
-    "/api/automation/shopling-negative-stock/run": [
-      "./node_modules/playwright-core/**",
-    ],
-    "/api/automation/shopling-negative-stock/login": [
-      "./node_modules/playwright-core/**",
-    ],
-  },
+  outputFileTracingIncludes,
 };
 
 export default nextConfig;

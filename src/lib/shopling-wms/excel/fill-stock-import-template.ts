@@ -7,6 +7,7 @@ import {
   STOCK_IMPORT_LAYOUT,
   getStockImportTemplatePath,
 } from "@/lib/shopling-wms/excel/targets/stock-import-template";
+import { getShoplingWmsOutputDir } from "@/lib/shopling-wms/paths";
 
 function getMainWorksheet(workbook: ExcelJS.Workbook): ExcelJS.Worksheet {
   const sheet =
@@ -50,7 +51,7 @@ export type FillStockImportTemplateResult = {
 
 export async function fillStockImportTemplate(
   rows: NegativeInventoryRow[],
-  outputDir: string,
+  runId: string,
   timestamp: string,
 ): Promise<FillStockImportTemplateResult> {
   const templateBuffer = await fs.readFile(getStockImportTemplatePath());
@@ -78,8 +79,8 @@ export async function fillStockImportTemplate(
     rowNum += 1;
   }
 
-  const fileName = `stockIpReg_filled_${timestamp}.xlsx`;
-  const filePath = path.join(outputDir, fileName);
+  const outputDir = getShoplingWmsOutputDir(runId);
+  const filePath = path.join(outputDir, `stockIpReg_filled_${timestamp}.xlsx`);
   const arrayBuffer = await workbook.xlsx.writeBuffer();
   const buffer = Buffer.from(arrayBuffer);
 

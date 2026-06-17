@@ -33,6 +33,7 @@ import type {
 import { isExcelFile } from "@/lib/excel/validate-file";
 import { cn } from "@/lib/utils";
 import type { ExcelUploadResponse, ExcelUploadResultSummary } from "@/services/coupang-growth-sync/types";
+import { getDefaultSellerAccountId } from "@/services/coupang-seller-accounts/get-default-seller-account-id";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
 
 const COUPANG_GROWTH_TARGET_IDS = [
@@ -42,16 +43,6 @@ const COUPANG_GROWTH_TARGET_IDS = [
 
 function createFileId(file: File) {
   return `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`;
-}
-
-function getDefaultSellerAccountId(accounts: SellerAccountView[]): string {
-  const match = accounts.find(
-    (account) =>
-      account.isActive &&
-      account.displayName.trim().toLowerCase() === "mizucos",
-  );
-
-  return match?.id ?? "";
 }
 
 function UploadSection({

@@ -74,7 +74,7 @@ export async function runNegativeStock(
       progress("샵플링 WMS 접속 · 음수 재고 조회 및 엑셀 다운로드 중...");
       inventoryBuffer = await downloadNegativeInventoryExcel(
         browserSession.page,
-        browserSession.downloadDir,
+        browserSession.runId,
       );
     } catch (error) {
       if (signal?.aborted) {
@@ -114,7 +114,7 @@ export async function runNegativeStock(
 
       const filled = await fillStockImportTemplate(
         parsed.rows,
-        browserSession.outputDir,
+        browserSession.runId,
         timestamp,
       );
 

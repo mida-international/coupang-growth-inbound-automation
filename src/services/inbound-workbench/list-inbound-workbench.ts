@@ -6,15 +6,25 @@ import type {
   ListInboundWorkbenchResult,
 } from "@/services/inbound-workbench/types";
 import { normalizeInboundWorkbenchPageSize } from "@/services/inbound-workbench/types";
+import {
+  buildInboundWorkbenchOrderBy,
+} from "@/services/inbound-workbench/build-inbound-workbench-order-by";
+import {
+  parseInboundWorkbenchSort,
+} from "@/services/inbound-workbench/inbound-workbench-sort";
 
 type ListInboundWorkbenchOptions = {
-  coupangSellerAccountId: string;
+  coupangSellerAccountIds: string[];
   page?: number;
   pageSize?: number;
   search?: string;
+  sort?: string;
+  dir?: string;
 };
 
 type RawWorkbenchRow = {
+  coupang_seller_account_id: string;
+  seller_display_name: string;
   template_id: bigint;
   option_id: bigint | null;
   registered_product_name: string | null;
@@ -62,6 +72,8 @@ function formatRotationDate(value: Date | null): string | null {
 
 function mapRow(row: RawWorkbenchRow): InboundWorkbenchRowView {
   return {
+    coupangSellerAccountId: row.coupang_seller_account_id,
+    sellerDisplayName: row.seller_display_name,
     templateId: row.template_id.toString(),
     shoplingRowKey: row.shopling_row_key,
     optionId: row.option_id?.toString() ?? null,
@@ -142,15 +154,31 @@ function buildSearchCondition(search?: string) {
   )`;
 }
 
+function buildSellerInClause(sellerIds: string[]) {
+  return Prisma.join(sellerIds.map((id) => Prisma.sql`${id}`));
+}
+
 export async function listInboundWorkbench(
   options: ListInboundWorkbenchOptions,
 ): Promise<ListInboundWorkbenchResult> {
+  const sellerIds = options.coupangSellerAccountIds;
+
+  if (sellerIds.length === 0) {
+    return {
+      snapshotDates: null,
+      totalCount: 0,
+      rows: [],
+    };
+  }
+
   const page = Math.max(1, options.page ?? 1);
   const pageSize = normalizeInboundWorkbenchPageSize(options.pageSize);
-  const sellerId = options.coupangSellerAccountId;
   const searchCondition = buildSearchCondition(options.search);
+  const { sort, dir } = parseInboundWorkbenchSort(options.sort, options.dir);
+  const orderBy = buildInboundWorkbenchOrderBy(sort, dir);
+  const sellerInClause = buildSellerInClause(sellerIds);
 
-  const snapshotDates = await fetchSnapshotDates(sellerId);
+  const snapshotDates = await fetchSnapshotDates(sellerIds[0]!);
 
   if (!snapshotDates) {
     return {
@@ -161,7 +189,7 @@ export async function listInboundWorkbench(
   }
 
   const baseWhere = Prisma.sql`
-    WHERE d.coupang_seller_account_id = ${sellerId}
+    WHERE d.coupang_seller_account_id IN (${sellerInClause})
     ${searchCondition}
   `;
 
@@ -176,6 +204,8 @@ export async function listInboundWorkbench(
     prisma.$queryRaw<RawWorkbenchRow[]>(
       Prisma.sql`
         SELECT
+          d.coupang_seller_account_id,
+          s."displayName" AS seller_display_name,
           d.template_id,
           d.option_id,
           d.registered_product_name,
@@ -208,6 +238,8 @@ export async function listInboundWorkbench(
           d.health_snapshot_date,
           d.shopling_snapshot_date
         FROM inbound_workbench_display_v d
+        JOIN "CoupangSellerAccount" s
+          ON s.id = d.coupang_seller_account_id
         LEFT JOIN inbound_planning_override o
           ON d.coupang_seller_account_id = o.coupang_seller_account_id
           AND (
@@ -215,7 +247,7 @@ export async function listInboundWorkbench(
             OR (d.option_id IS NULL AND d.template_id = o.template_id)
           )
         ${baseWhere}
-        ORDER BY d.registered_product_name ASC NULLS LAST, d.option_id ASC NULLS LAST, d.shopling_row_key ASC
+        ORDER BY ${orderBy}
         LIMIT ${pageSize}
         OFFSET ${(page - 1) * pageSize}
       `,

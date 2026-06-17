@@ -45,6 +45,18 @@ model Profile {
   shoplingInboundDeliverables    ShoplingInboundDeliverable[]
   warehouseInboundDeliverables   WarehouseInboundDeliverable[]
   shoplingWmsSession             ShoplingWmsSession?
+  inboundWorkbenchColumnLayout   InboundWorkbenchColumnLayout?
+}
+
+model InboundWorkbenchColumnLayout {
+  profileId    String   @id @map("profile_id")
+  columnOrder  Json     @map("column_order")
+  columnWidths Json     @map("column_widths")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("inbound_workbench_column_layout")
 }
 
 model CoupangSellerAccount {

@@ -4,14 +4,18 @@ import type { ReactNode } from "react";
 import { InboundWorkbenchPanelClient } from "@/components/inbound-workbench/inbound-workbench-panel-client";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
 import type { ListInboundWorkbenchResult } from "@/services/inbound-workbench/types";
+import type { InboundWorkbenchColumnLayout } from "@/services/inbound-workbench/inbound-workbench-column-layout";
 
 type InboundWorkbenchPanelProps = {
   accounts: SellerAccountView[];
-  sellerId: string;
+  sellerIds: string[];
   data: ListInboundWorkbenchResult;
   search: string;
   page: number;
   pageSize: number;
+  sort: string | null;
+  dir: string | null;
+  columnLayout: InboundWorkbenchColumnLayout;
 };
 
 function EmptyState({ children }: { children: ReactNode }) {
@@ -24,11 +28,14 @@ function EmptyState({ children }: { children: ReactNode }) {
 
 export function InboundWorkbenchPanel({
   accounts,
-  sellerId,
+  sellerIds,
   data,
   search,
   page,
   pageSize,
+  sort,
+  dir,
+  columnLayout,
 }: InboundWorkbenchPanelProps) {
   const hasAccounts = accounts.some((account) => account.isActive);
   const isSearchEmpty = search.trim().length === 0;
@@ -52,7 +59,7 @@ export function InboundWorkbenchPanel({
         </p>
       </EmptyState>
     );
-  } else if (!sellerId) {
+  } else if (sellerIds.length === 0) {
     emptyContent = (
       <EmptyState>
         <p className="text-sm text-muted-foreground">
@@ -96,11 +103,14 @@ export function InboundWorkbenchPanel({
   return (
     <InboundWorkbenchPanelClient
       accounts={accounts}
-      sellerId={sellerId}
+      sellerIds={sellerIds}
       data={data}
       search={search}
       page={page}
       pageSize={pageSize}
+      sort={sort}
+      dir={dir}
+      columnLayout={columnLayout}
     >
       {emptyContent}
     </InboundWorkbenchPanelClient>

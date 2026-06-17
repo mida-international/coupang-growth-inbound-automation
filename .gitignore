@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 /data/runs
+.data/
 *.pem
 
 # debug

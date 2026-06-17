@@ -1,25 +1,39 @@
 type BuildWorkbenchQueryOptions = {
-  seller?: string;
+  sellers?: string[];
   q?: string;
   page?: number;
   pageSize?: number;
+  sort?: string | null;
+  dir?: string | null;
 };
 
 export function buildWorkbenchQuery({
-  seller,
+  sellers,
   q,
   page,
   pageSize,
+  sort,
+  dir,
 }: BuildWorkbenchQueryOptions): string {
   const params = new URLSearchParams();
 
-  if (seller) {
-    params.set("seller", seller);
+  if (sellers) {
+    for (const sellerId of sellers) {
+      params.append("seller", sellerId);
+    }
   }
 
   const trimmed = q?.trim();
   if (trimmed) {
     params.set("q", trimmed);
+  }
+
+  if (sort) {
+    params.set("sort", sort);
+  }
+
+  if (dir) {
+    params.set("dir", dir);
   }
 
   if (page !== undefined && page > 1) {

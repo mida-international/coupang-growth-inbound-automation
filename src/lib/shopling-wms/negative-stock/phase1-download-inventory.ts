@@ -2,19 +2,20 @@ import fs from "fs/promises";
 import path from "path";
 import type { Page } from "playwright";
 
-import { getShoplingWmsFrameWaitMs } from "@/lib/shopling-wms/constants";
 import {
   dismissMainOrderDelay,
   findFrameBySelector,
   gotoShoplingPath,
   stepDelay,
 } from "@/lib/shopling-wms/browser/frames";
+import { getShoplingWmsFrameWaitMs } from "@/lib/shopling-wms/constants";
+import { getShoplingWmsDownloadDir } from "@/lib/shopling-wms/paths";
 
 const INVENTORY_LIST_PATH = "/invntryn/goods_inventory_list.phtml";
 
 export async function downloadNegativeInventoryExcel(
   page: Page,
-  downloadDir: string,
+  runId: string,
 ): Promise<Buffer> {
   await gotoShoplingPath(page, INVENTORY_LIST_PATH);
 
@@ -48,7 +49,10 @@ export async function downloadNegativeInventoryExcel(
   await excelButton.click();
 
   const download = await downloadPromise;
-  const downloadPath = path.join(downloadDir, "shopling_inventory.xlsx");
+  const downloadPath = path.join(
+    getShoplingWmsDownloadDir(runId),
+    "shopling_inventory.xlsx",
+  );
   await download.saveAs(downloadPath);
 
   return fs.readFile(downloadPath);

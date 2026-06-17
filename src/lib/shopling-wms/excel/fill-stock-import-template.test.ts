@@ -1,24 +1,24 @@
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import fs from "node:fs/promises";
 import { describe, it } from "node:test";
 
 import ExcelJS from "exceljs";
 
 import { fillStockImportTemplate } from "@/lib/shopling-wms/excel/fill-stock-import-template";
 import { STOCK_IMPORT_LAYOUT } from "@/lib/shopling-wms/excel/targets/stock-import-template";
+import { getShoplingWmsOutputDir } from "@/lib/shopling-wms/paths";
 
 describe("fillStockImportTemplate", () => {
   it("fills product code, option code, and qty into template columns B/C/D", async () => {
-    const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "stock-import-test-"));
+    const runId = "test-fill-stock-import";
+    await fs.mkdir(getShoplingWmsOutputDir(runId), { recursive: true });
 
     const result = await fillStockImportTemplate(
       [
         { productCode: "12345", optionCode: "67890", qty: 3 },
         { productCode: "99999", optionCode: "", qty: 7 },
       ],
-      outputDir,
+      runId,
       "20260616_120000",
     );
 

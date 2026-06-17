@@ -11,6 +11,7 @@ export type ShoplingWmsBrowserSession = {
   browser: Browser;
   context: BrowserContext;
   page: Page;
+  runId: string;
   runDir: string;
   downloadDir: string;
   outputDir: string;
@@ -40,7 +41,7 @@ export async function launchShoplingWmsBrowser(
 
   const page = await context.newPage();
 
-  return { browser, context, page, runDir, downloadDir, outputDir };
+  return { browser, context, page, runId, runDir, downloadDir, outputDir };
 }
 
 export async function closeShoplingWmsBrowser(
