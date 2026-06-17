@@ -24,7 +24,6 @@ type ListInboundTrendsOptions = {
 
 type RawTrendsRow = {
   shopling_row_key: string;
-  registered_product_id: bigint | null;
   option_id: bigint | null;
   ptn_goods_cd: string | null;
   shopling_option_value: string | null;
@@ -93,8 +92,8 @@ function mapRow(
 
   return {
     rowKey: `${optionId}|${row.shopling_row_key}`,
-    registeredProductId: row.registered_product_id?.toString() ?? null,
-    optionId: row.option_id?.toString() ?? null,
+    registeredProductName: row.registered_product_name,
+    optionName: row.option_name,
     ptnGoodsCd: row.ptn_goods_cd,
     shoplingOptionValue: row.shopling_option_value,
     productBarcode: row.product_barcode,
@@ -152,7 +151,6 @@ export async function listInboundTrends(
         Prisma.sql`
           SELECT
             d.shopling_row_key,
-            d.registered_product_id,
             d.option_id,
             d.ptn_goods_cd,
             d.shopling_option_value,

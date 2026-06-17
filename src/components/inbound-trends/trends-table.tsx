@@ -53,31 +53,31 @@ export function TrendsTable({ rows, dates }: TrendsTableProps) {
             <TableRow className="hover:bg-transparent">
               <TableHead
                 rowSpan={2}
-                className={cn(STICKY_CELL_CLASS, "left-0 min-w-[120px]")}
+                className={cn(STICKY_CELL_CLASS, "left-0 min-w-[160px]")}
               >
-                쿠팡상품아이디
+                상품명
               </TableHead>
               <TableHead
                 rowSpan={2}
-                className={cn(STICKY_CELL_CLASS, "left-[120px] min-w-[100px]")}
+                className={cn(STICKY_CELL_CLASS, "left-[160px] min-w-[120px]")}
               >
-                옵션아이디
+                옵션명
               </TableHead>
               <TableHead
                 rowSpan={2}
-                className={cn(STICKY_CELL_CLASS, "left-[220px] min-w-[110px]")}
+                className={cn(STICKY_CELL_CLASS, "left-[280px] min-w-[110px]")}
               >
                 자사상품코드
               </TableHead>
               <TableHead
                 rowSpan={2}
-                className={cn(STICKY_CELL_CLASS, "left-[330px] min-w-[140px]")}
+                className={cn(STICKY_CELL_CLASS, "left-[390px] min-w-[140px]")}
               >
                 샵플링 옵션 벨류
               </TableHead>
               <TableHead
                 rowSpan={2}
-                className={cn(STICKY_CELL_CLASS, "left-[470px] min-w-[120px]")}
+                className={cn(STICKY_CELL_CLASS, "left-[530px] min-w-[120px]")}
               >
                 바코드
               </TableHead>
@@ -108,18 +108,18 @@ export function TrendsTable({ rows, dates }: TrendsTableProps) {
             {rows.map((row) => (
               <TableRow key={row.rowKey}>
                 <TableCell className={cn(STICKY_CELL_CLASS, "left-0")}>
-                  {formatCell(row.registeredProductId)}
+                  {formatCell(row.registeredProductName)}
                 </TableCell>
-                <TableCell className={cn(STICKY_CELL_CLASS, "left-[120px]")}>
-                  {formatCell(row.optionId)}
+                <TableCell className={cn(STICKY_CELL_CLASS, "left-[160px]")}>
+                  {formatCell(row.optionName)}
                 </TableCell>
-                <TableCell className={cn(STICKY_CELL_CLASS, "left-[220px]")}>
+                <TableCell className={cn(STICKY_CELL_CLASS, "left-[280px]")}>
                   {formatCell(row.ptnGoodsCd)}
                 </TableCell>
-                <TableCell className={cn(STICKY_CELL_CLASS, "left-[330px]")}>
+                <TableCell className={cn(STICKY_CELL_CLASS, "left-[390px]")}>
                   {formatCell(row.shoplingOptionValue)}
                 </TableCell>
-                <TableCell className={cn(STICKY_CELL_CLASS, "left-[470px]")}>
+                <TableCell className={cn(STICKY_CELL_CLASS, "left-[530px]")}>
                   {formatCell(row.productBarcode)}
                 </TableCell>
                 {dates.map((date) => {

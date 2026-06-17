@@ -5,8 +5,8 @@ export type InboundTrendsDateValue = {
 
 export type InboundTrendsRowView = {
   rowKey: string;
-  registeredProductId: string | null;
-  optionId: string | null;
+  registeredProductName: string | null;
+  optionName: string | null;
   ptnGoodsCd: string | null;
   shoplingOptionValue: string | null;
   productBarcode: string | null;
