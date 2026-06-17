@@ -154,6 +154,45 @@ export type RecordWarehouseInboundDeliverableResult = {
   recordedCount: number;
 };
 
+export type WarehouseInboundDeliverableItemView = {
+  recordDate: string;
+  location: string | null;
+  registeredProductName: string | null;
+  optionName: string | null;
+  productBarcode: string | null;
+  quantity: number;
+};
+
+export type WarehouseInboundDeliverableListItem = {
+  id: string;
+  outputFileName: string;
+  recordDate: string;
+  rotationCount: number;
+  sellerDisplayName: string;
+  recordedAt: string;
+  recordedByName: string | null;
+  itemCount: number;
+  totalQuantity: number;
+  items: WarehouseInboundDeliverableItemView[];
+};
+
+export type ListWarehouseInboundDeliverablesResult = {
+  rowCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  rows: WarehouseInboundDeliverableListItem[];
+};
+
+export type WarehouseInboundDeliverableFile = {
+  outputFileName: string;
+  buffer: Buffer;
+};
+
+export type WarehouseInboundDeliverableServiceResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
+
 export type ShoplingInboundDeliverableItemView = {
   barcode: string;
   quantity: number;

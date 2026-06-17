@@ -14,6 +14,10 @@ export const dashboardTabGroup: PageTabGroup = {
   basePath: "/data/dashboard",
   tabs: [
     {
+      title: "창고전송용 입고리스트",
+      href: "/data/dashboard/warehouse-inbound",
+    },
+    {
       title: "샵플링 입고",
       href: "/data/dashboard/shopling-inbound",
     },
