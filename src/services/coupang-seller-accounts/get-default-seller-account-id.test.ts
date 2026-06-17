@@ -16,10 +16,17 @@ const ACCOUNTS: SellerAccountView[] = [
     createdBy: { id: "u1", email: "a@example.com", name: null },
   },
   {
+    id: "seller-mizucos",
+    displayName: "mizucos",
+    isActive: true,
+    createdAt: new Date("2024-02-01"),
+    createdBy: { id: "u1", email: "a@example.com", name: null },
+  },
+  {
     id: "seller-2",
     displayName: "Second",
     isActive: true,
-    createdAt: new Date("2024-02-01"),
+    createdAt: new Date("2024-03-01"),
     createdBy: { id: "u1", email: "a@example.com", name: null },
   },
   {
@@ -46,7 +53,7 @@ describe("parseSellerSearchParam", () => {
 
 describe("resolveSellerAccountIds", () => {
   it("defaults to the first active account when param is missing", () => {
-    assert.deepEqual(resolveSellerAccountIds(ACCOUNTS), ["seller-1"]);
+    assert.deepEqual(resolveSellerAccountIds(ACCOUNTS), ["seller-mizucos"]);
   });
 
   it("keeps valid active ids and removes invalid ones", () => {

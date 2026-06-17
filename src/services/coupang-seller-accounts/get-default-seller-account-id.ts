@@ -1,11 +1,12 @@
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
+import { sortSellerAccounts } from "@/services/coupang-seller-accounts/sort-seller-accounts";
 
 export function getDefaultSellerAccountId(
   accounts: SellerAccountView[],
 ): string {
-  const active = accounts
-    .filter((account) => account.isActive)
-    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const active = sortSellerAccounts(
+    accounts.filter((account) => account.isActive),
+  );
 
   return active[0]?.id ?? "";
 }
