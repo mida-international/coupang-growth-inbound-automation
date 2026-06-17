@@ -143,6 +143,19 @@ export type RecordShoplingInboundDeliverableResult = {
   recordedCount: number;
 };
 
+export type RecordWarehouseInboundDeliverableInput = {
+  coupangSellerAccountId: string;
+  rotation: 0 | 1 | 2 | 3;
+  recordedById: string;
+};
+
+export type RecordWarehouseInboundDeliverableResult = {
+  deliverableId: string;
+  recordedCount: number;
+  buffer: Buffer;
+  outputFileName: string;
+};
+
 export type ShoplingInboundDeliverableItemView = {
   barcode: string;
   quantity: number;

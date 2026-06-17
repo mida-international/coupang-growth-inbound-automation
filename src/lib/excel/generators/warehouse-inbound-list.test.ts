@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import * as XLSX from "xlsx";
 
 import {
+  buildWarehouseInboundListFilename,
   generateWarehouseInboundListBuffer,
   getWarehouseInboundListColumnKeys,
 } from "@/lib/excel/generators/warehouse-inbound-list";
@@ -52,5 +53,16 @@ describe("generateWarehouseInboundListBuffer", () => {
     });
 
     assert.deepEqual(readHeaderRow(buffer), getWarehouseInboundListColumnKeys(2));
+  });
+});
+
+describe("buildWarehouseInboundListFilename", () => {
+  it("places seller slug before the KST date suffix", () => {
+    const filename = buildWarehouseInboundListFilename(
+      "테스트 판매자",
+      new Date("2026-06-17T00:00:00.000Z"),
+    );
+
+    assert.equal(filename, "창고전송용_입고리스트_테스트_판매자_2026-06-17.xlsx");
   });
 });

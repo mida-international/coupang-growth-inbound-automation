@@ -48,8 +48,60 @@ export function WarehouseInboundListSection({
   const [inboundRotation, setInboundRotation] = useState("");
   const hasSeller = sellerId.trim().length > 0;
 
-  function handleRecordClick() {
-    // API 연동 예정 — UI만
+  async function handleRecordClick() {
+    if (!hasSeller) {
+      return;
+    }
+
+    setIsRecording(true);
+    setNotice(null);
+
+    try {
+      const response = await fetch(
+        `/api/warehouse-inbound-deliverables?seller=${encodeURIComponent(sellerId)}${
+          inboundRotation ? `&rotation=${encodeURIComponent(inboundRotation)}` : ""
+        }`,
+        { method: "POST" },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(payload?.error ?? "기록에 실패했습니다.");
+      }
+
+      const recordedCountHeader = response.headers.get("X-Recorded-Count");
+      const recordedCount = recordedCountHeader
+        ? Number(recordedCountHeader)
+        : rowCount;
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") ?? "";
+      const filenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      const filename = filenameMatch
+        ? decodeURIComponent(filenameMatch[1])
+        : "창고전송용_입고리스트.xlsx";
+
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+
+      setNotice(
+        recordedCount > 0
+          ? `${recordedCount}건을 기록하고 파일을 다운로드했습니다.`
+          : "기록했습니다. 다운로드 가능한 항목이 없어 헤더만 포함된 파일입니다.",
+      );
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "기록에 실패했습니다.",
+      );
+    } finally {
+      setIsRecording(false);
+    }
   }
 
   async function handleDownloadClick() {

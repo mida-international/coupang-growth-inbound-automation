@@ -6,8 +6,11 @@ import {
   generateWarehouseInboundListContext,
   parseWarehouseInboundRotation,
 } from "@/services/deliverables/generate-warehouse-inbound-list-context";
+import { recordWarehouseInboundDeliverable } from "@/services/deliverables/record-warehouse-inbound-deliverable";
 
-export async function GET(request: Request) {
+export const runtime = "nodejs";
+
+export async function POST(request: Request) {
   try {
     const auth = await requireApiProfile();
 
@@ -23,27 +26,32 @@ export async function GET(request: Request) {
       return jsonError("판매자 계정을 선택해 주세요.", 400);
     }
 
-    const context = await generateWarehouseInboundListContext(sellerId, rotation);
+    const result = await recordWarehouseInboundDeliverable({
+      coupangSellerAccountId: sellerId,
+      rotation,
+      recordedById: auth.profile.id,
+    });
 
-    return new Response(new Uint8Array(context.buffer), {
+    return new Response(new Uint8Array(result.buffer), {
       status: 200,
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": encodeContentDispositionFilename(
-          context.outputFileName,
+          result.outputFileName,
         ),
+        "X-Recorded-Count": String(result.recordedCount),
         "Cache-Control": "no-store",
       },
     });
   } catch (error) {
     logRouteError(error, {
-      route: "/api/downloads/warehouse-inbound-list",
-      method: "GET",
+      route: "/api/warehouse-inbound-deliverables",
+      method: "POST",
     });
 
     const message =
-      error instanceof Error ? error.message : "입고리스트 생성에 실패했습니다.";
+      error instanceof Error ? error.message : "입고리스트 기록에 실패했습니다.";
 
     return jsonError(message, message.includes("판매자") ? 400 : 500);
   }

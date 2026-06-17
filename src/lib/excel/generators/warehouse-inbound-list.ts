@@ -115,7 +115,7 @@ export function buildWarehouseInboundListFilename(
   const datePart = formatKstIsoDate(date);
   const slug = displayName.trim().replace(/\s+/g, "_");
 
-  return `창고전송용_입고리스트_${datePart}_${slug}.xlsx`;
+  return `창고전송용_입고리스트_${slug}_${datePart}.xlsx`;
 }
 
 export function generateWarehouseInboundListBuffer(
