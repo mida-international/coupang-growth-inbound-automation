@@ -20,6 +20,7 @@ type ListInboundTrendsOptions = {
   page?: number;
   pageSize?: number;
   search?: string;
+  exportAll?: boolean;
 };
 
 type RawTrendsRow = {
@@ -106,6 +107,7 @@ export async function listInboundTrends(
 ): Promise<ListInboundTrendsResult> {
   const page = Math.max(1, options.page ?? 1);
   const pageSize = normalizeInboundTrendsPageSize(options.pageSize);
+  const exportAll = options.exportAll === true;
   const sellerId = options.coupangSellerAccountId;
   const dateRange = resolveTrendsDateRange({
     from: options.from,
@@ -138,6 +140,10 @@ export async function listInboundTrends(
   const fromDate = new Date(`${dateRange.from}T00:00:00.000Z`);
   const toDate = new Date(`${dateRange.to}T00:00:00.000Z`);
 
+  const paginationClause = exportAll
+    ? Prisma.empty
+    : Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
+
   const [countResult, baseRows, coupangDaily, warehouseDaily] =
     await Promise.all([
       prisma.$queryRaw<[{ count: bigint }]>(
@@ -160,8 +166,7 @@ export async function listInboundTrends(
           FROM inbound_trends_row_v d
           ${baseWhere}
           ORDER BY d.registered_product_name ASC NULLS LAST, d.option_id ASC NULLS LAST, d.shopling_row_key ASC
-          LIMIT ${pageSize}
-          OFFSET ${(page - 1) * pageSize}
+          ${paginationClause}
         `,
       ),
       prisma.$queryRaw<DailyQuantityRow[]>(

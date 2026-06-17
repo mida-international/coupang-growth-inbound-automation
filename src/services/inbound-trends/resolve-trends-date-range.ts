@@ -97,6 +97,14 @@ export function enumerateDates(from: string, to: string): string[] {
   return dates;
 }
 
+export function sortTrendsDatesDescending(dates: string[]): string[] {
+  return [...dates].sort((a, b) => b.localeCompare(a));
+}
+
+function resolveDisplayDates(from: string, to: string): string[] {
+  return sortTrendsDatesDescending(enumerateDates(from, to));
+}
+
 function resolvePresetRange(
   days: TrendsDayPreset,
   today: Date,
@@ -108,7 +116,7 @@ function resolvePresetRange(
     from,
     to,
     days,
-    dates: enumerateDates(from, to),
+    dates: resolveDisplayDates(from, to),
   };
 }
 
@@ -128,7 +136,7 @@ export function resolveTrendsDateRange(
       from,
       to,
       days: null,
-      dates: enumerateDates(from, to),
+      dates: resolveDisplayDates(from, to),
     };
   }
 

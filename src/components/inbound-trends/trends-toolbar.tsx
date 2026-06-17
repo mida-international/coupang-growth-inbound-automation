@@ -77,6 +77,35 @@ export function TrendsToolbar({
   const showPagination = totalCount > 0;
   const activeAccounts = accounts.filter((account) => account.isActive);
   const useCustomRange = days === null;
+  const canDownload = Boolean(sellerId) && totalCount > 0;
+
+  const buildDownloadHref = () => {
+    const params = new URLSearchParams();
+
+    if (sellerId) {
+      params.set("seller", sellerId);
+    }
+
+    if (useCustomRange) {
+      if (from) {
+        params.set("from", from);
+      }
+
+      if (to) {
+        params.set("to", to);
+      }
+    } else if (days !== null) {
+      params.set("days", String(days));
+    }
+
+    const trimmed = search.trim();
+
+    if (trimmed) {
+      params.set("q", trimmed);
+    }
+
+    return `/api/downloads/inbound-trends?${params.toString()}`;
+  };
 
   const listQuery = (options: {
     seller?: string;
@@ -196,6 +225,18 @@ export function TrendsToolbar({
           <Button type="submit" size="sm" className="shrink-0">
             조회
           </Button>
+          {canDownload ? (
+            <a
+              href={buildDownloadHref()}
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "shrink-0")}
+            >
+              다운로드
+            </a>
+          ) : (
+            <Button type="button" variant="outline" size="sm" className="shrink-0" disabled>
+              다운로드
+            </Button>
+          )}
         </div>
       </form>
 

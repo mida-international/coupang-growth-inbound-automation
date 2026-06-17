@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   enumerateDates,
   resolveTrendsDateRange,
+  sortTrendsDatesDescending,
   TRENDS_DEFAULT_DAYS,
   TRENDS_MAX_SPAN_DAYS,
 } from "@/services/inbound-trends/resolve-trends-date-range";
@@ -18,6 +19,8 @@ describe("resolveTrendsDateRange", () => {
     assert.equal(result.to, "2026-06-17");
     assert.equal(result.days, TRENDS_DEFAULT_DAYS);
     assert.equal(result.dates.length, 14);
+    assert.equal(result.dates[0], "2026-06-17");
+    assert.equal(result.dates.at(-1), "2026-06-04");
   });
 
   it("supports day presets", () => {
@@ -70,6 +73,15 @@ describe("resolveTrendsDateRange", () => {
 
     assert.equal(result.days, TRENDS_DEFAULT_DAYS);
     assert.equal(result.to, "2026-06-17");
+  });
+});
+
+describe("sortTrendsDatesDescending", () => {
+  it("sorts dates from newest to oldest", () => {
+    assert.deepEqual(
+      sortTrendsDatesDescending(["2026-06-15", "2026-06-17", "2026-06-16"]),
+      ["2026-06-17", "2026-06-16", "2026-06-15"],
+    );
   });
 });
 
