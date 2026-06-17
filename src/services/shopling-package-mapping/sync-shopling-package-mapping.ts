@@ -13,6 +13,19 @@ import type {
 const UPSERT_BATCH_SIZE = 500;
 const PRUNE_PAGE_SIZE = 1000;
 const PRUNE_DELETE_CHUNK_SIZE = 200;
+const UPSERT_TX_BASE_MS = 30_000;
+const UPSERT_TX_PER_BATCH_MS = 15_000;
+const UPSERT_TX_MAX_MS = 240_000;
+const UPSERT_TX_MAX_WAIT_MS = 10_000;
+
+function computeUpsertTransactionTimeoutMs(batchSize: number): number {
+  const batches = Math.max(1, Math.ceil(batchSize / UPSERT_BATCH_SIZE));
+
+  return Math.min(
+    UPSERT_TX_BASE_MS + batches * UPSERT_TX_PER_BATCH_MS,
+    UPSERT_TX_MAX_MS,
+  );
+}
 
 type OptIdInfo = {
   barcode: string;
@@ -205,6 +218,10 @@ async function upsertPackageMappingRows(
             },
           }),
         ),
+        {
+          maxWait: UPSERT_TX_MAX_WAIT_MS,
+          timeout: computeUpsertTransactionTimeoutMs(batch.length),
+        },
       );
 
       stats.upserted += batch.length;
