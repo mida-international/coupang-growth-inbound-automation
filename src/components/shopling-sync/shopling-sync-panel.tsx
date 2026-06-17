@@ -142,7 +142,7 @@ export function ShoplingSyncPanel({ initialStatus }: ShoplingSyncPanelProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>동기화</CardTitle>
+          <CardTitle>샵플링 재고 동기화</CardTitle>
           <CardDescription>
             등록일 기준으로 과거 방향 3개월 창을 연속 조회합니다. 청크 경계일은
             맞닿으며, 중복 SKU는 goods_key+barcode 기준으로 제거합니다.
@@ -150,14 +150,14 @@ export function ShoplingSyncPanel({ initialStatus }: ShoplingSyncPanelProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <Button type="button" disabled={isDisabled} onClick={handleSync}>
-            {loading ? "동기화 중..." : "동기화"}
+            {loading ? "샵플링 재고 동기화 중..." : "샵플링 재고 동기화"}
           </Button>
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
           {result ? (
             <div className="space-y-4 rounded-md border border-border p-4 text-sm">
-              <p className="text-primary">동기화가 완료되었습니다.</p>
+              <p className="text-primary">샵플링 재고 동기화가 완료되었습니다.</p>
               <dl className="grid gap-2 sm:grid-cols-2">
                 <div>
                   <dt className="text-muted-foreground">조회 기간</dt>
