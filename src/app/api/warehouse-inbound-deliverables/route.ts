@@ -1,11 +1,7 @@
 import { requireApiProfile } from "@/lib/api/auth";
-import { encodeContentDispositionFilename } from "@/lib/api/download-helpers";
 import { logRouteError } from "@/lib/api/log-route-error";
-import { jsonError } from "@/lib/api/response";
-import {
-  generateWarehouseInboundListContext,
-  parseWarehouseInboundRotation,
-} from "@/services/deliverables/generate-warehouse-inbound-list-context";
+import { jsonError, jsonSuccess } from "@/lib/api/response";
+import { parseWarehouseInboundRotation } from "@/services/deliverables/generate-warehouse-inbound-list-context";
 import { recordWarehouseInboundDeliverable } from "@/services/deliverables/record-warehouse-inbound-deliverable";
 
 export const runtime = "nodejs";
@@ -32,18 +28,7 @@ export async function POST(request: Request) {
       recordedById: auth.profile.id,
     });
 
-    return new Response(new Uint8Array(result.buffer), {
-      status: 200,
-      headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": encodeContentDispositionFilename(
-          result.outputFileName,
-        ),
-        "X-Recorded-Count": String(result.recordedCount),
-        "Cache-Control": "no-store",
-      },
-    });
+    return jsonSuccess(result);
   } catch (error) {
     logRouteError(error, {
       route: "/api/warehouse-inbound-deliverables",

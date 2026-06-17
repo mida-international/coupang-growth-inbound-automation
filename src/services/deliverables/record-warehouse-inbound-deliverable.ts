@@ -53,7 +53,5 @@ export async function recordWarehouseInboundDeliverable(
   return {
     deliverableId,
     recordedCount: itemCreates.length,
-    buffer: context.buffer,
-    outputFileName: context.outputFileName,
   };
 }

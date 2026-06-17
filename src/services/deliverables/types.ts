@@ -152,8 +152,6 @@ export type RecordWarehouseInboundDeliverableInput = {
 export type RecordWarehouseInboundDeliverableResult = {
   deliverableId: string;
   recordedCount: number;
-  buffer: Buffer;
-  outputFileName: string;
 };
 
 export type ShoplingInboundDeliverableItemView = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
 import { Button } from "@/components/ui/button";
@@ -45,11 +45,16 @@ export function WarehouseInboundListSection({
   const [notice, setNotice] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [canRecordInbound, setCanRecordInbound] = useState(false);
   const [inboundRotation, setInboundRotation] = useState("");
   const hasSeller = sellerId.trim().length > 0;
 
+  useEffect(() => {
+    setCanRecordInbound(false);
+  }, [sellerId, inboundRotation]);
+
   async function handleRecordClick() {
-    if (!hasSeller) {
+    if (!canRecordInbound || !hasSeller || isRecording || isDownloading) {
       return;
     }
 
@@ -64,35 +69,24 @@ export function WarehouseInboundListSection({
         { method: "POST" },
       );
 
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(payload?.error ?? "기록에 실패했습니다.");
+      const payload = (await response.json().catch(() => null)) as
+        | { ok: true; data: { recordedCount: number } }
+        | { ok: false; error?: string }
+        | null;
+
+      if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
+        throw new Error(
+          payload && "error" in payload && payload.error
+            ? payload.error
+            : "기록에 실패했습니다.",
+        );
       }
 
-      const recordedCountHeader = response.headers.get("X-Recorded-Count");
-      const recordedCount = recordedCountHeader
-        ? Number(recordedCountHeader)
-        : rowCount;
-
-      const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition") ?? "";
-      const filenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      const filename = filenameMatch
-        ? decodeURIComponent(filenameMatch[1])
-        : "창고전송용_입고리스트.xlsx";
-
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = filename;
-      anchor.click();
-      URL.revokeObjectURL(objectUrl);
+      const { recordedCount } = payload.data;
 
       setNotice(
         recordedCount > 0
-          ? `${recordedCount}건을 기록하고 파일을 다운로드했습니다.`
+          ? `${recordedCount}건을 기록했습니다.`
           : "기록했습니다. 다운로드 가능한 항목이 없어 헤더만 포함된 파일입니다.",
       );
     } catch (error) {
@@ -145,6 +139,7 @@ export function WarehouseInboundListSection({
           ? `${rowCount}건이 포함된 파일을 다운로드했습니다.`
           : "다운로드 가능한 항목이 없어 헤더만 포함된 파일을 다운로드했습니다.",
       );
+      setCanRecordInbound(true);
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : "다운로드에 실패했습니다.",
@@ -190,7 +185,9 @@ export function WarehouseInboundListSection({
             type="button"
             variant="outline"
             size="sm"
-            disabled={!hasSeller || isRecording || isDownloading}
+            disabled={
+              !canRecordInbound || !hasSeller || isRecording || isDownloading
+            }
             onClick={handleRecordClick}
           >
             {isRecording ? "기록 중..." : "기록하기"}
