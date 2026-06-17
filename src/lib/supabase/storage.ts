@@ -13,6 +13,13 @@ export function getShoplingInboundDeliverableStoragePath(
   return `shopling-inbound-deliverables/${deliverableId}/${outputFileName}`;
 }
 
+export function getWarehouseInboundDeliverableStoragePath(
+  deliverableId: string,
+) {
+  // Supabase object keys must be ASCII-safe; user-facing filename is stored in DB.
+  return `warehouse-inbound-deliverables/${deliverableId}/inbound-list.xlsx`;
+}
+
 export async function uploadExcelFile(
   path: string,
   buffer: Buffer,

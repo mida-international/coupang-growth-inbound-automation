@@ -42,8 +42,9 @@ model Profile {
   shoplingApiConfigUpdates ShoplingApiConfig[]
   inboundPlanningOverrides InboundPlanningOverride[]
   coupangInboundRecords         CoupangInboundRecord[]
-  shoplingInboundDeliverables   ShoplingInboundDeliverable[]
-  shoplingWmsSession            ShoplingWmsSession?
+  shoplingInboundDeliverables    ShoplingInboundDeliverable[]
+  warehouseInboundDeliverables   WarehouseInboundDeliverable[]
+  shoplingWmsSession             ShoplingWmsSession?
 }
 
 model CoupangSellerAccount {
@@ -59,7 +60,8 @@ model CoupangSellerAccount {
   inboundTemplates         CoupangGrowthInboundTemplate[]
   inventoryHealthRows      CoupangGrowthInventoryHealth[]
   inboundPlanningOverrides InboundPlanningOverride[]
-  coupangInboundRecords    CoupangInboundRecord[]
+  coupangInboundRecords         CoupangInboundRecord[]
+  warehouseInboundDeliverables  WarehouseInboundDeliverable[]
 
   @@index([createdById])
   @@index([createdAt])
@@ -398,6 +400,44 @@ model ShoplingInboundDeliverableItem {
   @@index([deliverableId], map: "idx_shopling_inbound_deliverable_item_deliverable")
   @@index([barcode, recordedAt], map: "idx_shopling_inbound_deliverable_item_barcode_at")
   @@map("shopling_inbound_deliverable_item")
+}
+
+/// 창고 전송용 입고리스트 기록 배치 (생성된 엑셀 1건 = 1행)
+model WarehouseInboundDeliverable {
+  id                     String   @id @default(cuid())
+  coupangSellerAccountId String   @map("coupang_seller_account_id")
+  storagePath            String   @map("storage_path")
+  outputFileName         String   @map("output_file_name")
+  recordDate             DateTime @map("record_date") @db.Date
+  rotationCount          Int      @default(0) @map("rotation_count")
+  recordedById           String   @map("recorded_by_id")
+  recordedAt             DateTime @default(now()) @map("recorded_at")
+
+  coupangSellerAccount CoupangSellerAccount             @relation(fields: [coupangSellerAccountId], references: [id], onDelete: Restrict)
+  recordedBy           Profile                          @relation(fields: [recordedById], references: [id], onDelete: Restrict)
+  items                WarehouseInboundDeliverableItem[]
+
+  @@index([coupangSellerAccountId, recordDate], map: "idx_warehouse_inbound_deliverable_seller_date")
+  @@index([recordedById, recordedAt], map: "idx_warehouse_inbound_deliverable_by_at")
+  @@map("warehouse_inbound_deliverable")
+}
+
+/// 창고 전송용 입고리스트 기록 행 (B~G열: 일자·로케이션·상품·옵션·바코드·수량)
+model WarehouseInboundDeliverableItem {
+  id                    String   @id @default(cuid())
+  deliverableId         String   @map("deliverable_id")
+  recordDate            DateTime @map("record_date") @db.Date
+  location              String?
+  registeredProductName String?  @map("registered_product_name")
+  optionName            String?  @map("option_name")
+  productBarcode        String?  @map("product_barcode")
+  quantity              Int
+
+  deliverable WarehouseInboundDeliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+
+  @@index([deliverableId], map: "idx_warehouse_inbound_deliverable_item_deliverable")
+  @@index([productBarcode, recordDate], map: "idx_warehouse_inbound_deliverable_item_barcode_date")
+  @@map("warehouse_inbound_deliverable_item")
 }
 
 model AuditLog {

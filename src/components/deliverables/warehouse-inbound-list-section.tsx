@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
 import { Button } from "@/components/ui/button";
@@ -44,8 +44,59 @@ export function WarehouseInboundListSection({
 }: WarehouseInboundListSectionProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [canRecordInbound, setCanRecordInbound] = useState(false);
   const [inboundRotation, setInboundRotation] = useState("");
   const hasSeller = sellerId.trim().length > 0;
+
+  useEffect(() => {
+    setCanRecordInbound(false);
+  }, [sellerId, inboundRotation]);
+
+  async function handleRecordClick() {
+    if (!canRecordInbound || !hasSeller || isRecording || isDownloading) {
+      return;
+    }
+
+    setIsRecording(true);
+    setNotice(null);
+
+    try {
+      const response = await fetch(
+        `/api/warehouse-inbound-deliverables?seller=${encodeURIComponent(sellerId)}${
+          inboundRotation ? `&rotation=${encodeURIComponent(inboundRotation)}` : ""
+        }`,
+        { method: "POST" },
+      );
+
+      const payload = (await response.json().catch(() => null)) as
+        | { ok: true; data: { recordedCount: number } }
+        | { ok: false; error?: string }
+        | null;
+
+      if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
+        throw new Error(
+          payload && "error" in payload && payload.error
+            ? payload.error
+            : "기록에 실패했습니다.",
+        );
+      }
+
+      const { recordedCount } = payload.data;
+
+      setNotice(
+        recordedCount > 0
+          ? `${recordedCount}건을 기록했습니다.`
+          : "기록했습니다. 다운로드 가능한 항목이 없어 헤더만 포함된 파일입니다.",
+      );
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "기록에 실패했습니다.",
+      );
+    } finally {
+      setIsRecording(false);
+    }
+  }
 
   async function handleDownloadClick() {
     if (!hasSeller) {
@@ -88,6 +139,7 @@ export function WarehouseInboundListSection({
           ? `${rowCount}건이 포함된 파일을 다운로드했습니다.`
           : "다운로드 가능한 항목이 없어 헤더만 포함된 파일을 다운로드했습니다.",
       );
+      setCanRecordInbound(true);
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : "다운로드에 실패했습니다.",
@@ -128,14 +180,27 @@ export function WarehouseInboundListSection({
           스냅샷 {formatSnapshotLabel(snapshotDates)} · 다운로드 가능{" "}
           {hasSeller ? `${rowCount}건` : "-"}
         </p>
-        <Button
-          type="button"
-          size="sm"
-          disabled={!hasSeller || isDownloading}
-          onClick={handleDownloadClick}
-        >
-          {isDownloading ? "생성 중..." : "다운로드"}
-        </Button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={
+              !canRecordInbound || !hasSeller || isRecording || isDownloading
+            }
+            onClick={handleRecordClick}
+          >
+            {isRecording ? "기록 중..." : "기록하기"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={!hasSeller || isDownloading || isRecording}
+            onClick={handleDownloadClick}
+          >
+            {isDownloading ? "생성 중..." : "다운로드"}
+          </Button>
+        </div>
       </div>
 
       {!hasSeller ? (
