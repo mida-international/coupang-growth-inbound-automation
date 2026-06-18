@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { readCenterSeparationUpsertResponse } from "@/lib/center-separation/parse-upsert-response";
+import { normalizeCenterSeparationBarcode } from "@/lib/center-separation/normalize-barcode";
 import { CENTER_SEPARATION_TEMPLATE_FILENAME } from "@/lib/excel/generators/center-separation-template";
 import { isExcelFile } from "@/lib/excel/validate-file";
 import { cn } from "@/lib/utils";
@@ -106,7 +107,8 @@ export function CenterSeparationAddSection() {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const isBusy = isAdding || isUploading || isDownloading;
-  const canAdd = barcode.trim().length > 0 && !isBusy;
+  const normalizedBarcode = normalizeCenterSeparationBarcode(barcode);
+  const canAdd = normalizedBarcode.length > 0 && !isBusy;
   const canConfirmUpload = file !== null && !isUploading;
 
   function resetUploadDialog() {
@@ -142,13 +144,15 @@ export function CenterSeparationAddSection() {
     setError(null);
     setNotice(null);
 
+    const normalized = normalizeCenterSeparationBarcode(barcode);
+
     let response: Response;
 
     try {
       response = await fetch("/api/coupang-growth/center-separation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ barcode: barcode.trim() }),
+        body: JSON.stringify({ barcode: normalized }),
         credentials: "same-origin",
       });
     } catch {

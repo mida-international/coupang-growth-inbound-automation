@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 
+import { normalizeCenterSeparationBarcode } from "@/lib/center-separation/normalize-barcode";
 import { CENTER_SEPARATION_EXCEL_HEADERS } from "@/lib/excel/targets/center-separation";
 
 export type ParsedCenterSeparationRow = {
@@ -18,14 +19,6 @@ const BARCODE_HEADER_ALIASES = ["바코드", "barcode"];
 
 function normalizeHeaderKey(value: string): string {
   return value.replace(/\s/g, "").toLowerCase();
-}
-
-function toCellString(value: unknown): string {
-  if (value === null || value === undefined) {
-    return "";
-  }
-
-  return String(value).trim();
 }
 
 function resolveBarcodeHeaderKey(rowKeys: string[]): string | null {
@@ -48,7 +41,7 @@ function readBarcode(
   row: Record<string, unknown>,
   barcodeHeaderKey: string,
 ): string {
-  return toCellString(row[barcodeHeaderKey]);
+  return normalizeCenterSeparationBarcode(row[barcodeHeaderKey]);
 }
 
 export function parseCenterSeparationFromRows(

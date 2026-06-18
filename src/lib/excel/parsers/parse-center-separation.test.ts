@@ -86,4 +86,23 @@ describe("parseCenterSeparation", () => {
 
     assert.equal(result.rows[0]?.barcode, "8801234567890");
   });
+
+  it("normalizes whitespace in barcode cells", () => {
+    const result = parseCenterSeparationFromRows([
+      { 바코드: " 8801234567890 " },
+      { 바코드: "8801 2345 67890" },
+      { 바코드: "   " },
+    ]);
+
+    assert.equal(result.ok, true);
+
+    if (!result.ok) {
+      return;
+    }
+
+    assert.equal(result.rows.length, 2);
+    assert.deepEqual(result.rows[0], { barcode: "8801234567890" });
+    assert.deepEqual(result.rows[1], { barcode: "8801234567890" });
+    assert.equal(result.skippedEmptyBarcode, 1);
+  });
 });

@@ -1,3 +1,5 @@
+import { normalizeCenterSeparationBarcode } from "@/lib/center-separation/normalize-barcode";
+
 export type ValidateCenterSeparationBarcodesResult = {
   knownBarcodes: string[];
   missingBarcodes: string[];
@@ -12,7 +14,7 @@ export function partitionCenterSeparationBarcodes(
   const seen = new Set<string>();
 
   for (const barcode of barcodes) {
-    const normalized = barcode.trim();
+    const normalized = normalizeCenterSeparationBarcode(barcode);
 
     if (normalized === "" || seen.has(normalized)) {
       continue;

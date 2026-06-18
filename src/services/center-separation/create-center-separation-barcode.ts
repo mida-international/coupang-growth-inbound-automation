@@ -1,3 +1,4 @@
+import { normalizeCenterSeparationBarcode } from "@/lib/center-separation/normalize-barcode";
 import type {
   CenterSeparationServiceResult,
   UpsertCenterSeparationResult,
@@ -11,7 +12,7 @@ import { validateCenterSeparationBarcodes } from "@/services/center-separation/v
 export async function createCenterSeparationBarcode(
   barcode: string,
 ): Promise<CenterSeparationServiceResult<UpsertCenterSeparationResult>> {
-  const normalized = barcode.trim();
+  const normalized = normalizeCenterSeparationBarcode(barcode);
 
   if (normalized === "") {
     return { ok: false, error: "바코드를 입력해 주세요." };

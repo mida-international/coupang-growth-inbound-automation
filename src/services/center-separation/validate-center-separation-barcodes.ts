@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { normalizeCenterSeparationBarcode } from "@/lib/center-separation/normalize-barcode";
 import {
   partitionCenterSeparationBarcodes,
   type ValidateCenterSeparationBarcodesResult,
@@ -9,7 +10,7 @@ function dedupeBarcodes(barcodes: string[]): string[] {
   const unique = new Map<string, string>();
 
   for (const barcode of barcodes) {
-    const normalized = barcode.trim();
+    const normalized = normalizeCenterSeparationBarcode(barcode);
 
     if (normalized === "") {
       continue;
