@@ -1,9 +1,11 @@
 import { normalizeCenterSeparationBarcode } from "@/lib/center-separation/normalize-barcode";
+import { prisma } from "@/lib/db";
 import type {
   CenterSeparationServiceResult,
   UpsertCenterSeparationResult,
 } from "@/services/center-separation/types";
 import {
+  CENTER_SEPARATION_ALREADY_EXISTS_ERROR,
   CENTER_SEPARATION_MISSING_BARCODE_ERROR,
 } from "@/services/center-separation/types";
 import { upsertCenterSeparationBarcodes } from "@/services/center-separation/upsert-center-separation-barcodes";
@@ -26,6 +28,19 @@ export async function createCenterSeparationBarcode(
       ok: false,
       error: CENTER_SEPARATION_MISSING_BARCODE_ERROR,
       missingBarcodes,
+    };
+  }
+
+  const existing = await prisma.coupangCenterSeparation.findUnique({
+    where: { barcode: normalized },
+    select: { barcode: true },
+  });
+
+  if (existing) {
+    return {
+      ok: false,
+      error: CENTER_SEPARATION_ALREADY_EXISTS_ERROR,
+      existingBarcodes: [normalized],
     };
   }
 

@@ -13,6 +13,7 @@ export function fromCenterSeparationServiceResult<T>(
         ok: false as const,
         error: result.error,
         missingBarcodes: result.missingBarcodes ?? [],
+        existingBarcodes: result.existingBarcodes ?? [],
       },
       { status: 400 },
     );

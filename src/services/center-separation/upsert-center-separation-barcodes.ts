@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { normalizeCenterSeparationBarcode } from "@/lib/center-separation/normalize-barcode";
+import { partitionKnownBarcodesByExisting } from "@/services/center-separation/partition-known-barcodes-by-existing";
 import type {
   CenterSeparationServiceResult,
   UpsertCenterSeparationResult,
@@ -50,13 +51,18 @@ export async function upsertCenterSeparationBarcodes(
     };
   }
 
-  const existingBarcodes = new Set(
+  const existingInDb = new Set(
     (
       await prisma.coupangCenterSeparation.findMany({
         where: { barcode: { in: knownBarcodes } },
         select: { barcode: true },
       })
     ).map((row) => row.barcode),
+  );
+
+  const { toCreate, existingBarcodes } = partitionKnownBarcodesByExisting(
+    knownBarcodes,
+    existingInDb,
   );
 
   const stats = {
@@ -69,24 +75,14 @@ export async function upsertCenterSeparationBarcodes(
   };
 
   await prisma.$transaction(async (tx) => {
-    for (const barcode of knownBarcodes) {
+    for (const barcode of toCreate) {
       try {
-        const isUpdate = existingBarcodes.has(barcode);
-
-        await tx.coupangCenterSeparation.upsert({
-          where: { barcode },
-          create: { barcode },
-          update: { barcode },
+        await tx.coupangCenterSeparation.create({
+          data: { barcode },
         });
 
         stats.upserted += 1;
-
-        if (isUpdate) {
-          stats.updated += 1;
-        } else {
-          stats.created += 1;
-          existingBarcodes.add(barcode);
-        }
+        stats.created += 1;
       } catch (error) {
         const message =
           error instanceof Error
@@ -98,18 +94,19 @@ export async function upsertCenterSeparationBarcodes(
     }
   });
 
-  if (stats.upserted === 0) {
+  if (stats.created === 0 && existingBarcodes.length === 0) {
     return {
       ok: false,
       error:
         stats.errors[0] ??
         "센터분리 데이터를 저장하지 못했습니다. 바코드를 확인해 주세요.",
       missingBarcodes,
+      existingBarcodes,
     };
   }
 
   return {
     ok: true,
-    data: { stats, missingBarcodes },
+    data: { stats, missingBarcodes, existingBarcodes },
   };
 }

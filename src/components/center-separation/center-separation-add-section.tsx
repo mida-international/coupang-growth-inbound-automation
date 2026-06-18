@@ -21,22 +21,32 @@ import { CENTER_SEPARATION_TEMPLATE_FILENAME } from "@/lib/excel/generators/cent
 import { isExcelFile } from "@/lib/excel/validate-file";
 import { cn } from "@/lib/utils";
 import {
+  CENTER_SEPARATION_ALREADY_EXISTS_ERROR,
   CENTER_SEPARATION_MISSING_BARCODE_ERROR,
 } from "@/services/center-separation/types";
 import type { UpsertCenterSeparationResult } from "@/services/center-separation/types";
 
+type UploadResultDialogState = {
+  existingBarcodes: string[];
+  missingBarcodes: string[];
+};
+
 function summarizeUpsert(
   stats: UpsertCenterSeparationResult["stats"],
   missingBarcodes: string[],
+  existingBarcodes: string[],
 ): string {
   const parts = [
     `${stats.upserted.toLocaleString()}건 반영`,
     `신규 ${stats.created.toLocaleString()}건`,
-    `갱신 ${stats.updated.toLocaleString()}건`,
   ];
 
   if (stats.skippedEmptyBarcode > 0) {
     parts.push(`바코드 없음 ${stats.skippedEmptyBarcode.toLocaleString()}행 스킵`);
+  }
+
+  if (existingBarcodes.length > 0) {
+    parts.push(`이미 등록 ${existingBarcodes.length.toLocaleString()}건`);
   }
 
   if (missingBarcodes.length > 0) {
@@ -77,14 +87,34 @@ function AddCard({
   );
 }
 
-function MissingBarcodesList({ barcodes }: { barcodes: string[] }) {
+function BarcodeListSection({
+  title,
+  description,
+  barcodes,
+}: {
+  title: string;
+  description?: string;
+  barcodes: string[];
+}) {
+  if (barcodes.length === 0) {
+    return null;
+  }
+
   return (
-    <div className="max-h-64 overflow-y-auto rounded-md border border-border bg-muted/30 p-3">
-      <ul className="space-y-1 font-mono text-sm">
-        {barcodes.map((barcode) => (
-          <li key={barcode}>{barcode}</li>
-        ))}
-      </ul>
+    <div className="space-y-2">
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        {description ? (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+      <div className="max-h-64 overflow-y-auto rounded-md border border-border bg-muted/30 p-3">
+        <ul className="space-y-1 font-mono text-sm">
+          {barcodes.map((barcode) => (
+            <li key={barcode}>{barcode}</li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -96,9 +126,12 @@ export function CenterSeparationAddSection() {
   const [file, setFile] = useState<File | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [singleMissingDialogOpen, setSingleMissingDialogOpen] = useState(false);
-  const [missingBarcodesDialog, setMissingBarcodesDialog] = useState<
-    string[] | null
-  >(null);
+  const [singleExistingDialogOpen, setSingleExistingDialogOpen] = useState(false);
+  const [singleExistingBarcode, setSingleExistingBarcode] = useState<string | null>(
+    null,
+  );
+  const [uploadResultDialog, setUploadResultDialog] =
+    useState<UploadResultDialogState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -166,6 +199,17 @@ export function CenterSeparationAddSection() {
 
     if (!result.ok) {
       if (
+        result.error === CENTER_SEPARATION_ALREADY_EXISTS_ERROR ||
+        result.existingBarcodes.length > 0
+      ) {
+        setSingleExistingBarcode(
+          result.existingBarcodes[0] ?? normalized,
+        );
+        setSingleExistingDialogOpen(true);
+        return;
+      }
+
+      if (
         result.error === CENTER_SEPARATION_MISSING_BARCODE_ERROR ||
         result.missingBarcodes.length > 0
       ) {
@@ -179,7 +223,11 @@ export function CenterSeparationAddSection() {
 
     setBarcode("");
     setNotice(
-      summarizeUpsert(result.data.stats, result.data.missingBarcodes),
+      summarizeUpsert(
+        result.data.stats,
+        result.data.missingBarcodes,
+        result.data.existingBarcodes,
+      ),
     );
     router.refresh();
   }
@@ -262,7 +310,10 @@ export function CenterSeparationAddSection() {
     if (!result.ok) {
       if (result.missingBarcodes.length > 0) {
         resetUploadDialog();
-        setMissingBarcodesDialog(result.missingBarcodes);
+        setUploadResultDialog({
+          existingBarcodes: result.existingBarcodes,
+          missingBarcodes: result.missingBarcodes,
+        });
         return;
       }
 
@@ -270,13 +321,13 @@ export function CenterSeparationAddSection() {
       return;
     }
 
-    const { stats, missingBarcodes } = result.data;
+    const { stats, missingBarcodes, existingBarcodes } = result.data;
 
     resetUploadDialog();
-    setNotice(summarizeUpsert(stats, missingBarcodes));
+    setNotice(summarizeUpsert(stats, missingBarcodes, existingBarcodes));
 
-    if (missingBarcodes.length > 0) {
-      setMissingBarcodesDialog(missingBarcodes);
+    if (missingBarcodes.length > 0 || existingBarcodes.length > 0) {
+      setUploadResultDialog({ existingBarcodes, missingBarcodes });
     }
 
     router.refresh();
@@ -351,6 +402,80 @@ export function CenterSeparationAddSection() {
       ) : null}
 
       <Dialog
+        open={singleExistingDialogOpen}
+        onOpenChange={setSingleExistingDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>이미 등록된 바코드</DialogTitle>
+            <DialogDescription>
+              {CENTER_SEPARATION_ALREADY_EXISTS_ERROR}
+            </DialogDescription>
+          </DialogHeader>
+
+          {singleExistingBarcode ? (
+            <BarcodeListSection
+              title="바코드"
+              barcodes={[singleExistingBarcode]}
+            />
+          ) : null}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => setSingleExistingDialogOpen(false)}
+            >
+              확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={uploadResultDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setUploadResultDialog(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>등록 결과 안내</DialogTitle>
+            <DialogDescription>
+              아래 바코드는 등록되지 않았습니다. 목록을 확인해 주세요.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {uploadResultDialog ? (
+              <>
+                <BarcodeListSection
+                  title="이미 등록된 바코드"
+                  description={`${uploadResultDialog.existingBarcodes.length.toLocaleString()}건`}
+                  barcodes={uploadResultDialog.existingBarcodes}
+                />
+                <BarcodeListSection
+                  title="대시보드에 없는 바코드"
+                  description={`${uploadResultDialog.missingBarcodes.length.toLocaleString()}건`}
+                  barcodes={uploadResultDialog.missingBarcodes}
+                />
+              </>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => setUploadResultDialog(null)}
+            >
+              확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={singleMissingDialogOpen}
         onOpenChange={setSingleMissingDialogOpen}
       >
@@ -365,38 +490,6 @@ export function CenterSeparationAddSection() {
             <Button
               type="button"
               onClick={() => setSingleMissingDialogOpen(false)}
-            >
-              확인
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={missingBarcodesDialog !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setMissingBarcodesDialog(null);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>대시보드에 없는 바코드</DialogTitle>
-            <DialogDescription>
-              {missingBarcodesDialog?.length.toLocaleString()}건의 바코드는
-              대시보드에 없어 등록되지 않았습니다.
-            </DialogDescription>
-          </DialogHeader>
-
-          {missingBarcodesDialog ? (
-            <MissingBarcodesList barcodes={missingBarcodesDialog} />
-          ) : null}
-
-          <DialogFooter>
-            <Button
-              type="button"
-              onClick={() => setMissingBarcodesDialog(null)}
             >
               확인
             </Button>

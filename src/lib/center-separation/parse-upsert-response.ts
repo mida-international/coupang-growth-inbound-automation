@@ -3,10 +3,19 @@ import type { UpsertCenterSeparationResult } from "@/services/center-separation/
 
 export type CenterSeparationUpsertApiResult =
   | { ok: true; data: UpsertCenterSeparationResult }
-  | { ok: false; error: string; missingBarcodes: string[] };
+  | {
+      ok: false;
+      error: string;
+      missingBarcodes: string[];
+      existingBarcodes: string[];
+    };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function parseStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String) : [];
 }
 
 export function parseCenterSeparationUpsertResponse(
@@ -23,9 +32,8 @@ export function parseCenterSeparationUpsertResponse(
       ok: true,
       data: {
         stats: data.stats,
-        missingBarcodes: Array.isArray(data.missingBarcodes)
-          ? data.missingBarcodes.map(String)
-          : [],
+        missingBarcodes: parseStringArray(data.missingBarcodes),
+        existingBarcodes: parseStringArray(data.existingBarcodes),
       },
     };
   }
@@ -34,9 +42,8 @@ export function parseCenterSeparationUpsertResponse(
     return {
       ok: false,
       error: parsed.error,
-      missingBarcodes: Array.isArray(parsed.missingBarcodes)
-        ? parsed.missingBarcodes.map(String)
-        : [],
+      missingBarcodes: parseStringArray(parsed.missingBarcodes),
+      existingBarcodes: parseStringArray(parsed.existingBarcodes),
     };
   }
 
@@ -51,7 +58,12 @@ export async function readCenterSeparationUpsertResponse(
   try {
     parsed = await response.json();
   } catch {
-    return { ok: false, error: "응답을 처리할 수 없습니다.", missingBarcodes: [] };
+    return {
+      ok: false,
+      error: "응답을 처리할 수 없습니다.",
+      missingBarcodes: [],
+      existingBarcodes: [],
+    };
   }
 
   const result = parseCenterSeparationUpsertResponse(parsed);
@@ -69,10 +81,16 @@ export async function readCenterSeparationUpsertResponse(
       ok: false,
       error: parsed.error,
       missingBarcodes: [],
+      existingBarcodes: [],
     };
   }
 
-  return { ok: false, error: "응답을 처리할 수 없습니다.", missingBarcodes: [] };
+  return {
+    ok: false,
+    error: "응답을 처리할 수 없습니다.",
+    missingBarcodes: [],
+    existingBarcodes: [],
+  };
 }
 
 export function toApiResult(
