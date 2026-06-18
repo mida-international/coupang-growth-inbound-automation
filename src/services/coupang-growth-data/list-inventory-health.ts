@@ -21,6 +21,7 @@ type ListInventoryHealthOptions = {
   page?: number;
   pageSize?: number;
   search?: string;
+  exportAll?: boolean;
 };
 
 type RawInventoryHealthRow = {
@@ -116,6 +117,7 @@ export async function listInventoryHealth(
 ): Promise<ListInventoryHealthResult> {
   const page = Math.max(1, options.page ?? 1);
   const pageSize = normalizeInventoryHealthPageSize(options.pageSize);
+  const exportAll = options.exportAll === true;
   const sellerFilter = options.sellerFilter;
   const isAllSellers = isInventoryHealthAllSellers(sellerFilter);
   const sellerIds = await resolveSellerIdsForQuery(sellerFilter);
@@ -167,6 +169,9 @@ export async function listInventoryHealth(
 
   const queryPrefix = buildWorkbenchCoreQueryPrefix(queryContext);
   const sellerIn = buildSellerInClause(sellerIds);
+  const paginationClause = exportAll
+    ? Prisma.empty
+    : Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
 
   const rows = await prisma.$queryRaw<RawInventoryHealthRow[]>(
     Prisma.sql`
@@ -193,8 +198,7 @@ export async function listInventoryHealth(
         WHERE v.coupang_seller_account_id IN (${sellerIn})
         ${searchCondition}
         ${orderBy}
-        LIMIT ${pageSize}
-        OFFSET ${(page - 1) * pageSize}
+        ${paginationClause}
       ),
       total_count AS (
         SELECT COUNT(*)::bigint AS count

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { AddSellerAccountForm } from "@/components/coupang-seller-accounts/add-seller-account-form";
+import { SellerAccountsExcelDownloadButton } from "@/components/coupang-seller-accounts/seller-accounts-excel-download-button";
 import { SellerAccountsTable } from "@/components/coupang-seller-accounts/seller-accounts-table";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -79,9 +80,12 @@ export function SellerAccountsPanel({
           description="등록된 쿠팡 판매자 계정입니다."
           variant="plain"
           action={
-            <Badge variant="secondary" className="shrink-0">
-              {accounts.length}건
-            </Badge>
+            <div className="flex shrink-0 items-center gap-2">
+              <SellerAccountsExcelDownloadButton disabled={accounts.length === 0} />
+              <Badge variant="secondary" className="shrink-0">
+                {accounts.length}건
+              </Badge>
+            </div>
           }
         >
           <SellerAccountsTable accounts={accounts} />

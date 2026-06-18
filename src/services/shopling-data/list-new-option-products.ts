@@ -18,6 +18,7 @@ type ListNewOptionProductsOptions = {
   page?: number;
   pageSize?: number;
   search?: string;
+  exportAll?: boolean;
 };
 
 type RawNewOptionProductRow = {
@@ -53,6 +54,7 @@ export async function listNewOptionProducts(
 ): Promise<ListNewOptionProductsResult> {
   const page = Math.max(1, options.page ?? 1);
   const pageSize = normalizeShoplingInventoryPageSize(options.pageSize);
+  const exportAll = options.exportAll === true;
   const dateRange = resolveNewOptionProductsDateRange({
     from: options.from,
     to: options.to,
@@ -79,6 +81,10 @@ export async function listNewOptionProducts(
     searchCondition,
   );
 
+  const paginationClause = exportAll
+    ? Prisma.empty
+    : Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
+
   const [countResult, rows] = await Promise.all([
     prisma.$queryRaw<[{ count: number }]>(
       Prisma.sql`
@@ -99,8 +105,7 @@ export async function listNewOptionProducts(
           first_added_date
         FROM visible_rows
         ORDER BY first_added_date DESC, goods_key ASC, barcode ASC
-        LIMIT ${pageSize}
-        OFFSET ${(page - 1) * pageSize}
+        ${paginationClause}
       `,
     ),
   ]);

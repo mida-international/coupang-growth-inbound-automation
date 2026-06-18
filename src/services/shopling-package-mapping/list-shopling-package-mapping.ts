@@ -10,6 +10,7 @@ type ListShoplingPackageMappingOptions = {
   page?: number;
   pageSize?: number;
   search?: string;
+  exportAll?: boolean;
 };
 
 function buildWhere(search?: string) {
@@ -44,6 +45,7 @@ export async function listShoplingPackageMapping(
 ): Promise<ListShoplingPackageMappingResult> {
   const page = Math.max(1, options.page ?? 1);
   const pageSize = normalizeShoplingPackageMappingPageSize(options.pageSize);
+  const exportAll = options.exportAll === true;
   const where = buildWhere(options.search);
 
   const [totalCount, rows] = await Promise.all([
@@ -52,8 +54,12 @@ export async function listShoplingPackageMapping(
       where,
       select: shoplingPackageMappingRowSelect,
       orderBy: [{ packageOptId: "asc" }, { singleOptId: "asc" }],
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      ...(exportAll
+        ? {}
+        : {
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+          }),
     }),
   ]);
 

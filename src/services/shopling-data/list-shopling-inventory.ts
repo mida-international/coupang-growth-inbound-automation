@@ -7,6 +7,7 @@ type ListShoplingInventoryOptions = {
   page?: number;
   pageSize?: number;
   search?: string;
+  exportAll?: boolean;
 };
 
 function buildWhere(maxSnapshotDate: Date, search?: string) {
@@ -31,6 +32,7 @@ export async function listShoplingInventory(
 ): Promise<ListShoplingInventoryResult> {
   const page = Math.max(1, options.page ?? 1);
   const pageSize = normalizeShoplingInventoryPageSize(options.pageSize);
+  const exportAll = options.exportAll === true;
 
   const { _max } = await prisma.shoplingInventory.aggregate({
     _max: { snapshotDate: true },
@@ -65,8 +67,12 @@ export async function listShoplingInventory(
         location: true,
       },
       orderBy: [{ goodsKey: "asc" }, { barcode: "asc" }],
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      ...(exportAll
+        ? {}
+        : {
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+          }),
     }),
   ]);
 

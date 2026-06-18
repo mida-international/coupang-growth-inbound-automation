@@ -11,6 +11,7 @@ import {
   SellerAccountCheckboxList,
 } from "@/components/inbound-workbench/seller-account-checkbox-list";
 import { WorkbenchColumnVisibilityMenu } from "@/components/inbound-workbench/workbench-column-visibility-menu";
+import { ListExcelDownloadButton } from "@/components/data-list/list-excel-download-button";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -73,6 +74,34 @@ function formatSnapshotLine(
   }
 
   return `${sellerPrefix}${parts.join(" · ")}`;
+}
+
+function buildWorkbenchDownloadHref(
+  appliedSellerIds: string[],
+  search: string,
+  sort: InboundWorkbenchSortColumn | null,
+  dir: InboundWorkbenchSortDirection | null,
+): string {
+  const params = new URLSearchParams();
+
+  for (const sellerId of appliedSellerIds) {
+    params.append("seller", sellerId);
+  }
+
+  const trimmed = search.trim();
+  if (trimmed) {
+    params.set("q", trimmed);
+  }
+
+  if (sort) {
+    params.set("sort", sort);
+  }
+
+  if (dir) {
+    params.set("dir", dir);
+  }
+
+  return `/api/downloads/inbound-workbench?${params.toString()}`;
 }
 
 function SectionLabel({ children }: { children: ReactNode }) {
@@ -270,8 +299,21 @@ export function InboundWorkbenchToolbar({
           ) : null}
         </p>
 
-        {showPagination && !editMode ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
+          {totalCount > 0 ? (
+            <ListExcelDownloadButton
+              disabled={appliedSellerIds.length === 0}
+              downloadHref={buildWorkbenchDownloadHref(
+                appliedSellerIds,
+                search,
+                sort,
+                dir,
+              )}
+            />
+          ) : null}
+
+          {showPagination && !editMode ? (
+            <>
             <select
               value={pageSize}
               aria-label="표시 건수"
@@ -343,8 +385,9 @@ export function InboundWorkbenchToolbar({
                 </Button>
               )}
             </div>
-          </div>
-        ) : null}
+            </>
+          ) : null}
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { buildShoplingListQuery } from "@/components/shopling-data/build-shopling-list-query";
 import { DataListToolbarShell } from "@/components/data-list/data-list-toolbar-shell";
+import { ListExcelDownloadButton } from "@/components/data-list/list-excel-download-button";
 import { ShoplingPageSizeSelect } from "@/components/shopling-data/shopling-page-size-select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +81,13 @@ export function CenterSeparationToolbar({
               {isDeleting ? "삭제 중..." : "삭제"}
             </Button>
           ) : null}
+          <ListExcelDownloadButton
+            disabled={totalCount === 0}
+            downloadHref={`/api/downloads/center-separation${buildShoplingListQuery({
+              q: search,
+              defaultPageSize: CENTER_SEPARATION_DEFAULT_PAGE_SIZE,
+            })}`}
+          />
         </div>
 
         {showPagination ? (
