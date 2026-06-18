@@ -62,10 +62,33 @@ export async function firstVisibleLocator(
   selectors: string[],
 ): Promise<Locator | null> {
   for (const selector of selectors) {
-    const locator = root.locator(selector);
-    if ((await locator.count()) > 0) {
-      return locator.first();
+    const locator = root.locator(selector).first();
+
+    if ((await locator.count()) === 0) {
+      continue;
     }
+
+    if (await locator.isVisible().catch(() => false)) {
+      return locator;
+    }
+  }
+
+  return null;
+}
+
+export async function firstVisibleRoleLocator(
+  root: Page | Frame,
+  role: "button" | "textbox",
+  name: string | RegExp,
+): Promise<Locator | null> {
+  const locator = root.getByRole(role, { name }).first();
+
+  if ((await locator.count()) === 0) {
+    return null;
+  }
+
+  if (await locator.isVisible().catch(() => false)) {
+    return locator;
   }
 
   return null;

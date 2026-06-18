@@ -2,6 +2,7 @@ import {
   closeShoplingWmsBrowser,
   launchShoplingWmsBrowser,
 } from "@/lib/shopling-wms/browser/context";
+import { isShoplingSessionExpiredError } from "@/lib/shopling-wms/browser/shopling-auth";
 import { fillStockImportTemplate } from "@/lib/shopling-wms/excel/fill-stock-import-template";
 import { parseNegativeInventoryFile } from "@/lib/shopling-wms/excel/parse-negative-inventory-file";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/lib/shopling-wms/format-kst-timestamp";
 import { downloadNegativeInventoryExcel } from "@/lib/shopling-wms/negative-stock/phase1-download-inventory";
 import { uploadStockImportAndApply } from "@/lib/shopling-wms/negative-stock/phase3-upload-and-apply";
+import { clearShoplingWmsSession } from "@/lib/shopling-wms/session-store";
 
 export type NegativeStockRunResult =
   | {
@@ -84,6 +86,13 @@ export async function runNegativeStock(
         error instanceof Error
           ? error.message
           : "음수 재고 엑셀 다운로드에 실패했습니다.";
+
+      if (isShoplingSessionExpiredError(message)) {
+        await clearShoplingWmsSession(userId);
+        await closeShoplingWmsBrowser(browserSession).catch(() => undefined);
+
+        return { ok: false, message, phase: "session" };
+      }
 
       return { ok: false, message, phase: "phase1" };
     }

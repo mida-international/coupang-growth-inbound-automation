@@ -48,3 +48,9 @@ export async function getShoplingWmsSession(
 
   return row.storageState as ShoplingWmsStorageState;
 }
+
+export async function clearShoplingWmsSession(userId: string): Promise<void> {
+  await prisma.shoplingWmsSession
+    .delete({ where: { userId } })
+    .catch(() => undefined);
+}
