@@ -11,6 +11,7 @@ import {
   type NavItem,
 } from "@/config/navigation";
 import {
+  boardWorkflowTabGroup,
   findPageTabGroup,
   getActivePageTabHref,
 } from "@/config/page-tabs";
@@ -57,7 +58,28 @@ function findInGroup(pathname: string, group: NavGroup) {
 function getNavContext(pathname: string): NavContext {
   const mainItem = findActiveItem(pathname, mainNavItems);
   if (mainItem) {
-    if (isNavItemActive(pathname, "/downloads")) {
+    if (
+      isNavItemActive(pathname, "/downloads") ||
+      isNavItemActive(pathname, "/board")
+    ) {
+      if (isNavItemActive(pathname, "/board")) {
+        const activeWorkflowHref = getActivePageTabHref(
+          pathname,
+          boardWorkflowTabGroup.tabs,
+        );
+        const activeWorkflowTab = boardWorkflowTabGroup.tabs.find(
+          (tab) => tab.href === activeWorkflowHref,
+        );
+
+        if (activeWorkflowTab) {
+          return {
+            groupTitle: mainItem.title,
+            pageTitle: activeWorkflowTab.title,
+            pageHref: activeWorkflowTab.href,
+          };
+        }
+      }
+
       const tabGroup = findPageTabGroup(pathname);
       if (tabGroup) {
         const activeTabHref = getActivePageTabHref(pathname, tabGroup.tabs);
