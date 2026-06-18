@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 
 import {
   buildWarehouseInboundListFilename,
+  buildWarehouseInboundListGrid,
   CENTER_SEPARATION_COLUMN_KEY,
   CENTER_SEPARATION_MARKER,
   generateWarehouseInboundListBuffer,
@@ -56,6 +57,43 @@ describe("getWarehouseInboundListColumnKeys", () => {
       "3회차",
       CENTER_SEPARATION_COLUMN_KEY,
     ]);
+  });
+});
+
+function readAllRows(buffer: Buffer): string[][] {
+  const workbook = XLSX.read(buffer, { type: "buffer" });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]]!;
+
+  return XLSX.utils.sheet_to_json<string[]>(sheet, {
+    header: 1,
+    defval: "",
+  }).map((row) => row.map((value) => String(value)));
+}
+
+describe("buildWarehouseInboundListGrid", () => {
+  it("matches generateWarehouseInboundListBuffer xlsx content", () => {
+    const options = {
+      rotationCount: 2 as const,
+      rotationBatches: [
+        {
+          recordedAt: new Date("2026-06-17T00:00:00.000Z"),
+          qtyByBarcode: new Map([["8801111111111", 3]]),
+        },
+        {
+          recordedAt: new Date("2026-06-16T00:00:00.000Z"),
+          qtyByBarcode: new Map([["8801111111111", 1]]),
+        },
+      ],
+      centerSeparationBarcodes: new Set(["8801111111111"]),
+    };
+    const fixedDate = new Date("2026-06-17T00:00:00.000Z");
+    const grid = buildWarehouseInboundListGrid(sampleRows, options, fixedDate);
+    const buffer = generateWarehouseInboundListBuffer(sampleRows, options, fixedDate);
+    const sheetRows = readAllRows(buffer);
+
+    assert.equal(grid.sheetTitle, "6.17요청");
+    assert.deepEqual(grid.headers, sheetRows[0]);
+    assert.deepEqual([grid.headers, ...grid.rows], sheetRows);
   });
 });
 

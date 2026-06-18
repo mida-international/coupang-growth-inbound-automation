@@ -48,6 +48,7 @@ export function WarehouseInboundListSection({
 }: WarehouseInboundListSectionProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isCopyingToSheet, setIsCopyingToSheet] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [canRecordInbound, setCanRecordInbound] = useState(false);
   const [inboundRotation, setInboundRotation] = useState("1");
@@ -58,7 +59,7 @@ export function WarehouseInboundListSection({
   }, [sellerId, inboundRotation]);
 
   async function handleRecordClick() {
-    if (!canRecordInbound || !hasSeller || isRecording || isDownloading) {
+    if (!canRecordInbound || !hasSeller || isRecording || isDownloading || isCopyingToSheet) {
       return;
     }
 
@@ -153,6 +154,54 @@ export function WarehouseInboundListSection({
     }
   }
 
+  async function handleSheetCopyClick() {
+    if (!hasSeller) {
+      return;
+    }
+
+    setIsCopyingToSheet(true);
+    setNotice(null);
+
+    try {
+      const response = await fetch(
+        `/api/downloads/warehouse-inbound-list/google-sheets?seller=${encodeURIComponent(sellerId)}${
+          inboundRotation ? `&rotation=${encodeURIComponent(inboundRotation)}` : ""
+        }`,
+        { method: "POST" },
+      );
+
+      const payload = (await response.json().catch(() => null)) as
+        | { ok: true; data: { sheetUrl: string; rowCount: number } }
+        | { ok: false; error?: string }
+        | null;
+
+      if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
+        throw new Error(
+          payload && "error" in payload && payload.error
+            ? payload.error
+            : "Google Sheets 복사에 실패했습니다.",
+        );
+      }
+
+      window.open(payload.data.sheetUrl, "_blank", "noopener,noreferrer");
+
+      setNotice(
+        payload.data.rowCount > 0
+          ? `${payload.data.rowCount}건을 Google 시트에 복사했습니다.`
+          : "Google 시트에 헤더만 복사했습니다.",
+      );
+      setCanRecordInbound(true);
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Google Sheets 복사에 실패했습니다.",
+      );
+    } finally {
+      setIsCopyingToSheet(false);
+    }
+  }
+
   return (
     <DeliverablesSection
       title="창고 전송용 입고리스트 생성"
@@ -186,15 +235,31 @@ export function WarehouseInboundListSection({
 
       <DeliverablesActionBar
         center={
-          <Button
-            type="button"
-            size="default"
-            className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
-            disabled={!hasSeller || isDownloading || isRecording}
-            onClick={handleDownloadClick}
-          >
-            {isDownloading ? "생성 중..." : "다운로드"}
-          </Button>
+          <>
+            <Button
+              type="button"
+              size="default"
+              className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
+              disabled={
+                !hasSeller || isDownloading || isCopyingToSheet || isRecording
+              }
+              onClick={handleDownloadClick}
+            >
+              {isDownloading ? "생성 중..." : "다운로드"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
+              disabled={
+                !hasSeller || isDownloading || isCopyingToSheet || isRecording
+              }
+              onClick={handleSheetCopyClick}
+            >
+              {isCopyingToSheet ? "복사 중..." : "시트 복사"}
+            </Button>
+          </>
         }
         end={
           <Button
@@ -203,7 +268,11 @@ export function WarehouseInboundListSection({
             size="default"
             className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
             disabled={
-              !canRecordInbound || !hasSeller || isRecording || isDownloading
+              !canRecordInbound ||
+              !hasSeller ||
+              isRecording ||
+              isDownloading ||
+              isCopyingToSheet
             }
             onClick={handleRecordClick}
           >

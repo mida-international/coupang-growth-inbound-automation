@@ -146,6 +146,31 @@ function toOutputRows(
   return output;
 }
 
+export type WarehouseInboundListGrid = {
+  sheetTitle: string;
+  headers: string[];
+  rows: string[][];
+};
+
+export function buildWarehouseInboundListGrid(
+  rows: WarehouseInboundListRow[],
+  options?: GenerateWarehouseInboundListOptions,
+  date = getKstTodayDate(),
+): WarehouseInboundListGrid {
+  const today = formatKstIsoDate(date);
+  const rotationCount = options?.rotationCount ?? 0;
+  const headers = getWarehouseInboundListColumnKeys(rotationCount);
+  const outputRows = toOutputRows(rows, today, options);
+
+  return {
+    sheetTitle: getKstSheetName(date),
+    headers,
+    rows: outputRows.map((row) =>
+      headers.map((key) => String(row[key] ?? "")),
+    ),
+  };
+}
+
 export function buildWarehouseInboundListFilename(
   displayName: string,
   date = getKstTodayDate(),
@@ -159,12 +184,16 @@ export function buildWarehouseInboundListFilename(
 export function generateWarehouseInboundListBuffer(
   rows: WarehouseInboundListRow[],
   options?: GenerateWarehouseInboundListOptions,
+  date = getKstTodayDate(),
 ): Buffer {
-  const todayDate = getKstTodayDate();
-  const today = formatKstIsoDate(todayDate);
-  const rotationCount = options?.rotationCount ?? 0;
-  const columnKeys = getWarehouseInboundListColumnKeys(rotationCount);
-  const outputRows = toOutputRows(rows, today, options);
+  const { sheetTitle, headers: columnKeys, rows: gridRows } =
+    buildWarehouseInboundListGrid(rows, options, date);
+  const outputRows = gridRows.map((gridRow) =>
+    Object.fromEntries(
+      columnKeys.map((key, index) => [key, gridRow[index] ?? ""]),
+    ),
+  );
+
   const worksheet = XLSX.utils.json_to_sheet(outputRows, {
     header: columnKeys,
   });
@@ -181,11 +210,7 @@ export function generateWarehouseInboundListBuffer(
   });
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(
-    workbook,
-    worksheet,
-    getKstSheetName(todayDate),
-  );
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetTitle);
 
   return Buffer.from(
     XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }),

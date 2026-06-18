@@ -1,7 +1,9 @@
 import { resolveActiveSellerAccount } from "@/lib/api/download-helpers";
 import {
   buildWarehouseInboundListFilename,
+  buildWarehouseInboundListGrid,
   generateWarehouseInboundListBuffer,
+  type WarehouseInboundListGrid,
 } from "@/lib/excel/generators/warehouse-inbound-list";
 import { loadCenterSeparationBarcodeSet } from "@/services/deliverables/load-center-separation-barcode-set";
 import { loadOutboundDecomposeContext } from "@/services/deliverables/load-outbound-decompose-context";
@@ -34,6 +36,7 @@ export type WarehouseInboundListContext = {
   };
   listResult: ListWarehouseInboundRowsResult;
   rotation: 0 | 1 | 2 | 3;
+  grid: WarehouseInboundListGrid;
   buffer: Buffer;
   outputFileName: string;
 };
@@ -63,13 +66,16 @@ export async function generateWarehouseInboundListContext(
         ])
       : [[], null];
 
-  const buffer = generateWarehouseInboundListBuffer(listResult.rows, {
+  const listOptions = {
     rotationCount: rotation,
     rotationBatches,
     packageMappingsByBarcode:
       decomposeContext?.packageMappingsByBarcode ?? new Map(),
     centerSeparationBarcodes,
-  });
+  } as const;
+
+  const grid = buildWarehouseInboundListGrid(listResult.rows, listOptions);
+  const buffer = generateWarehouseInboundListBuffer(listResult.rows, listOptions);
   const outputFileName = buildWarehouseInboundListFilename(seller.displayName);
 
   return {
@@ -79,6 +85,7 @@ export async function generateWarehouseInboundListContext(
     },
     listResult,
     rotation,
+    grid,
     buffer,
     outputFileName,
   };
