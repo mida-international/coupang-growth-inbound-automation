@@ -1,4 +1,8 @@
 import {
+  LIST_TABLE_HEADER_CLASS,
+  LIST_TABLE_STICKY_HEAD_CLASS,
+} from "@/components/data-list/list-table-header";
+import {
   Table,
   TableBody,
   TableCell,
@@ -27,22 +31,32 @@ export function CoupangGrowthInventoryHealthTable({
 
   return (
     <Table containerClassName="overflow-visible">
-      <TableHeader className="sticky top-0 z-20 bg-muted/40">
+      <TableHeader className={LIST_TABLE_HEADER_CLASS}>
         <TableRow className="hover:bg-transparent">
-          <TableHead className="bg-muted/40">판매자 계정</TableHead>
-          <TableHead className="bg-muted/40">등록상품명</TableHead>
-          <TableHead className="bg-muted/40">옵션명</TableHead>
-          <TableHead className="bg-muted/40">옵션 ID</TableHead>
-          <TableHead className="bg-muted/40">바코드</TableHead>
-          <TableHead className="bg-muted/40">샵플링 자사상품코드</TableHead>
-          <TableHead className="bg-muted/40 text-right">주문가능재고</TableHead>
-          <TableHead className="bg-muted/40 text-right">입고예정</TableHead>
-          <TableHead className="bg-muted/40 text-right">7일 판매수량</TableHead>
-          <TableHead className="bg-muted/40 text-right">30일 판매수량</TableHead>
-          <TableHead className="bg-muted/40 text-right">추천입고수량</TableHead>
-          <TableHead className="bg-muted/40">Offer condition</TableHead>
-          <TableHead className="bg-muted/40">Days of cover</TableHead>
-          <TableHead className="bg-muted/40">재고 스냅샷일</TableHead>
+          <TableHead className={LIST_TABLE_STICKY_HEAD_CLASS}>판매자 계정</TableHead>
+          <TableHead className={LIST_TABLE_STICKY_HEAD_CLASS}>등록상품명</TableHead>
+          <TableHead className={LIST_TABLE_STICKY_HEAD_CLASS}>옵션명</TableHead>
+          <TableHead className={LIST_TABLE_STICKY_HEAD_CLASS}>옵션 ID</TableHead>
+          <TableHead className={LIST_TABLE_STICKY_HEAD_CLASS}>바코드</TableHead>
+          <TableHead className={LIST_TABLE_STICKY_HEAD_CLASS}>샵플링 자사상품코드</TableHead>
+          <TableHead className={`${LIST_TABLE_STICKY_HEAD_CLASS} text-right`}>
+            주문가능재고
+          </TableHead>
+          <TableHead className={`${LIST_TABLE_STICKY_HEAD_CLASS} text-right`}>
+            입고예정
+          </TableHead>
+          <TableHead className={`${LIST_TABLE_STICKY_HEAD_CLASS} text-right`}>
+            7일 판매수량
+          </TableHead>
+          <TableHead className={`${LIST_TABLE_STICKY_HEAD_CLASS} text-right`}>
+            30일 판매수량
+          </TableHead>
+          <TableHead className={`${LIST_TABLE_STICKY_HEAD_CLASS} text-right`}>
+            추천입고수량
+          </TableHead>
+          <TableHead className={LIST_TABLE_STICKY_HEAD_CLASS}>Offer condition</TableHead>
+          <TableHead className={LIST_TABLE_STICKY_HEAD_CLASS}>Days of cover</TableHead>
+          <TableHead className={LIST_TABLE_STICKY_HEAD_CLASS}>재고 스냅샷일</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
