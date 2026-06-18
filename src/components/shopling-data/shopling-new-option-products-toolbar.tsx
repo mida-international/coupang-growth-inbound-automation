@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 
 import { buildShoplingListQuery } from "@/components/shopling-data/build-shopling-list-query";
 import { DataListToolbarShell } from "@/components/data-list/data-list-toolbar-shell";
+import { ListExcelDownloadButton } from "@/components/data-list/list-excel-download-button";
 import { ShoplingPageSizeSelect } from "@/components/shopling-data/shopling-page-size-select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,6 +144,10 @@ export function ShoplingNewOptionProductsToolbar({
 
         {showPagination ? (
           <div className="flex shrink-0 flex-wrap items-center gap-3">
+            <ListExcelDownloadButton
+              disabled={totalCount === 0}
+              downloadHref={`/api/downloads/new-option-products${listQuery({})}`}
+            />
             <ShoplingPageSizeSelect
               basePath={BASE_PATH}
               pageSize={pageSize}

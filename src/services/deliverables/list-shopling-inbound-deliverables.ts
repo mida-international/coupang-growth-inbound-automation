@@ -40,6 +40,7 @@ export function mapShoplingInboundDeliverableRow(
 type ListShoplingInboundDeliverablesOptions = {
   page?: number;
   pageSize?: number;
+  exportAll?: boolean;
 };
 
 export async function listShoplingInboundDeliverables(
@@ -47,14 +48,19 @@ export async function listShoplingInboundDeliverables(
 ): Promise<ListShoplingInboundDeliverablesResult> {
   const pageSize = normalizeShoplingInboundDeliverablePageSize(options.pageSize);
   const page = Math.max(1, options.page ?? 1);
+  const exportAll = options.exportAll === true;
   const skip = (page - 1) * pageSize;
 
   const [rowCount, rows] = await Promise.all([
     prisma.shoplingInboundDeliverable.count(),
     prisma.shoplingInboundDeliverable.findMany({
       orderBy: { recordedAt: "desc" },
-      skip,
-      take: pageSize,
+      ...(exportAll
+        ? {}
+        : {
+            skip,
+            take: pageSize,
+          }),
       select: {
         id: true,
         outputFileName: true,

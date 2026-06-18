@@ -10,6 +10,7 @@ type ListCenterSeparationOptions = {
   page?: number;
   pageSize?: number;
   search?: string;
+  exportAll?: boolean;
 };
 
 type RawCenterSeparationRow = {
@@ -67,8 +68,12 @@ export async function listCenterSeparation(
 ): Promise<ListCenterSeparationResult> {
   const page = Math.max(1, options.page ?? 1);
   const pageSize = normalizeCenterSeparationPageSize(options.pageSize);
+  const exportAll = options.exportAll === true;
   const searchCondition = buildSearchCondition(options.search);
   const offset = (page - 1) * pageSize;
+  const paginationClause = exportAll
+    ? Prisma.empty
+    : Prisma.sql`LIMIT ${pageSize} OFFSET ${offset}`;
 
   const [countResult, rows] = await Promise.all([
     prisma.$queryRaw<[{ count: bigint }]>(
@@ -95,8 +100,7 @@ export async function listCenterSeparation(
           SELECT *
           FROM filtered
           ORDER BY barcode ASC
-          LIMIT ${pageSize}
-          OFFSET ${offset}
+          ${paginationClause}
         ),
         dashboard_lookup AS (
           SELECT DISTINCT ON (TRIM(product_barcode))

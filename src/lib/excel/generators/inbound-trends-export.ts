@@ -1,8 +1,9 @@
 import * as XLSX from "xlsx";
 
+import { autoFitWorksheetColumns } from "@/lib/excel/auto-fit-worksheet-columns";
 import type { InboundTrendsRowView } from "@/services/inbound-trends/types";
 
-const FIXED_COLUMN_KEYS = [
+const FIXED_HEADERS = [
   "상품명",
   "옵션명",
   "자사상품코드",
@@ -10,26 +11,23 @@ const FIXED_COLUMN_KEYS = [
   "바코드",
 ] as const;
 
-const MIN_COLUMN_WIDTHS = [30, 25, 14, 20, 18];
+const FIXED_COLUMN_COUNT = FIXED_HEADERS.length;
 
-function getDisplayWidth(value: string): number {
-  let width = 0;
-
-  for (const character of value) {
-    width += character.charCodeAt(0) > 0x7f ? 2 : 1;
-  }
-
-  return width;
+export function formatTrendsDateHeader(date: string): string {
+  const [, month, day] = date.split("-");
+  return `${Number(month)}/${Number(day)}`;
 }
 
+/** @deprecated Flat keys kept for compatibility tests only */
 export function buildInboundTrendsDateColumnKeys(date: string): [string, string] {
   return [`${date}(완)`, date];
 }
 
+/** @deprecated Use merged 2-row header export instead */
 export function buildInboundTrendsColumnKeys(dates: string[]): string[] {
   const dateKeys = dates.flatMap((date) => buildInboundTrendsDateColumnKeys(date));
 
-  return [...FIXED_COLUMN_KEYS, ...dateKeys];
+  return [...FIXED_HEADERS, ...dateKeys];
 }
 
 function formatQty(value: number | null | undefined): string | number {
@@ -40,29 +38,58 @@ function formatQty(value: number | null | undefined): string | number {
   return value;
 }
 
-function toOutputRows(
+function buildTrendsSheetAoa(
   rows: InboundTrendsRowView[],
   dates: string[],
-): Record<string, string | number>[] {
-  return rows.map((row) => {
-    const outputRow: Record<string, string | number> = {
-      상품명: row.registeredProductName ?? "",
-      옵션명: row.optionName ?? "",
-      자사상품코드: row.ptnGoodsCd ?? "",
-      "샵플링 옵션 벨류": row.shoplingOptionValue ?? "",
-      바코드: row.productBarcode ?? "",
-    };
+): (string | number)[][] {
+  const headerRow1: string[] = [...FIXED_HEADERS];
+  const headerRow2: string[] = ["", "", "", "", ""];
 
-    for (const date of dates) {
+  for (const date of dates) {
+    const label = formatTrendsDateHeader(date);
+    headerRow1.push(label, "");
+    headerRow2.push(`${label}(완)`, label);
+  }
+
+  const dataRows = rows.map((row) => {
+    const base = [
+      row.registeredProductName ?? "",
+      row.optionName ?? "",
+      row.ptnGoodsCd ?? "",
+      row.shoplingOptionValue ?? "",
+      row.productBarcode ?? "",
+    ];
+
+    const dateCells = dates.flatMap((date) => {
       const values = row.dateValues[date];
-      const [coupangKey, warehouseKey] = buildInboundTrendsDateColumnKeys(date);
+      return [formatQty(values?.coupang), formatQty(values?.warehouse)];
+    });
 
-      outputRow[coupangKey] = formatQty(values?.coupang);
-      outputRow[warehouseKey] = formatQty(values?.warehouse);
-    }
-
-    return outputRow;
+    return [...base, ...dateCells];
   });
+
+  return [headerRow1, headerRow2, ...dataRows];
+}
+
+function buildTrendsHeaderMerges(dates: string[]) {
+  const merges: XLSX.Range[] = [];
+
+  for (let columnIndex = 0; columnIndex < FIXED_COLUMN_COUNT; columnIndex += 1) {
+    merges.push({
+      s: { r: 0, c: columnIndex },
+      e: { r: 1, c: columnIndex },
+    });
+  }
+
+  dates.forEach((_, index) => {
+    const startColumn = FIXED_COLUMN_COUNT + index * 2;
+    merges.push({
+      s: { r: 0, c: startColumn },
+      e: { r: 0, c: startColumn + 1 },
+    });
+  });
+
+  return merges;
 }
 
 export function buildInboundTrendsFilename(
@@ -79,25 +106,10 @@ export function generateInboundTrendsBuffer(
   rows: InboundTrendsRowView[],
   dates: string[],
 ): Buffer {
-  const columnKeys = buildInboundTrendsColumnKeys(dates);
-  const outputRows = toOutputRows(rows, dates);
-  const worksheet = XLSX.utils.json_to_sheet(outputRows, {
-    header: columnKeys,
-  });
-
-  worksheet["!cols"] = columnKeys.map((key, index) => {
-    const minWidth =
-      index < MIN_COLUMN_WIDTHS.length
-        ? MIN_COLUMN_WIDTHS[index]!
-        : 12;
-    const maxLen = Math.max(
-      minWidth,
-      getDisplayWidth(key),
-      ...outputRows.map((row) => getDisplayWidth(String(row[key] ?? ""))),
-    );
-
-    return { wch: Math.min(maxLen + 4, 80) };
-  });
+  const aoa = buildTrendsSheetAoa(rows, dates);
+  const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+  worksheet["!merges"] = buildTrendsHeaderMerges(dates);
+  autoFitWorksheetColumns(worksheet);
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "추세조회");
@@ -105,4 +117,11 @@ export function generateInboundTrendsBuffer(
   return Buffer.from(
     XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }),
   );
+}
+
+export function getInboundTrendsSubHeaderLabels(dates: string[]): string[] {
+  return dates.flatMap((date) => {
+    const label = formatTrendsDateHeader(date);
+    return [`${label}(완)`, label];
+  });
 }

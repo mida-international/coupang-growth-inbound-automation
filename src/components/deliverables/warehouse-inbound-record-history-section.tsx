@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
+import { ListExcelDownloadButton } from "@/components/data-list/list-excel-download-button";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Table,
@@ -274,6 +275,7 @@ export function WarehouseInboundRecordHistorySection({
   const router = useRouter();
   const hasPrev = data.page > 1;
   const hasNext = data.page < data.totalPages;
+  const [exportError, setExportError] = useState<string | null>(null);
 
   return (
     <DeliverablesSection
@@ -287,6 +289,22 @@ export function WarehouseInboundRecordHistorySection({
         </p>
       ) : (
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              총 {data.rowCount.toLocaleString()}건
+            </p>
+            <div className="flex flex-col items-end gap-2">
+              {exportError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {exportError}
+                </p>
+              ) : null}
+              <ListExcelDownloadButton
+                downloadHref="/api/downloads/warehouse-inbound-history"
+                onError={setExportError}
+              />
+            </div>
+          </div>
           <div className="overflow-hidden rounded-md border border-border bg-background">
             <div className="overflow-x-auto">
               <Table>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { buildInventoryHealthQuery } from "@/components/coupang-growth-data/build-inventory-health-query";
 import { DataListToolbarShell } from "@/components/data-list/data-list-toolbar-shell";
+import { ListExcelDownloadButton } from "@/components/data-list/list-excel-download-button";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -111,6 +112,13 @@ export function CoupangGrowthInventoryHealthToolbar({
 
         {showPagination ? (
           <div className="flex shrink-0 flex-wrap items-center gap-3">
+            <ListExcelDownloadButton
+              disabled={totalCount === 0}
+              downloadHref={`/api/downloads/inventory-health${buildInventoryHealthQuery({
+                seller: sellerFilter,
+                q: search,
+              })}`}
+            />
             <select
               value={pageSize}
               aria-label="표시 건수"

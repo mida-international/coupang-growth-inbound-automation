@@ -25,6 +25,7 @@ type ListInboundWorkbenchOptions = {
   search?: string;
   sort?: string;
   dir?: string;
+  exportAll?: boolean;
 };
 
 type RawWorkbenchRow = {
@@ -177,6 +178,7 @@ export async function listInboundWorkbench(
 
   const page = Math.max(1, options.page ?? 1);
   const pageSize = normalizeInboundWorkbenchPageSize(options.pageSize);
+  const exportAll = options.exportAll === true;
   const searchCondition = buildSearchCondition(options.search);
   const { sort, dir } = parseInboundWorkbenchSort(options.sort, options.dir);
   const orderBy = buildInboundWorkbenchOrderBy(sort, dir);
@@ -193,6 +195,9 @@ export async function listInboundWorkbench(
   const snapshotDates = await fetchSnapshotDates(sellerIds[0]!);
   const queryPrefix = buildWorkbenchDisplayQueryPrefix(queryContext);
   const sellerIn = buildSellerInClause(sellerIds);
+  const paginationClause = exportAll
+    ? Prisma.empty
+    : Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
 
   const rows = await prisma.$queryRaw<RawWorkbenchRow[]>(
     Prisma.sql`
@@ -239,8 +244,7 @@ export async function listInboundWorkbench(
         WHERE d.coupang_seller_account_id IN (${sellerIn})
         ${searchCondition}
         ORDER BY ${orderBy}
-        LIMIT ${pageSize}
-        OFFSET ${(page - 1) * pageSize}
+        ${paginationClause}
       ),
       total_count AS (
         SELECT COUNT(*)::bigint AS count

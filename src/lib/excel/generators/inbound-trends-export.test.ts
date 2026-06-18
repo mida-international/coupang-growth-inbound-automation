@@ -3,9 +3,10 @@ import { describe, it } from "node:test";
 import * as XLSX from "xlsx";
 
 import {
-  buildInboundTrendsColumnKeys,
   buildInboundTrendsFilename,
+  formatTrendsDateHeader,
   generateInboundTrendsBuffer,
+  getInboundTrendsSubHeaderLabels,
 } from "@/lib/excel/generators/inbound-trends-export";
 import type { InboundTrendsRowView } from "@/services/inbound-trends/types";
 
@@ -22,22 +23,18 @@ const sampleRow: InboundTrendsRowView = {
   },
 };
 
-describe("buildInboundTrendsColumnKeys", () => {
-  it("uses flat headers with newest dates first", () => {
-    assert.deepEqual(
-      buildInboundTrendsColumnKeys(["2026-06-17", "2026-06-16"]),
-      [
-        "상품명",
-        "옵션명",
-        "자사상품코드",
-        "샵플링 옵션 벨류",
-        "바코드",
-        "2026-06-17(완)",
-        "2026-06-17",
-        "2026-06-16(완)",
-        "2026-06-16",
-      ],
-    );
+describe("formatTrendsDateHeader", () => {
+  it("formats ISO date as M/D", () => {
+    assert.equal(formatTrendsDateHeader("2026-06-17"), "6/17");
+  });
+});
+
+describe("getInboundTrendsSubHeaderLabels", () => {
+  it("uses date sub-columns with (완) suffix", () => {
+    assert.deepEqual(getInboundTrendsSubHeaderLabels(["2026-06-17"]), [
+      "6/17(완)",
+      "6/17",
+    ]);
   });
 });
 
@@ -51,23 +48,35 @@ describe("buildInboundTrendsFilename", () => {
 });
 
 describe("generateInboundTrendsBuffer", () => {
-  it("writes flat headers and leaves missing quantities blank", async () => {
+  it("writes merged date headers and leaves missing quantities blank", async () => {
     const buffer = generateInboundTrendsBuffer([sampleRow], [
       "2026-06-17",
       "2026-06-16",
     ]);
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheet = workbook.Sheets["추세조회"];
-    const rows = XLSX.utils.sheet_to_json<Record<string, string | number>>(
-      sheet,
-      { defval: "" },
+
+    assert.deepEqual(
+      sheet["!merges"],
+      [
+        { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
+        { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
+        { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } },
+        { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } },
+        { s: { r: 0, c: 4 }, e: { r: 1, c: 4 } },
+        { s: { r: 0, c: 5 }, e: { r: 0, c: 6 } },
+        { s: { r: 0, c: 7 }, e: { r: 0, c: 8 } },
+      ],
     );
 
-    assert.equal(rows.length, 1);
-    assert.equal(rows[0]?.["상품명"], "테스트 상품");
-    assert.equal(rows[0]?.["2026-06-17(완)"], 5);
-    assert.equal(rows[0]?.["2026-06-17"], "");
-    assert.equal(rows[0]?.["2026-06-16(완)"], "");
-    assert.equal(rows[0]?.["2026-06-16"], 3);
+    assert.equal(sheet.A1?.v, "상품명");
+    assert.equal(sheet.F1?.v, "6/17");
+    assert.equal(sheet.F2?.v, "6/17(완)");
+    assert.equal(sheet.G2?.v, "6/17");
+    assert.equal(sheet.A3?.v, "테스트 상품");
+    assert.equal(sheet.F3?.v, 5);
+    assert.equal(sheet.G3?.v, "");
+    assert.equal(sheet.H3?.v, "");
+    assert.equal(sheet.I3?.v, 3);
   });
 });
