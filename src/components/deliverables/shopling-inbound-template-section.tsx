@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
+import {
+  DeliverablesActionBar,
+  DELIVERABLES_PRIMARY_BUTTON_CLASS,
+} from "@/components/deliverables/deliverables-action-bar";
 import { ExcelDropzone } from "@/components/excel/excel-dropzone";
 import { Button } from "@/components/ui/button";
 
@@ -166,25 +170,31 @@ export function ShoplingInboundTemplateSection() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={!canRecordInbound || isRecording || isDownloading}
-            onClick={handleRecordInboundClick}
-          >
-            {isRecording ? "기록 중..." : "입고 기록하기"}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            disabled={!canDownload}
-            onClick={handleDownloadClick}
-          >
-            {isDownloading ? "생성 중..." : "다운로드"}
-          </Button>
-        </div>
+        <DeliverablesActionBar
+          center={
+            <Button
+              type="button"
+              size="default"
+              className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
+              disabled={!canDownload}
+              onClick={handleDownloadClick}
+            >
+              {isDownloading ? "생성 중..." : "다운로드"}
+            </Button>
+          }
+          end={
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
+              disabled={!canRecordInbound || isRecording || isDownloading}
+              onClick={handleRecordInboundClick}
+            >
+              {isRecording ? "기록 중..." : "기록하기"}
+            </Button>
+          }
+        />
 
         {!excelFile ? (
           <p className="text-sm text-muted-foreground">

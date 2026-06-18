@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
+import {
+  DeliverablesActionBar,
+  DELIVERABLES_PRIMARY_BUTTON_CLASS,
+} from "@/components/deliverables/deliverables-action-bar";
 import { Button } from "@/components/ui/button";
 import type { WarehouseInboundListSnapshotDates } from "@/services/deliverables/types";
 
@@ -175,16 +179,29 @@ export function WarehouseInboundListSection({
         </label>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          스냅샷 {formatSnapshotLabel(snapshotDates)} · 다운로드 가능{" "}
-          {hasSeller ? `${rowCount}건` : "-"}
-        </p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+      <p className="mb-4 text-sm text-muted-foreground">
+        스냅샷 {formatSnapshotLabel(snapshotDates)} · 다운로드 가능{" "}
+        {hasSeller ? `${rowCount}건` : "-"}
+      </p>
+
+      <DeliverablesActionBar
+        center={
+          <Button
+            type="button"
+            size="default"
+            className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
+            disabled={!hasSeller || isDownloading || isRecording}
+            onClick={handleDownloadClick}
+          >
+            {isDownloading ? "생성 중..." : "다운로드"}
+          </Button>
+        }
+        end={
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="default"
+            className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
             disabled={
               !canRecordInbound || !hasSeller || isRecording || isDownloading
             }
@@ -192,16 +209,8 @@ export function WarehouseInboundListSection({
           >
             {isRecording ? "기록 중..." : "기록하기"}
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            disabled={!hasSeller || isDownloading || isRecording}
-            onClick={handleDownloadClick}
-          >
-            {isDownloading ? "생성 중..." : "다운로드"}
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {!hasSeller ? (
         <p className="mt-3 text-sm text-muted-foreground">

@@ -4,6 +4,10 @@ import { ImageIcon, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
+import {
+  DeliverablesActionBar,
+  DELIVERABLES_PRIMARY_BUTTON_CLASS,
+} from "@/components/deliverables/deliverables-action-bar";
 import { ExcelDropzone } from "@/components/excel/excel-dropzone";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -245,16 +249,19 @@ export function ShoplingOutboundTemplateSection({
           </Tabs>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-          <Button
-            type="button"
-            size="sm"
-            disabled={downloadDisabled}
-            onClick={handleDownloadClick}
-          >
-            {isDownloading ? "생성 중..." : "다운로드"}
-          </Button>
-        </div>
+        <DeliverablesActionBar
+          center={
+            <Button
+              type="button"
+              size="default"
+              className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
+              disabled={downloadDisabled}
+              onClick={handleDownloadClick}
+            >
+              {isDownloading ? "생성 중..." : "다운로드"}
+            </Button>
+          }
+        />
 
         {!hasSeller ? (
           <p className="text-sm text-muted-foreground">

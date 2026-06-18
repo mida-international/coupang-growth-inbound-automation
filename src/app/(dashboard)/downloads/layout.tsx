@@ -8,7 +8,11 @@ export default function DownloadsLayout({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <PageTabsNav tabs={deliverablesTabGroup.tabs} className="-mx-4 px-4" />
+      <PageTabsNav
+        tabs={deliverablesTabGroup.tabs}
+        className="-mx-4 px-4"
+        equalWidth
+      />
       {children}
     </div>
   );
