@@ -1,5 +1,5 @@
 export type CreateAdminInput = {
-  email: string;
+  loginId: string;
   password: string;
   name?: string;
   role: "admin" | "master";

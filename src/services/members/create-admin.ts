@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { normalizeLoginEmail } from "@/lib/auth/normalize-login-email";
 import { prisma } from "@/lib/db";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type {
@@ -9,7 +10,7 @@ import type {
 } from "@/services/members/types";
 
 const createAdminSchema = z.object({
-  email: z.email("유효한 이메일을 입력해 주세요."),
+  loginId: z.string().trim().min(1, "아이디를 입력해 주세요."),
   password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다."),
   name: z.string().optional(),
   role: z.enum(["admin", "master"]),
@@ -26,14 +27,19 @@ export async function createAdmin(
     return { ok: false, error: firstIssue };
   }
 
-  const { email, password, name, role } = parsed.data;
+  const { loginId, password, name, role } = parsed.data;
+  const email = normalizeLoginEmail(loginId);
+
+  if (!z.email().safeParse(email).success) {
+    return { ok: false, error: "유효한 아이디를 입력해 주세요." };
+  }
 
   const existingProfile = await prisma.profile.findUnique({
     where: { email },
   });
 
   if (existingProfile) {
-    return { ok: false, error: "이미 등록된 이메일입니다." };
+    return { ok: false, error: "이미 등록된 아이디입니다." };
   }
 
   const supabase = createAdminClient();
@@ -47,7 +53,7 @@ export async function createAdmin(
     const message = error.message.toLowerCase();
 
     if (message.includes("already") || error.status === 422) {
-      return { ok: false, error: "이미 등록된 이메일입니다." };
+      return { ok: false, error: "이미 등록된 아이디입니다." };
     }
 
     return { ok: false, error: "관리자 계정 생성에 실패했습니다." };
