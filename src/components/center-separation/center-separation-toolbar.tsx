@@ -18,6 +18,9 @@ type CenterSeparationToolbarProps = {
   page: number;
   pageSize: number;
   totalCount: number;
+  selectedCount?: number;
+  onBulkDelete?: () => void;
+  isDeleting?: boolean;
 };
 
 export function CenterSeparationToolbar({
@@ -25,6 +28,9 @@ export function CenterSeparationToolbar({
   page,
   pageSize,
   totalCount,
+  selectedCount = 0,
+  onBulkDelete,
+  isDeleting = false,
 }: CenterSeparationToolbarProps) {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const hasPrev = page > 1;
@@ -54,9 +60,27 @@ export function CenterSeparationToolbar({
       </div>
 
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="min-w-0 truncate text-sm text-muted-foreground">
-          {totalCount.toLocaleString()}건
-        </p>
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
+          <p className="min-w-0 truncate text-sm text-muted-foreground">
+            {totalCount.toLocaleString()}건
+          </p>
+          {selectedCount > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {selectedCount.toLocaleString()}건 선택
+            </p>
+          ) : null}
+          {onBulkDelete ? (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={selectedCount === 0 || isDeleting}
+              onClick={onBulkDelete}
+            >
+              {isDeleting ? "삭제 중..." : "삭제"}
+            </Button>
+          ) : null}
+        </div>
 
         {showPagination ? (
           <div className="flex shrink-0 flex-wrap items-center gap-3">

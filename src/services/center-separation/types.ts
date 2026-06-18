@@ -20,6 +20,10 @@ export type ListCenterSeparationResult = {
   rows: CenterSeparationRowView[];
 };
 
+export type DeleteCenterSeparationResult = {
+  deletedCount: number;
+};
+
 export type UpsertCenterSeparationStats = {
   inputRows: number;
   upserted: number;

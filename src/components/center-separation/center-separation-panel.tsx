@@ -1,7 +1,4 @@
-import { DataListPanel } from "@/components/data-list/data-list-panel";
-import { DataListTableScrollArea } from "@/components/data-list/data-list-table-scroll-area";
-import { CenterSeparationTable } from "@/components/center-separation/center-separation-table";
-import { CenterSeparationToolbar } from "@/components/center-separation/center-separation-toolbar";
+import { CenterSeparationListSection } from "@/components/center-separation/center-separation-list-section";
 import type { ListCenterSeparationResult } from "@/services/center-separation/types";
 
 type CenterSeparationPanelProps = {
@@ -35,23 +32,11 @@ export function CenterSeparationPanel({
   }
 
   return (
-    <DataListPanel>
-      <CenterSeparationToolbar
-        search={search}
-        page={page}
-        pageSize={pageSize}
-        totalCount={data.totalCount}
-      />
-
-      {data.totalCount === 0 && !isSearchEmpty ? (
-        <div className="rounded-md border border-dashed border-border bg-muted/30 px-4 py-10 text-center">
-          <p className="text-sm text-muted-foreground">검색 결과가 없습니다.</p>
-        </div>
-      ) : (
-        <DataListTableScrollArea>
-          <CenterSeparationTable rows={data.rows} />
-        </DataListTableScrollArea>
-      )}
-    </DataListPanel>
+    <CenterSeparationListSection
+      data={data}
+      search={search}
+      page={page}
+      pageSize={pageSize}
+    />
   );
 }
