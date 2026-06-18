@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { DataListPanel } from "@/components/data-list/data-list-panel";
+import { DataListTableScrollArea } from "@/components/data-list/data-list-table-scroll-area";
 import { TrendsToolbar } from "@/components/inbound-trends/trends-toolbar";
 import { TrendsTable } from "@/components/inbound-trends/trends-table";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
@@ -107,7 +108,9 @@ export function TrendsPanel({
       {emptyContent}
 
       {!emptyContent && data.totalCount > 0 ? (
-        <TrendsTable rows={data.rows} dates={data.dates} />
+        <DataListTableScrollArea>
+          <TrendsTable rows={data.rows} dates={data.dates} />
+        </DataListTableScrollArea>
       ) : null}
     </DataListPanel>
   );

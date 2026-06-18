@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DataListPanel } from "@/components/data-list/data-list-panel";
+import { DataListTableScrollArea } from "@/components/data-list/data-list-table-scroll-area";
 import { ShoplingInventoryTable } from "@/components/shopling-data/shopling-inventory-table";
 import { ShoplingProductsToolbar } from "@/components/shopling-data/shopling-products-toolbar";
 import type { ListShoplingInventoryResult } from "@/services/shopling-data/types";
@@ -59,7 +60,9 @@ export function ShoplingProductsPanel({
           </p>
         </div>
       ) : (
-        <ShoplingInventoryTable rows={data.rows} />
+        <DataListTableScrollArea>
+          <ShoplingInventoryTable rows={data.rows} />
+        </DataListTableScrollArea>
       )}
     </DataListPanel>
   );

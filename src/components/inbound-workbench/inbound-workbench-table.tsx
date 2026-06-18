@@ -83,10 +83,8 @@ export function InboundWorkbenchTable({
 
   return (
     <TooltipProvider>
-      <div className="overflow-hidden rounded-md border border-border bg-background">
-        <div className="overflow-x-auto">
-          <Table className="table-fixed">
-            <TableHeader className="bg-muted/40">
+      <Table className="table-fixed" containerClassName="overflow-visible">
+        <TableHeader className="sticky top-0 z-20 bg-muted/40">
               <TableRow className="hover:bg-transparent">
                 {showSellerColumn ? (
                   <TableHead
@@ -209,8 +207,6 @@ export function InboundWorkbenchTable({
               })}
             </TableBody>
           </Table>
-        </div>
-      </div>
     </TooltipProvider>
   );
 }

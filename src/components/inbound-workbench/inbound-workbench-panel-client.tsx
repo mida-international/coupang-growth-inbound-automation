@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition, type ReactNode } from "rea
 import { useRouter } from "next/navigation";
 
 import { DataListPanel } from "@/components/data-list/data-list-panel";
+import { DataListTableScrollArea } from "@/components/data-list/data-list-table-scroll-area";
 import {
   InboundWorkbenchTable,
   type InboundWorkbenchDraftEntry,
@@ -290,20 +291,22 @@ export function InboundWorkbenchPanelClient({
         <p className="text-sm text-destructive">{saveError}</p>
       ) : null}
       {data.totalCount > 0 ? (
-        <InboundWorkbenchTable
-          rows={displayRows}
-          columnOrder={columnOrder}
-          getColumnWidth={getColumnWidth}
-          onReorderColumn={reorderColumn}
-          onResizeColumn={resizeColumn}
-          showSellerColumn={showSellerColumn}
-          editMode={editMode}
-          sort={parsedSort.sort}
-          dir={parsedSort.dir}
-          onSort={handleSort}
-          drafts={editMode ? drafts : undefined}
-          onDraftChange={updateDraft}
-        />
+        <DataListTableScrollArea>
+          <InboundWorkbenchTable
+            rows={displayRows}
+            columnOrder={columnOrder}
+            getColumnWidth={getColumnWidth}
+            onReorderColumn={reorderColumn}
+            onResizeColumn={resizeColumn}
+            showSellerColumn={showSellerColumn}
+            editMode={editMode}
+            sort={parsedSort.sort}
+            dir={parsedSort.dir}
+            onSort={handleSort}
+            drafts={editMode ? drafts : undefined}
+            onDraftChange={updateDraft}
+          />
+        </DataListTableScrollArea>
       ) : (
         children
       )}

@@ -19,11 +19,13 @@ export default async function ShoplingProductsPage({
   const data = await listShoplingInventory({ page, pageSize, search });
 
   return (
-    <ShoplingProductsPanel
+    <div className="flex min-w-0 flex-col">
+      <ShoplingProductsPanel
       data={data}
       search={search}
       page={page}
       pageSize={pageSize}
     />
+    </div>
   );
 }
