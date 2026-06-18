@@ -24,7 +24,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 import { detectExcelTargetIdFromFile } from "@/lib/excel/detect-target-client";
 import type {
   ExcelIngestionTargetId,
@@ -85,9 +90,11 @@ export function ExcelUploadPanel({
 }: {
   accounts: SellerAccountView[];
 }) {
-  const [selectedAccountId, setSelectedAccountId] = useState(() =>
-    getDefaultSellerAccountId(accounts),
-  );
+  const defaultAccountId = getDefaultSellerAccountId(accounts);
+  const activeAccounts = accounts.filter((account) => account.isActive);
+
+  const [draftAccountId, setDraftAccountId] = useState(defaultAccountId);
+  const [appliedAccountId, setAppliedAccountId] = useState(defaultAccountId);
   const [files, setFiles] = useState<SelectedExcelFile[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [uploadResult, setUploadResult] = useState<ExcelUploadResultSummary | null>(
@@ -98,6 +105,14 @@ export function ExcelUploadPanel({
     open: boolean;
     fileNames: string[];
   }>({ open: false, fileNames: [] });
+
+  const hasPendingAccountChange = draftAccountId !== appliedAccountId;
+  const draftAccount = activeAccounts.find(
+    (account) => account.id === draftAccountId,
+  );
+  const appliedAccount = activeAccounts.find(
+    (account) => account.id === appliedAccountId,
+  );
 
   async function detectFileTarget(fileId: string, file: File) {
     const targetId = await detectExcelTargetIdFromFile(
@@ -122,7 +137,7 @@ export function ExcelUploadPanel({
   }
 
   function addFiles(incoming: File[]) {
-    if (!selectedAccountId) {
+    if (!appliedAccountId) {
       setFileError("쿠팡 판매자 계정을 선택해 주세요.");
       return;
     }
@@ -180,8 +195,17 @@ export function ExcelUploadPanel({
     setUploadResult(null);
   }
 
+  function handleApplyAccount() {
+    if (!draftAccountId || draftAccountId === appliedAccountId) {
+      return;
+    }
+
+    setAppliedAccountId(draftAccountId);
+    setUploadResult(null);
+  }
+
   async function handleUpload() {
-    if (!selectedAccountId || files.length === 0 || uploading) {
+    if (!appliedAccountId || files.length === 0 || uploading) {
       return;
     }
 
@@ -190,7 +214,7 @@ export function ExcelUploadPanel({
     setFileError(null);
 
     const formData = new FormData();
-    formData.append("coupangSellerAccountId", selectedAccountId);
+    formData.append("coupangSellerAccountId", appliedAccountId);
 
     for (const entry of files) {
       formData.append("files", entry.file);
@@ -229,7 +253,7 @@ export function ExcelUploadPanel({
   const allFilesIdentified =
     files.length > 0 && files.every((entry) => entry.targetId !== null);
   const canUpload = Boolean(
-    selectedAccountId &&
+    appliedAccountId &&
       files.length > 0 &&
       allFilesIdentified &&
       !isDetecting &&
@@ -247,13 +271,13 @@ export function ExcelUploadPanel({
       <CardContent className="flex flex-col gap-4 bg-muted/15 p-(--card-spacing)">
         <UploadSection
           title="쿠팡 판매자 계정"
-          description="동기화할 쿠팡 판매자 계정을 하나 선택합니다."
+          description="동기화할 쿠팡 판매자 계정을 고른 뒤 선택을 누르세요."
           variant="muted"
         >
-          {accounts.length === 0 ? (
+          {activeAccounts.length === 0 ? (
             <div className="rounded-md border border-dashed border-border bg-muted/30 px-4 py-8 text-center">
               <p className="text-sm text-muted-foreground">
-                등록된 판매자 계정이 없습니다.
+                등록된 활성 판매자 계정이 없습니다.
               </p>
               <Button
                 render={<Link href="/data/coupang-growth/seller-accounts" />}
@@ -264,44 +288,67 @@ export function ExcelUploadPanel({
               </Button>
             </div>
           ) : (
-            <FieldGroup
-              className="gap-3"
-              role="radiogroup"
-              aria-label="쿠팡 판매자 계정"
-            >
-              {accounts.map((account) => {
-                const inputId = `seller-account-${account.id}`;
-
-                return (
-                  <Field
-                    key={account.id}
-                    orientation="horizontal"
-                    data-disabled={!account.isActive}
-                    className={cn(!account.isActive && "opacity-60")}
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  value={draftAccountId}
+                  onValueChange={(value) => {
+                    if (value) {
+                      setDraftAccountId(value);
+                    }
+                  }}
+                  disabled={uploading}
+                >
+                  <SelectTrigger
+                    id="coupang-growth-seller-account"
+                    className="h-9 w-full min-w-[12rem] max-w-sm bg-background"
+                    aria-label="쿠팡 판매자 계정"
                   >
-                    <input
-                      id={inputId}
-                      type="radio"
-                      name="seller-account"
-                      value={account.id}
-                      checked={selectedAccountId === account.id}
-                      disabled={!account.isActive}
-                      onChange={() => {
-                        setSelectedAccountId(account.id);
-                        setUploadResult(null);
-                      }}
-                      className="size-4 shrink-0 accent-primary"
-                    />
-                    <FieldLabel htmlFor={inputId} className="font-normal">
-                      {account.displayName}
-                      {!account.isActive ? (
-                        <span className="text-muted-foreground">(비활성)</span>
-                      ) : null}
-                    </FieldLabel>
-                  </Field>
-                );
-              })}
-            </FieldGroup>
+                    <span
+                      className={cn(
+                        "truncate",
+                        !draftAccount && "text-muted-foreground",
+                      )}
+                    >
+                      {draftAccount?.displayName ?? "판매자 계정 선택"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    {activeAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  className="h-9 shrink-0 px-5"
+                  variant={hasPendingAccountChange ? "default" : "outline"}
+                  disabled={
+                    uploading ||
+                    !draftAccountId ||
+                    !hasPendingAccountChange
+                  }
+                  onClick={handleApplyAccount}
+                >
+                  선택
+                </Button>
+              </div>
+              {appliedAccount ? (
+                <p className="text-xs text-muted-foreground">
+                  적용된 계정:{" "}
+                  <span className="font-medium text-foreground">
+                    {appliedAccount.displayName}
+                  </span>
+                </p>
+              ) : null}
+              {hasPendingAccountChange && !uploading ? (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  계정 선택이 변경되었습니다. 적용하려면 선택을 누르세요.
+                </p>
+              ) : null}
+            </div>
           )}
         </UploadSection>
 
@@ -312,11 +359,11 @@ export function ExcelUploadPanel({
         >
           <ExcelDropzone
             description={
-              selectedAccountId
+              appliedAccountId
                 ? "파일을 드래그하거나 클릭하여 선택 (여러 파일 가능)"
                 : "판매자 계정을 먼저 선택해 주세요."
             }
-            disabled={!selectedAccountId}
+            disabled={!appliedAccountId || uploading}
             onFilesSelected={addFiles}
           />
           <ExcelFileList files={files} onRemove={removeFile} />
