@@ -1,9 +1,9 @@
 "use client";
 
-import { ImageIcon, Upload } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
+import { CoupangInboundImageDropzone } from "@/components/deliverables/vision/coupang-inbound-image-dropzone";
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
 import {
   DeliverablesActionBar,
@@ -13,7 +13,11 @@ import { ExcelDropzone } from "@/components/excel/excel-dropzone";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { downloadShoplingOutboundTemplate } from "@/lib/deliverables/client/download-shopling-outbound-template";
-import { cn } from "@/lib/utils";
+import {
+  buildBoxListExcelFile,
+  extractVisionDataFromImages,
+} from "@/lib/vision/client/vision-box-list-client";
+import type { VisionExtractedData } from "@/lib/vision/types";
 
 type CoupangInboundTemplateSectionProps = {
   sellerId: string;
@@ -50,8 +54,8 @@ export function CoupangInboundTemplateSection({
   sellerId,
 }: CoupangInboundTemplateSectionProps) {
   const [excelFile, setExcelFile] = useState<File | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [visionData, setVisionData] = useState<VisionExtractedData | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingShoplingOutbound, setIsDownloadingShoplingOutbound] =
@@ -61,35 +65,14 @@ export function CoupangInboundTemplateSection({
   const [templateMeta, setTemplateMeta] = useState<TemplateMeta | null>(null);
   const [isLoadingTemplateMeta, setIsLoadingTemplateMeta] = useState(false);
   const [canRecordInbound, setCanRecordInbound] = useState(false);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const [isImageDragging, setIsImageDragging] = useState(false);
   const hasSeller = sellerId.trim().length > 0;
   const hasStoredTemplate = templateMeta?.exists === true;
-  const canDownloadExcel =
-    hasSeller && hasStoredTemplate && excelFile !== null && !isDownloading;
+  const hasBoxListInput =
+    activeTab === "excel" ? excelFile !== null : imageFiles.length > 0;
+  const canDownload =
+    hasSeller && hasStoredTemplate && hasBoxListInput && !isDownloading;
   const canDownloadShoplingOutbound =
-    hasSeller &&
-    excelFile !== null &&
-    activeTab === "excel" &&
-    !isDownloadingShoplingOutbound;
-  const downloadDisabled =
-    activeTab === "excel"
-      ? !canDownloadExcel
-      : !hasSeller || isDownloading;
-
-  useEffect(() => {
-    if (!imageFile) {
-      setImagePreviewUrl(null);
-      return;
-    }
-
-    const objectUrl = URL.createObjectURL(imageFile);
-    setImagePreviewUrl(objectUrl);
-
-    return () => {
-      URL.revokeObjectURL(objectUrl);
-    };
-  }, [imageFile]);
+    hasSeller && hasBoxListInput && !isDownloadingShoplingOutbound;
 
   useEffect(() => {
     if (!hasSeller) {
@@ -146,34 +129,63 @@ export function CoupangInboundTemplateSection({
 
   useEffect(() => {
     setCanRecordInbound(false);
-  }, [sellerId, excelFile, activeTab]);
+  }, [sellerId, excelFile, imageFiles, activeTab]);
 
-  function handleImageFiles(fileList: FileList | null) {
-    if (!hasSeller || !fileList?.length) {
-      return;
+  useEffect(() => {
+    setVisionData(null);
+  }, [sellerId, imageFiles]);
+
+  async function resolveVisionData(): Promise<VisionExtractedData> {
+    if (visionData) {
+      return visionData;
     }
 
-    const file = fileList[0];
+    const extracted = await extractVisionDataFromImages(imageFiles);
+    setVisionData(extracted.visionData);
+    return extracted.visionData;
+  }
 
-    if (!file.type.startsWith("image/")) {
-      return;
+  async function downloadCoupangTemplateFromVision(
+    data: VisionExtractedData,
+  ): Promise<{ matched: string | null; unmatched: string | null }> {
+    const formData = new FormData();
+    formData.append("seller", sellerId);
+    formData.append("visionData", JSON.stringify(data));
+
+    const response = await fetch(
+      "/api/downloads/coupang-inbound-template/from-image",
+      { method: "POST", body: formData },
+    );
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      throw new Error(payload?.error ?? "입고 템플릿 생성에 실패했습니다.");
     }
 
-    setImageFile(file);
-    setNotice(null);
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition") ?? "";
+    const filenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    const filename = filenameMatch
+      ? decodeURIComponent(filenameMatch[1])
+      : "쿠팡_입고템플릿_생성_이미지.xlsx";
+
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(objectUrl);
+
+    return {
+      matched: response.headers.get("X-Filter-Matched"),
+      unmatched: response.headers.get("X-Filter-Unmatched"),
+    };
   }
 
   async function handleDownloadClick() {
-    if (!hasSeller) {
-      return;
-    }
-
-    if (activeTab === "image") {
-      setNotice("준비 중입니다. 이미지 OCR 연동은 곧 제공됩니다.");
-      return;
-    }
-
-    if (!canDownloadExcel || !excelFile) {
+    if (!canDownload) {
       return;
     }
 
@@ -181,49 +193,72 @@ export function CoupangInboundTemplateSection({
     setNotice(null);
 
     try {
-      const formData = new FormData();
-      formData.append("seller", sellerId);
-      formData.append("boxListFile", excelFile);
+      if (activeTab === "excel") {
+        if (!excelFile) {
+          return;
+        }
 
-      const response = await fetch("/api/downloads/coupang-inbound-template", {
-        method: "POST",
-        body: formData,
-      });
+        const formData = new FormData();
+        formData.append("seller", sellerId);
+        formData.append("boxListFile", excelFile);
 
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(payload?.error ?? "입고 템플릿 생성에 실패했습니다.");
+        const response = await fetch("/api/downloads/coupang-inbound-template", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          throw new Error(
+            payload?.error ?? "입고 템플릿 생성에 실패했습니다.",
+          );
+        }
+
+        const blob = await response.blob();
+        const disposition = response.headers.get("Content-Disposition") ?? "";
+        const filenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        const filename = filenameMatch
+          ? decodeURIComponent(filenameMatch[1])
+          : "쿠팡_입고템플릿_생성.xlsx";
+
+        const matched = response.headers.get("X-Filter-Matched");
+        const unmatched = response.headers.get("X-Filter-Unmatched");
+
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = objectUrl;
+        anchor.download = filename;
+        anchor.click();
+        URL.revokeObjectURL(objectUrl);
+
+        const statsParts = [
+          matched !== null ? `매칭 ${matched}건` : null,
+          unmatched !== null ? `미매칭 ${unmatched}건` : null,
+        ].filter(Boolean);
+
+        setNotice(
+          statsParts.length > 0
+            ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
+            : "입고 템플릿 파일을 다운로드했습니다.",
+        );
+      } else {
+        const data = await resolveVisionData();
+        const { matched, unmatched } = await downloadCoupangTemplateFromVision(data);
+
+        const statsParts = [
+          matched !== null ? `매칭 ${matched}건` : null,
+          unmatched !== null ? `미매칭 ${unmatched}건` : null,
+        ].filter(Boolean);
+
+        setNotice(
+          statsParts.length > 0
+            ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
+            : "입고 템플릿 파일을 다운로드했습니다.",
+        );
       }
 
-      const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition") ?? "";
-      const filenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      const filename = filenameMatch
-        ? decodeURIComponent(filenameMatch[1])
-        : "쿠팡_입고템플릿_생성.xlsx";
-
-      const matched = response.headers.get("X-Filter-Matched");
-      const unmatched = response.headers.get("X-Filter-Unmatched");
-
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = filename;
-      anchor.click();
-      URL.revokeObjectURL(objectUrl);
-
-      const statsParts = [
-        matched !== null ? `매칭 ${matched}건` : null,
-        unmatched !== null ? `미매칭 ${unmatched}건` : null,
-      ].filter(Boolean);
-
-      setNotice(
-        statsParts.length > 0
-          ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
-          : "입고 템플릿 파일을 다운로드했습니다.",
-      );
       setCanRecordInbound(true);
     } catch (error) {
       setNotice(
@@ -235,7 +270,7 @@ export function CoupangInboundTemplateSection({
   }
 
   async function handleShoplingOutboundClick() {
-    if (!canDownloadShoplingOutbound || !excelFile) {
+    if (!canDownloadShoplingOutbound) {
       return;
     }
 
@@ -243,9 +278,22 @@ export function CoupangInboundTemplateSection({
     setNotice(null);
 
     try {
+      let boxListFile: File;
+
+      if (activeTab === "excel") {
+        if (!excelFile) {
+          return;
+        }
+
+        boxListFile = excelFile;
+      } else {
+        const data = await resolveVisionData();
+        boxListFile = buildBoxListExcelFile(data);
+      }
+
       const noticeMessage = await downloadShoplingOutboundTemplate(
         sellerId,
-        excelFile,
+        boxListFile,
       );
       setNotice(noticeMessage);
     } catch (error) {
@@ -260,7 +308,7 @@ export function CoupangInboundTemplateSection({
   }
 
   async function handleRecordInboundClick() {
-    if (!canRecordInbound || !excelFile || !hasSeller) {
+    if (!canRecordInbound || !hasSeller) {
       return;
     }
 
@@ -268,31 +316,68 @@ export function CoupangInboundTemplateSection({
     setNotice(null);
 
     try {
-      const formData = new FormData();
-      formData.append("seller", sellerId);
-      formData.append("boxListFile", excelFile);
+      if (activeTab === "excel") {
+        if (!excelFile) {
+          return;
+        }
 
-      const response = await fetch("/api/coupang-inbound-deliverables", {
-        method: "POST",
-        body: formData,
-      });
+        const formData = new FormData();
+        formData.append("seller", sellerId);
+        formData.append("boxListFile", excelFile);
 
-      const payload = (await response.json().catch(() => null)) as
-        | { ok: true; data: { recordedCount: number; deliverableId: string } }
-        | { ok: false; error?: string }
-        | null;
+        const response = await fetch("/api/coupang-inbound-deliverables", {
+          method: "POST",
+          body: formData,
+        });
 
-      if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
-        throw new Error(
-          payload && "error" in payload && payload.error
-            ? payload.error
-            : "입고 기록에 실패했습니다.",
+        const payload = (await response.json().catch(() => null)) as
+          | { ok: true; data: { recordedCount: number } }
+          | { ok: false; error?: string }
+          | null;
+
+        if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
+          throw new Error(
+            payload && "error" in payload && payload.error
+              ? payload.error
+              : "입고 기록에 실패했습니다.",
+          );
+        }
+
+        setNotice(
+          `${payload.data.recordedCount}개 바코드 입고를 기록했습니다.`,
+        );
+      } else {
+        const data = visionData ?? (await resolveVisionData());
+        const formData = new FormData();
+        formData.append("seller", sellerId);
+        formData.append("visionData", JSON.stringify(data));
+        formData.append(
+          "sourceFileName",
+          imageFiles.map((file) => file.name).join(", ") || "이미지 업로드",
+        );
+
+        const response = await fetch("/api/coupang-inbound-deliverables/from-image", {
+          method: "POST",
+          body: formData,
+        });
+
+        const payload = (await response.json().catch(() => null)) as
+          | { ok: true; data: { recordedCount: number } }
+          | { ok: false; error?: string }
+          | null;
+
+        if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
+          throw new Error(
+            payload && "error" in payload && payload.error
+              ? payload.error
+              : "입고 기록에 실패했습니다.",
+          );
+        }
+
+        setNotice(
+          `${payload.data.recordedCount}개 바코드 입고를 기록했습니다.`,
         );
       }
-
-      setNotice(
-        `${payload.data.recordedCount}개 바코드 입고를 기록했습니다.`,
-      );
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : "입고 기록에 실패했습니다.",
@@ -370,105 +455,16 @@ export function CoupangInboundTemplateSection({
               </p>
             </TabsContent>
 
-            <TabsContent value="image" className="space-y-2">
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
+            <TabsContent value="image">
+              <CoupangInboundImageDropzone
                 disabled={!hasSeller}
-                className="sr-only"
-                onChange={(event) => {
-                  handleImageFiles(event.target.files);
-                  event.target.value = "";
+                imageFiles={imageFiles}
+                onImageFilesChange={(files) => {
+                  setImageFiles(files);
+                  setNotice(null);
                 }}
+                visionData={visionData}
               />
-              <div
-                role="button"
-                tabIndex={hasSeller ? 0 : -1}
-                aria-disabled={!hasSeller}
-                onClick={() => {
-                  if (hasSeller) {
-                    imageInputRef.current?.click();
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (!hasSeller) {
-                    return;
-                  }
-
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    imageInputRef.current?.click();
-                  }
-                }}
-                onDragOver={(event) => {
-                  if (!hasSeller) {
-                    return;
-                  }
-
-                  event.preventDefault();
-                  setIsImageDragging(true);
-                }}
-                onDragLeave={(event) => {
-                  if (!hasSeller) {
-                    return;
-                  }
-
-                  event.preventDefault();
-                  setIsImageDragging(false);
-                }}
-                onDrop={(event) => {
-                  if (!hasSeller) {
-                    return;
-                  }
-
-                  event.preventDefault();
-                  setIsImageDragging(false);
-                  handleImageFiles(event.dataTransfer.files);
-                }}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-10 text-center transition-colors",
-                  !hasSeller
-                    ? "cursor-not-allowed border-border bg-muted/30 opacity-50"
-                    : "cursor-pointer",
-                  hasSeller &&
-                    (isImageDragging
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-background hover:border-primary/50 hover:bg-muted/30"),
-                )}
-              >
-                {imageFile ? (
-                  <ImageIcon
-                    className="size-8 text-muted-foreground"
-                    aria-hidden
-                  />
-                ) : (
-                  <Upload className="size-8 text-muted-foreground" aria-hidden />
-                )}
-                <p className="text-sm font-medium text-foreground">
-                  {imageFile
-                    ? imageFile.name
-                    : "사진 또는 스캔본을 드래그하거나 클릭하여 선택"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  지원 형식: JPG, PNG, WEBP 등 이미지 파일
-                </p>
-              </div>
-
-              {imagePreviewUrl ? (
-                <div className="overflow-hidden rounded-md border border-border bg-muted/30">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imagePreviewUrl}
-                    alt="입고 리스트 이미지 미리보기"
-                    className="mx-auto max-h-40 object-contain"
-                  />
-                </div>
-              ) : null}
-
-              <p className="text-xs text-muted-foreground">
-                종이 입고 리스트 사진을 AI가 자동 인식합니다 (기능 연동 예정)
-              </p>
             </TabsContent>
           </Tabs>
         </div>
@@ -481,7 +477,7 @@ export function CoupangInboundTemplateSection({
                 size="default"
                 className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
                 disabled={
-                  downloadDisabled ||
+                  !canDownload ||
                   isRecording ||
                   isDownloadingShoplingOutbound
                 }
@@ -534,14 +530,11 @@ export function CoupangInboundTemplateSection({
           <p className="text-sm text-muted-foreground">
             WING 입고 템플릿이 없으면 생성할 수 없습니다.
           </p>
-        ) : hasSeller &&
-          hasStoredTemplate &&
-          activeTab === "excel" &&
-          !excelFile ? (
+        ) : hasSeller && hasStoredTemplate && activeTab === "excel" && !excelFile ? (
           <p className="text-sm text-muted-foreground">
             박스 입고 리스트 엑셀 파일을 선택해 주세요.
           </p>
-        ) : hasSeller && activeTab === "image" && !imageFile ? (
+        ) : hasSeller && activeTab === "image" && imageFiles.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             입고 리스트 이미지를 선택해 주세요.
           </p>
