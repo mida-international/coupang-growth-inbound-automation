@@ -1,3 +1,4 @@
+import { LIST_TABLE_HEADER_CLASS } from "@/components/data-list/list-table-header";
 import {
   Table,
   TableBody,
@@ -27,7 +28,7 @@ export function ShoplingNewOptionProductsTable({
 
   return (
     <Table containerClassName="overflow-visible">
-      <TableHeader className="sticky top-0 z-20 bg-muted/40">
+      <TableHeader className={LIST_TABLE_HEADER_CLASS}>
         <TableRow className="hover:bg-transparent">
           <TableHead>샵플링코드</TableHead>
               <TableHead>옵션코드</TableHead>

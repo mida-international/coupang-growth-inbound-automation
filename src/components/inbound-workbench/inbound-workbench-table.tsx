@@ -11,6 +11,7 @@ import {
   SHOPLING_STOCK_LOW_CLASS,
   type InboundWorkbenchDraftEntry,
 } from "@/components/inbound-workbench/inbound-workbench-columns";
+import { LIST_TABLE_HEADER_CLASS } from "@/components/data-list/list-table-header";
 import { WorkbenchColumnHead } from "@/components/inbound-workbench/workbench-column-head";
 import {
   Table,
@@ -84,7 +85,7 @@ export function InboundWorkbenchTable({
   return (
     <TooltipProvider>
       <Table className="table-fixed" containerClassName="overflow-visible">
-        <TableHeader className="sticky top-0 z-20 bg-muted/40">
+        <TableHeader className={LIST_TABLE_HEADER_CLASS}>
               <TableRow className="hover:bg-transparent">
                 {showSellerColumn ? (
                   <TableHead

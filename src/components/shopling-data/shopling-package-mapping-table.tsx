@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { LIST_TABLE_HEADER_CLASS } from "@/components/data-list/list-table-header";
 import { ShoplingPackageMappingFormDialog } from "@/components/shopling-data/shopling-package-mapping-form-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,7 @@ export function ShoplingPackageMappingTable({
       ) : null}
 
       <Table containerClassName="overflow-visible">
-        <TableHeader className="sticky top-0 z-20 bg-muted/40">
+        <TableHeader className={LIST_TABLE_HEADER_CLASS}>
           <TableRow className="hover:bg-transparent">
             <TableHead>패키지 바코드</TableHead>
                 <TableHead>패키지 샵플링코드</TableHead>

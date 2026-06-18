@@ -1,6 +1,10 @@
 import { Fragment } from "react";
 
 import {
+  LIST_TABLE_STICKY_HEADER_CLASS,
+  LIST_TABLE_STICKY_LEFT_HEADER_CLASS,
+} from "@/components/data-list/list-table-header";
+import {
   Table,
   TableBody,
   TableCell,
@@ -40,11 +44,6 @@ function formatDateHeader(date: string): string {
 const STICKY_LEFT_BODY_CLASS =
   "sticky z-10 bg-background after:absolute after:top-0 after:right-0 after:h-full after:w-px after:bg-border";
 
-const STICKY_LEFT_HEADER_CLASS =
-  "sticky top-0 z-30 bg-muted/40 after:absolute after:top-0 after:right-0 after:h-full after:w-px after:bg-border";
-
-const STICKY_HEADER_CLASS = "sticky top-0 z-20 bg-muted/40";
-
 export function TrendsTable({ rows, dates }: TrendsTableProps) {
   if (rows.length === 0) {
     return null;
@@ -52,35 +51,35 @@ export function TrendsTable({ rows, dates }: TrendsTableProps) {
 
   return (
     <Table containerClassName="overflow-visible">
-      <TableHeader className="bg-muted/40">
+      <TableHeader className="bg-muted [&_th]:bg-muted">
         <TableRow className="hover:bg-transparent">
           <TableHead
             rowSpan={2}
-            className={cn(STICKY_LEFT_HEADER_CLASS, "left-0 min-w-[160px]")}
+            className={cn(LIST_TABLE_STICKY_LEFT_HEADER_CLASS, "left-0 min-w-[160px]")}
           >
             상품명
           </TableHead>
           <TableHead
             rowSpan={2}
-            className={cn(STICKY_LEFT_HEADER_CLASS, "left-[160px] min-w-[120px]")}
+            className={cn(LIST_TABLE_STICKY_LEFT_HEADER_CLASS, "left-[160px] min-w-[120px]")}
           >
             옵션명
           </TableHead>
           <TableHead
             rowSpan={2}
-            className={cn(STICKY_LEFT_HEADER_CLASS, "left-[280px] min-w-[110px]")}
+            className={cn(LIST_TABLE_STICKY_LEFT_HEADER_CLASS, "left-[280px] min-w-[110px]")}
           >
             자사상품코드
           </TableHead>
           <TableHead
             rowSpan={2}
-            className={cn(STICKY_LEFT_HEADER_CLASS, "left-[390px] min-w-[140px]")}
+            className={cn(LIST_TABLE_STICKY_LEFT_HEADER_CLASS, "left-[390px] min-w-[140px]")}
           >
             샵플링 옵션 벨류
           </TableHead>
           <TableHead
             rowSpan={2}
-            className={cn(STICKY_LEFT_HEADER_CLASS, "left-[530px] min-w-[120px]")}
+            className={cn(LIST_TABLE_STICKY_LEFT_HEADER_CLASS, "left-[530px] min-w-[120px]")}
           >
             바코드
           </TableHead>
@@ -89,7 +88,7 @@ export function TrendsTable({ rows, dates }: TrendsTableProps) {
               key={date}
               colSpan={2}
               className={cn(
-                STICKY_HEADER_CLASS,
+                LIST_TABLE_STICKY_HEADER_CLASS,
                 "border-l border-border text-center",
               )}
             >
@@ -102,7 +101,7 @@ export function TrendsTable({ rows, dates }: TrendsTableProps) {
             <Fragment key={date}>
               <TableHead
                 className={cn(
-                  STICKY_HEADER_CLASS,
+                  LIST_TABLE_STICKY_HEADER_CLASS,
                   "min-w-[72px] border-l border-border text-right text-xs",
                 )}
               >
@@ -110,7 +109,7 @@ export function TrendsTable({ rows, dates }: TrendsTableProps) {
               </TableHead>
               <TableHead
                 className={cn(
-                  STICKY_HEADER_CLASS,
+                  LIST_TABLE_STICKY_HEADER_CLASS,
                   "min-w-[72px] text-right text-xs",
                 )}
               >
