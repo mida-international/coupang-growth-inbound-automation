@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 
+import { normalizeCenterSeparationBarcode } from "@/lib/center-separation/normalize-barcode";
 import { getKstTodayDate } from "@/lib/date/kst-today";
 import { resolveWarehouseInboundRotationQuantity } from "@/lib/deliverables/resolve-warehouse-inbound-rotation-quantity";
 import type { OutboundPackageComponent } from "@/lib/deliverables/decompose-outbound-deduct-rows";
@@ -10,7 +11,11 @@ export type GenerateWarehouseInboundListOptions = {
   rotationCount?: 0 | 1 | 2 | 3;
   rotationBatches?: ShoplingInboundRotationBatch[];
   packageMappingsByBarcode?: Map<string, OutboundPackageComponent[]>;
+  centerSeparationBarcodes?: Set<string>;
 };
+
+export const CENTER_SEPARATION_COLUMN_KEY = "센터분리";
+export const CENTER_SEPARATION_MARKER = "○";
 
 const BASE_COLUMN_KEYS = [
   "box",
@@ -24,9 +29,23 @@ const BASE_COLUMN_KEYS = [
 
 const MIN_COLUMN_WIDTHS = [6, 12, 10, 30, 25, 18, 8];
 const ROTATION_COLUMN_MIN_WIDTH = 8;
+const CENTER_SEPARATION_COLUMN_MIN_WIDTH = 8;
 
 function getRotationColumnKeys(count: number): string[] {
   return Array.from({ length: count }, (_, index) => `${index + 1}회차`);
+}
+
+function resolveCenterSeparationMarker(
+  productBarcode: string | null | undefined,
+  centerSeparationBarcodes: Set<string>,
+): string {
+  const normalized = normalizeCenterSeparationBarcode(productBarcode ?? "");
+
+  if (normalized === "" || !centerSeparationBarcodes.has(normalized)) {
+    return "";
+  }
+
+  return CENTER_SEPARATION_MARKER;
 }
 
 function formatKstIsoDate(date: Date): string {
@@ -54,6 +73,18 @@ function getDisplayWidth(value: string): number {
   return width;
 }
 
+function getColumnMinWidth(key: string, index: number): number {
+  if (key === CENTER_SEPARATION_COLUMN_KEY) {
+    return CENTER_SEPARATION_COLUMN_MIN_WIDTH;
+  }
+
+  if (index < MIN_COLUMN_WIDTHS.length) {
+    return MIN_COLUMN_WIDTHS[index]!;
+  }
+
+  return ROTATION_COLUMN_MIN_WIDTH;
+}
+
 function toOutputRows(
   rows: WarehouseInboundListRow[],
   today: string,
@@ -64,6 +95,8 @@ function toOutputRows(
   const rotationBatches = options?.rotationBatches ?? [];
   const packageMappingsByBarcode =
     options?.packageMappingsByBarcode ?? new Map<string, OutboundPackageComponent[]>();
+  const centerSeparationBarcodes =
+    options?.centerSeparationBarcodes ?? new Set<string>();
 
   const output: Record<string, string | number>[] = [];
   let boxNum = 1;
@@ -102,6 +135,11 @@ function toOutputRows(
       outputRow[header] = quantity ?? "";
     }
 
+    outputRow[CENTER_SEPARATION_COLUMN_KEY] = resolveCenterSeparationMarker(
+      row.productBarcode,
+      centerSeparationBarcodes,
+    );
+
     output.push(outputRow);
   }
 
@@ -125,20 +163,14 @@ export function generateWarehouseInboundListBuffer(
   const todayDate = getKstTodayDate();
   const today = formatKstIsoDate(todayDate);
   const rotationCount = options?.rotationCount ?? 0;
-  const columnKeys = [
-    ...BASE_COLUMN_KEYS,
-    ...getRotationColumnKeys(rotationCount),
-  ];
+  const columnKeys = getWarehouseInboundListColumnKeys(rotationCount);
   const outputRows = toOutputRows(rows, today, options);
   const worksheet = XLSX.utils.json_to_sheet(outputRows, {
     header: columnKeys,
   });
 
   worksheet["!cols"] = columnKeys.map((key, index) => {
-    const minWidth =
-      index < MIN_COLUMN_WIDTHS.length
-        ? MIN_COLUMN_WIDTHS[index]!
-        : ROTATION_COLUMN_MIN_WIDTH;
+    const minWidth = getColumnMinWidth(key, index);
     const maxLen = Math.max(
       minWidth,
       getDisplayWidth(key),
@@ -163,5 +195,9 @@ export function generateWarehouseInboundListBuffer(
 export function getWarehouseInboundListColumnKeys(
   rotationCount: 0 | 1 | 2 | 3 = 0,
 ): string[] {
-  return [...BASE_COLUMN_KEYS, ...getRotationColumnKeys(rotationCount)];
+  return [
+    ...BASE_COLUMN_KEYS,
+    ...getRotationColumnKeys(rotationCount),
+    CENTER_SEPARATION_COLUMN_KEY,
+  ];
 }

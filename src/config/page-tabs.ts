@@ -36,6 +36,10 @@ export const coupangGrowthTabGroup: PageTabGroup = {
       title: "재고 현황",
       href: "/data/coupang-growth/inventory-health",
     },
+    {
+      title: "센터분리 관리",
+      href: "/data/coupang-growth/center-separation",
+    },
   ],
 };
 

@@ -4,6 +4,8 @@ import * as XLSX from "xlsx";
 
 import {
   buildWarehouseInboundListFilename,
+  CENTER_SEPARATION_COLUMN_KEY,
+  CENTER_SEPARATION_MARKER,
   generateWarehouseInboundListBuffer,
   getWarehouseInboundListColumnKeys,
 } from "@/lib/excel/generators/warehouse-inbound-list";
@@ -30,14 +32,45 @@ function readHeaderRow(buffer: Buffer): string[] {
   return (rows[0] ?? []).map((value) => String(value));
 }
 
+function readFirstDataRow(buffer: Buffer): Record<string, string | number> {
+  const workbook = XLSX.read(buffer, { type: "buffer" });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]]!;
+
+  return XLSX.utils.sheet_to_json<Record<string, string | number>>(sheet, {
+    defval: "",
+  })[0]!;
+}
+
+describe("getWarehouseInboundListColumnKeys", () => {
+  it("appends center separation after rotation columns", () => {
+    assert.deepEqual(getWarehouseInboundListColumnKeys(3), [
+      "box",
+      "date",
+      "location",
+      "등록상품명",
+      "옵션명",
+      "바코드",
+      "수량",
+      "1회차",
+      "2회차",
+      "3회차",
+      CENTER_SEPARATION_COLUMN_KEY,
+    ]);
+  });
+});
+
 describe("generateWarehouseInboundListBuffer", () => {
-  it("keeps the default 7 columns when rotationCount is 0", () => {
+  it("includes center separation as the last column when rotationCount is 0", () => {
     const buffer = generateWarehouseInboundListBuffer(sampleRows);
 
     assert.deepEqual(readHeaderRow(buffer), getWarehouseInboundListColumnKeys(0));
+    assert.equal(
+      readFirstDataRow(buffer)[CENTER_SEPARATION_COLUMN_KEY],
+      "",
+    );
   });
 
-  it("appends rotation headers when rotationCount is 2", () => {
+  it("appends rotation headers before center separation when rotationCount is 2", () => {
     const buffer = generateWarehouseInboundListBuffer(sampleRows, {
       rotationCount: 2,
       rotationBatches: [
@@ -53,6 +86,17 @@ describe("generateWarehouseInboundListBuffer", () => {
     });
 
     assert.deepEqual(readHeaderRow(buffer), getWarehouseInboundListColumnKeys(2));
+  });
+
+  it("marks center separation cells when the product barcode is registered", () => {
+    const buffer = generateWarehouseInboundListBuffer(sampleRows, {
+      centerSeparationBarcodes: new Set(["8801111111111"]),
+    });
+
+    assert.equal(
+      readFirstDataRow(buffer)[CENTER_SEPARATION_COLUMN_KEY],
+      CENTER_SEPARATION_MARKER,
+    );
   });
 });
 

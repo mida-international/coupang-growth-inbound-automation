@@ -1,3 +1,4 @@
+import { centerSeparationBarcodeTarget } from "@/lib/excel/targets/center-separation";
 import { coupangGrowthInboundTemplateTarget } from "@/lib/excel/targets/coupang-growth-inbound-template";
 import { coupangGrowthInventoryHealthTarget } from "@/lib/excel/targets/coupang-growth-inventory-health";
 import type {
@@ -8,6 +9,7 @@ import type {
 export const excelIngestionTargets: ExcelIngestionTarget[] = [
   coupangGrowthInboundTemplateTarget,
   coupangGrowthInventoryHealthTarget,
+  centerSeparationBarcodeTarget,
 ];
 
 const targetById = new Map(

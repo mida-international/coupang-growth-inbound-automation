@@ -3,6 +3,7 @@ import {
   buildWarehouseInboundListFilename,
   generateWarehouseInboundListBuffer,
 } from "@/lib/excel/generators/warehouse-inbound-list";
+import { loadCenterSeparationBarcodeSet } from "@/services/deliverables/load-center-separation-barcode-set";
 import { loadOutboundDecomposeContext } from "@/services/deliverables/load-outbound-decompose-context";
 import { loadShoplingInboundRotationBatches } from "@/services/deliverables/load-shopling-inbound-rotation-batches";
 import { listWarehouseInboundRows } from "@/services/deliverables/list-warehouse-inbound-rows";
@@ -47,9 +48,12 @@ export async function generateWarehouseInboundListContext(
     throw new Error("유효한 판매자 계정이 아닙니다.");
   }
 
-  const listResult = await listWarehouseInboundRows({
-    coupangSellerAccountId: sellerId,
-  });
+  const [listResult, centerSeparationBarcodes] = await Promise.all([
+    listWarehouseInboundRows({
+      coupangSellerAccountId: sellerId,
+    }),
+    loadCenterSeparationBarcodeSet(),
+  ]);
 
   const [rotationBatches, decomposeContext] =
     rotation > 0
@@ -64,6 +68,7 @@ export async function generateWarehouseInboundListContext(
     rotationBatches,
     packageMappingsByBarcode:
       decomposeContext?.packageMappingsByBarcode ?? new Map(),
+    centerSeparationBarcodes,
   });
   const outputFileName = buildWarehouseInboundListFilename(seller.displayName);
 
