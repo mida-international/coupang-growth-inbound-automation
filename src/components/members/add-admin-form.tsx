@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -25,7 +25,7 @@ import {
 
 export function AddAdminForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState<CreateAdminInput["role"]>("admin");
@@ -38,7 +38,7 @@ export function AddAdminForm() {
     setLoading(true);
 
     const result = await apiPost<void>("/api/members", {
-      email,
+      loginId,
       password,
       name: name.trim() || undefined,
       role,
@@ -51,7 +51,7 @@ export function AddAdminForm() {
       return;
     }
 
-    setEmail("");
+    setLoginId("");
     setPassword("");
     setName("");
     setRole("admin");
@@ -71,17 +71,18 @@ export function AddAdminForm() {
         <form onSubmit={handleSubmit}>
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="member-email">이메일</FieldLabel>
+              <FieldLabel htmlFor="member-login-id">아이디</FieldLabel>
               <Input
-                id="member-email"
-                type="email"
-                autoComplete="off"
-                placeholder="admin@example.com"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                id="member-login-id"
+                type="text"
+                autoComplete="username"
+                placeholder="admin"
+                value={loginId}
+                onChange={(event) => setLoginId(event.target.value)}
                 required
                 disabled={loading}
               />
+              <FieldDescription>@mida.com이 자동으로 붙습니다.</FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="member-password">비밀번호</FieldLabel>
