@@ -40,7 +40,8 @@ export default async function CoupangGrowthInventoryHealthPage({
     : EMPTY_INVENTORY_HEALTH_RESULT;
 
   return (
-    <CoupangGrowthInventoryHealthPanel
+    <div className="flex min-w-0 flex-col">
+      <CoupangGrowthInventoryHealthPanel
       accounts={accounts}
       sellerFilter={sellerFilter}
       data={data}
@@ -48,5 +49,6 @@ export default async function CoupangGrowthInventoryHealthPage({
       page={page}
       pageSize={pageSize}
     />
+    </div>
   );
 }

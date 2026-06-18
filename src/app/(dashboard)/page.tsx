@@ -47,8 +47,8 @@ export default async function DashboardPage({
   const columnLayout = await getInboundWorkbenchColumnLayout(profile.id);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
+    <div className="flex min-w-0 flex-col gap-6">
+      <div className="shrink-0 space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">대시보드</h1>
         <p className="text-muted-foreground">
           입고 템플릿 기준으로 쿠팡 재고·샵플링 재고를 조회합니다.

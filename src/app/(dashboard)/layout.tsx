@@ -14,6 +14,7 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider
+      className="h-svh overflow-hidden"
       defaultOpen={false}
       style={
         {
@@ -24,9 +25,11 @@ export default async function DashboardLayout({
     >
       <SidebarInteractionProvider>
         <AppSidebar showSidebarTrigger isMaster={isMaster} />
-        <SidebarInset>
+        <SidebarInset className="min-h-0 overflow-hidden">
           <AppHeader />
-          <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">{children}</div>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4">
+            {children}
+          </div>
         </SidebarInset>
       </SidebarInteractionProvider>
     </SidebarProvider>

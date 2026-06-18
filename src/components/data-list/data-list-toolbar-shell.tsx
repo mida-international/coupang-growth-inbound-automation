@@ -14,7 +14,7 @@ export function DataListToolbarShell({
   return (
     <div
       className={cn(
-        "w-full min-w-0 space-y-3 overflow-hidden rounded-lg border border-border bg-muted/30 px-3 py-3",
+        "w-full min-w-0 shrink-0 space-y-3 overflow-hidden rounded-lg border border-border bg-muted/30 px-3 py-3",
         className,
       )}
     >

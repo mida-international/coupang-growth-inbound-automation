@@ -21,11 +21,13 @@ export default async function ShoplingPackageMappingPage({
   const data = await listShoplingPackageMapping({ page, pageSize, search });
 
   return (
-    <ShoplingPackageMappingPanel
+    <div className="flex min-w-0 flex-col">
+      <ShoplingPackageMappingPanel
       data={data}
       search={search}
       page={page}
       pageSize={pageSize}
     />
+    </div>
   );
 }

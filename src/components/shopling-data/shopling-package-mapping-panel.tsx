@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DataListPanel } from "@/components/data-list/data-list-panel";
+import { DataListTableScrollArea } from "@/components/data-list/data-list-table-scroll-area";
 import { ShoplingPackageMappingTable } from "@/components/shopling-data/shopling-package-mapping-table";
 import { ShoplingPackageMappingToolbar } from "@/components/shopling-data/shopling-package-mapping-toolbar";
 import type { ListShoplingPackageMappingResult } from "@/services/shopling-package-mapping/types";
@@ -56,7 +57,9 @@ export function ShoplingPackageMappingPanel({
           <p className="text-sm text-muted-foreground">검색 결과가 없습니다.</p>
         </div>
       ) : (
-        <ShoplingPackageMappingTable rows={data.rows} />
+        <DataListTableScrollArea>
+          <ShoplingPackageMappingTable rows={data.rows} />
+        </DataListTableScrollArea>
       )}
     </DataListPanel>
   );

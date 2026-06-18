@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { DataListPanel } from "@/components/data-list/data-list-panel";
+import { DataListTableScrollArea } from "@/components/data-list/data-list-table-scroll-area";
 import { CoupangGrowthInventoryHealthTable } from "@/components/coupang-growth-data/coupang-growth-inventory-health-table";
 import { CoupangGrowthInventoryHealthToolbar } from "@/components/coupang-growth-data/coupang-growth-inventory-health-toolbar";
 import { INVENTORY_HEALTH_ALL_SELLERS } from "@/services/coupang-growth-data/resolve-inventory-health-seller-filter";
@@ -127,7 +128,9 @@ export function CoupangGrowthInventoryHealthPanel({
           </p>
         </EmptyState>
       ) : (
-        <CoupangGrowthInventoryHealthTable rows={data.rows} />
+        <DataListTableScrollArea>
+          <CoupangGrowthInventoryHealthTable rows={data.rows} />
+        </DataListTableScrollArea>
       )}
     </DataListPanel>
   );

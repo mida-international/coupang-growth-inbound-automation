@@ -108,7 +108,7 @@ export function InboundWorkbenchToolbar({
   );
 
   return (
-    <div className="w-full min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div className="w-full min-w-0 shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div className="space-y-4 p-4">
         <section className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

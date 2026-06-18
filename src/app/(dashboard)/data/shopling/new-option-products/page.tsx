@@ -36,11 +36,13 @@ export default async function ShoplingNewOptionProductsPage({
   });
 
   return (
-    <ShoplingNewOptionProductsPanel
+    <div className="flex min-w-0 flex-col">
+      <ShoplingNewOptionProductsPanel
       data={data}
       search={search}
       page={page}
       pageSize={pageSize}
     />
+    </div>
   );
 }

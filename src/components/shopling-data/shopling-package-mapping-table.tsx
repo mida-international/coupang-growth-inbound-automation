@@ -75,12 +75,10 @@ export function ShoplingPackageMappingTable({
         </p>
       ) : null}
 
-      <div className="overflow-hidden rounded-md border border-border bg-background">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-muted/40">
-              <TableRow className="hover:bg-transparent">
-                <TableHead>패키지 바코드</TableHead>
+      <Table containerClassName="overflow-visible">
+        <TableHeader className="sticky top-0 z-20 bg-muted/40">
+          <TableRow className="hover:bg-transparent">
+            <TableHead>패키지 바코드</TableHead>
                 <TableHead>패키지 샵플링코드</TableHead>
                 <TableHead>패키지 자사코드</TableHead>
                 <TableHead>패키지 옵션ID</TableHead>
@@ -143,8 +141,6 @@ export function ShoplingPackageMappingTable({
               ))}
             </TableBody>
           </Table>
-        </div>
-      </div>
 
       <ShoplingPackageMappingFormDialog
         open={editingRow !== null}
