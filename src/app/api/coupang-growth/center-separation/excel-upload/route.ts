@@ -1,6 +1,7 @@
 import { requireApiProfile } from "@/lib/api/auth";
+import { fromCenterSeparationServiceResult } from "@/lib/api/center-separation-response";
 import { logRouteError } from "@/lib/api/log-route-error";
-import { fromServiceResult, jsonError } from "@/lib/api/response";
+import { jsonError } from "@/lib/api/response";
 import { ingestCenterSeparationExcel } from "@/services/center-separation/ingest-center-separation-excel";
 
 export async function POST(request: Request) {
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const result = await ingestCenterSeparationExcel(buffer);
 
-    return fromServiceResult(result);
+    return fromCenterSeparationServiceResult(result);
   } catch (error) {
     logRouteError(error, {
       route: "/api/coupang-growth/center-separation/excel-upload",

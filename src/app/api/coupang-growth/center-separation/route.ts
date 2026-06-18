@@ -1,8 +1,9 @@
 import type { NextRequest } from "next/server";
 
 import { requireApiProfile } from "@/lib/api/auth";
+import { fromCenterSeparationServiceResult } from "@/lib/api/center-separation-response";
 import { logRouteError } from "@/lib/api/log-route-error";
-import { fromServiceResult, jsonError } from "@/lib/api/response";
+import { jsonError } from "@/lib/api/response";
 import { createCenterSeparationBarcode } from "@/services/center-separation/create-center-separation-barcode";
 
 type CreateCenterSeparationBody = {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     const result = await createCenterSeparationBarcode(body.barcode ?? "");
 
-    return fromServiceResult(result, { successStatus: 201 });
+    return fromCenterSeparationServiceResult(result, { successStatus: 201 });
   } catch (error) {
     logRouteError(error, {
       route: "/api/coupang-growth/center-separation",

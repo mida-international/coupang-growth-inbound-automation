@@ -3,6 +3,10 @@ import type {
   CenterSeparationServiceResult,
   UpsertCenterSeparationResult,
 } from "@/services/center-separation/types";
+import {
+  CENTER_SEPARATION_ALL_MISSING_ERROR,
+} from "@/services/center-separation/types";
+import { validateCenterSeparationBarcodes } from "@/services/center-separation/validate-center-separation-barcodes";
 
 function dedupeBarcodes(barcodes: string[]): string[] {
   const unique = new Map<string, string>();
@@ -34,10 +38,21 @@ export async function upsertCenterSeparationBarcodes(
     };
   }
 
+  const { knownBarcodes, missingBarcodes } =
+    await validateCenterSeparationBarcodes(dedupedBarcodes);
+
+  if (knownBarcodes.length === 0) {
+    return {
+      ok: false,
+      error: CENTER_SEPARATION_ALL_MISSING_ERROR,
+      missingBarcodes,
+    };
+  }
+
   const existingBarcodes = new Set(
     (
       await prisma.coupangCenterSeparation.findMany({
-        where: { barcode: { in: dedupedBarcodes } },
+        where: { barcode: { in: knownBarcodes } },
         select: { barcode: true },
       })
     ).map((row) => row.barcode),
@@ -53,7 +68,7 @@ export async function upsertCenterSeparationBarcodes(
   };
 
   await prisma.$transaction(async (tx) => {
-    for (const barcode of dedupedBarcodes) {
+    for (const barcode of knownBarcodes) {
       try {
         const isUpdate = existingBarcodes.has(barcode);
 
@@ -88,11 +103,12 @@ export async function upsertCenterSeparationBarcodes(
       error:
         stats.errors[0] ??
         "센터분리 데이터를 저장하지 못했습니다. 바코드를 확인해 주세요.",
+      missingBarcodes,
     };
   }
 
   return {
     ok: true,
-    data: { stats },
+    data: { stats, missingBarcodes },
   };
 }

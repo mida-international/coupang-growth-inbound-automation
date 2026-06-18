@@ -15,13 +15,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { apiPost, apiPostFormData } from "@/lib/api-client";
+import { readCenterSeparationUpsertResponse } from "@/lib/center-separation/parse-upsert-response";
 import { CENTER_SEPARATION_TEMPLATE_FILENAME } from "@/lib/excel/generators/center-separation-template";
 import { isExcelFile } from "@/lib/excel/validate-file";
 import { cn } from "@/lib/utils";
+import {
+  CENTER_SEPARATION_MISSING_BARCODE_ERROR,
+} from "@/services/center-separation/types";
 import type { UpsertCenterSeparationResult } from "@/services/center-separation/types";
 
-function summarizeUpsert(stats: UpsertCenterSeparationResult["stats"]): string {
+function summarizeUpsert(
+  stats: UpsertCenterSeparationResult["stats"],
+  missingBarcodes: string[],
+): string {
   const parts = [
     `${stats.upserted.toLocaleString()}건 반영`,
     `신규 ${stats.created.toLocaleString()}건`,
@@ -30,6 +36,10 @@ function summarizeUpsert(stats: UpsertCenterSeparationResult["stats"]): string {
 
   if (stats.skippedEmptyBarcode > 0) {
     parts.push(`바코드 없음 ${stats.skippedEmptyBarcode.toLocaleString()}행 스킵`);
+  }
+
+  if (missingBarcodes.length > 0) {
+    parts.push(`대시보드 없음 ${missingBarcodes.length.toLocaleString()}건`);
   }
 
   if (stats.errors.length > 0) {
@@ -66,12 +76,28 @@ function AddCard({
   );
 }
 
+function MissingBarcodesList({ barcodes }: { barcodes: string[] }) {
+  return (
+    <div className="max-h-64 overflow-y-auto rounded-md border border-border bg-muted/30 p-3">
+      <ul className="space-y-1 font-mono text-sm">
+        {barcodes.map((barcode) => (
+          <li key={barcode}>{barcode}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function CenterSeparationAddSection() {
   const router = useRouter();
 
   const [barcode, setBarcode] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [singleMissingDialogOpen, setSingleMissingDialogOpen] = useState(false);
+  const [missingBarcodesDialog, setMissingBarcodesDialog] = useState<
+    string[] | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -116,20 +142,41 @@ export function CenterSeparationAddSection() {
     setError(null);
     setNotice(null);
 
-    const result = await apiPost<UpsertCenterSeparationResult>(
-      "/api/coupang-growth/center-separation",
-      { barcode: barcode.trim() },
-    );
+    let response: Response;
 
+    try {
+      response = await fetch("/api/coupang-growth/center-separation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ barcode: barcode.trim() }),
+        credentials: "same-origin",
+      });
+    } catch {
+      setIsAdding(false);
+      setError("요청 처리에 실패했습니다.");
+      return;
+    }
+
+    const result = await readCenterSeparationUpsertResponse(response);
     setIsAdding(false);
 
     if (!result.ok) {
+      if (
+        result.error === CENTER_SEPARATION_MISSING_BARCODE_ERROR ||
+        result.missingBarcodes.length > 0
+      ) {
+        setSingleMissingDialogOpen(true);
+        return;
+      }
+
       setError(result.error);
       return;
     }
 
     setBarcode("");
-    setNotice(summarizeUpsert(result.data.stats));
+    setNotice(
+      summarizeUpsert(result.data.stats, result.data.missingBarcodes),
+    );
     router.refresh();
   }
 
@@ -188,20 +235,46 @@ export function CenterSeparationAddSection() {
     const formData = new FormData();
     formData.append("file", file);
 
-    const result = await apiPostFormData<UpsertCenterSeparationResult>(
-      "/api/coupang-growth/center-separation/excel-upload",
-      formData,
-    );
+    let response: Response;
 
+    try {
+      response = await fetch(
+        "/api/coupang-growth/center-separation/excel-upload",
+        {
+          method: "POST",
+          body: formData,
+          credentials: "same-origin",
+        },
+      );
+    } catch {
+      setIsUploading(false);
+      setDialogError("요청 처리에 실패했습니다.");
+      return;
+    }
+
+    const result = await readCenterSeparationUpsertResponse(response);
     setIsUploading(false);
 
     if (!result.ok) {
+      if (result.missingBarcodes.length > 0) {
+        resetUploadDialog();
+        setMissingBarcodesDialog(result.missingBarcodes);
+        return;
+      }
+
       setDialogError(result.error);
       return;
     }
 
+    const { stats, missingBarcodes } = result.data;
+
     resetUploadDialog();
-    setNotice(summarizeUpsert(result.data.stats));
+    setNotice(summarizeUpsert(stats, missingBarcodes));
+
+    if (missingBarcodes.length > 0) {
+      setMissingBarcodesDialog(missingBarcodes);
+    }
+
     router.refresh();
   }
 
@@ -210,7 +283,7 @@ export function CenterSeparationAddSection() {
       <section className="grid gap-4 lg:grid-cols-2">
         <AddCard
           title="바코드 단건 추가"
-          description="바코드 하나를 입력해 바로 등록합니다. 대시보드에 있는 상품 정보가 목록에 표시됩니다."
+          description="바코드 하나를 입력해 바로 등록합니다. 대시보드에 있는 상품만 등록할 수 있습니다."
         >
           <form
             className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center"
@@ -234,7 +307,7 @@ export function CenterSeparationAddSection() {
 
         <AddCard
           title="엑셀 대량 등록"
-          description="여러 바코드를 한 번에 등록합니다. 템플릿을 받아 바코드 열을 채운 뒤 업로드하세요."
+          description="여러 바코드를 한 번에 등록합니다. 대시보드에 있는 바코드만 등록되며, 없는 바코드는 업로드 후 목록으로 안내됩니다."
         >
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Button
@@ -274,6 +347,60 @@ export function CenterSeparationAddSection() {
       ) : null}
 
       <Dialog
+        open={singleMissingDialogOpen}
+        onOpenChange={setSingleMissingDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>바코드를 등록할 수 없습니다</DialogTitle>
+            <DialogDescription>
+              {CENTER_SEPARATION_MISSING_BARCODE_ERROR}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => setSingleMissingDialogOpen(false)}
+            >
+              확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={missingBarcodesDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMissingBarcodesDialog(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>대시보드에 없는 바코드</DialogTitle>
+            <DialogDescription>
+              {missingBarcodesDialog?.length.toLocaleString()}건의 바코드는
+              대시보드에 없어 등록되지 않았습니다.
+            </DialogDescription>
+          </DialogHeader>
+
+          {missingBarcodesDialog ? (
+            <MissingBarcodesList barcodes={missingBarcodesDialog} />
+          ) : null}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => setMissingBarcodesDialog(null)}
+            >
+              확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={uploadDialogOpen}
         onOpenChange={(open) => {
           if (!open) {
@@ -304,7 +431,13 @@ export function CenterSeparationAddSection() {
 
           {file ? (
             <ExcelFileList
-              files={[{ id: file.name, file, targetId: null }]}
+              files={[
+                {
+                  id: file.name,
+                  file,
+                  targetId: "center_separation_barcode",
+                },
+              ]}
               onRemove={() => {
                 setFile(null);
                 setDialogError(null);

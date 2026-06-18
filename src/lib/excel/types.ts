@@ -1,6 +1,7 @@
 export const EXCEL_INGESTION_TARGET_IDS = [
   "coupang_growth_inbound_template",
   "coupang_growth_inventory_health",
+  "center_separation_barcode",
 ] as const;
 
 export type ExcelIngestionTargetId =

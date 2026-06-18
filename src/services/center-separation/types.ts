@@ -2,7 +2,7 @@ import type { ParsedCenterSeparationRow } from "@/lib/excel/parsers/parse-center
 
 export type CenterSeparationServiceResult<T> =
   | { ok: true; data: T }
-  | { ok: false; error: string };
+  | { ok: false; error: string; missingBarcodes?: string[] };
 
 export type CenterSeparationRowView = {
   id: string;
@@ -31,7 +31,14 @@ export type UpsertCenterSeparationStats = {
 
 export type UpsertCenterSeparationResult = {
   stats: UpsertCenterSeparationStats;
+  missingBarcodes: string[];
 };
+
+export const CENTER_SEPARATION_MISSING_BARCODE_ERROR =
+  "대시보드에 해당 바코드가 없습니다.";
+
+export const CENTER_SEPARATION_ALL_MISSING_ERROR =
+  "대시보드에 없는 바코드만 포함되어 등록할 수 없습니다.";
 
 export const CENTER_SEPARATION_PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 
