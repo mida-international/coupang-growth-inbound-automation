@@ -26,7 +26,7 @@ export default async function DashboardLayout({
         <AppSidebar showSidebarTrigger isMaster={isMaster} />
         <SidebarInset>
           <AppHeader />
-          <div className="flex flex-1 flex-col gap-4 p-4">{children}</div>
+          <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">{children}</div>
         </SidebarInset>
       </SidebarInteractionProvider>
     </SidebarProvider>

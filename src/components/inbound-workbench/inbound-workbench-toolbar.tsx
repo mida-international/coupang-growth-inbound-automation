@@ -108,7 +108,7 @@ export function InboundWorkbenchToolbar({
   );
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div className="w-full min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div className="space-y-4 p-4">
         <section className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -239,8 +239,8 @@ export function InboundWorkbenchToolbar({
         </section>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex min-w-0 flex-col gap-3 border-t border-border bg-muted/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="min-w-0 truncate text-sm text-muted-foreground">
           {formatSnapshotLine(snapshotDates, appliedSellerIds.length)} ·{" "}
           <span className="font-medium text-foreground">
             {totalCount.toLocaleString()}건
@@ -253,7 +253,7 @@ export function InboundWorkbenchToolbar({
         </p>
 
         {showPagination && !editMode ? (
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
             <select
               value={pageSize}
               aria-label="표시 건수"

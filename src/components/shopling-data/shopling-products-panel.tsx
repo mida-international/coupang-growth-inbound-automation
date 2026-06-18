@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { DataListPanel } from "@/components/data-list/data-list-panel";
 import { ShoplingInventoryTable } from "@/components/shopling-data/shopling-inventory-table";
 import { ShoplingProductsToolbar } from "@/components/shopling-data/shopling-products-toolbar";
 import type { ListShoplingInventoryResult } from "@/services/shopling-data/types";
@@ -21,7 +22,7 @@ export function ShoplingProductsPanel({
   const isSearchEmpty = search.trim().length === 0;
 
   return (
-    <div className="space-y-4">
+    <DataListPanel>
       {hasSnapshot ? (
         <ShoplingProductsToolbar
           search={search}
@@ -60,6 +61,6 @@ export function ShoplingProductsPanel({
       ) : (
         <ShoplingInventoryTable rows={data.rows} />
       )}
-    </div>
+    </DataListPanel>
   );
 }
