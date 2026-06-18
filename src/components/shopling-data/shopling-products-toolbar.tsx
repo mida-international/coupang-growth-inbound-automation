@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { buildProductsQuery } from "@/components/shopling-data/build-products-query";
+import { DataListToolbarShell } from "@/components/data-list/data-list-toolbar-shell";
 import { ShoplingPageSizeSelect } from "@/components/shopling-data/shopling-page-size-select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,18 +44,18 @@ export function ShoplingProductsToolbar({
   const showPagination = totalCount > 0;
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-muted/30 px-3 py-3">
+    <DataListToolbarShell>
       <form
         method="GET"
         action="/data/shopling/products"
-        className="flex flex-col gap-2 sm:flex-row sm:items-center"
+        className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
       >
         <Input
           name="q"
           type="search"
           defaultValue={search}
           placeholder="샵플링코드 · 자사상품코드 · 바코드 검색"
-          className="min-w-[200px] flex-1 sm:max-w-md"
+          className="min-w-0 flex-1 sm:max-w-md"
         />
         <input type="hidden" name="pageSize" value={pageSize} />
         <Button type="submit" size="sm" className="shrink-0">
@@ -62,13 +63,13 @@ export function ShoplingProductsToolbar({
         </Button>
       </form>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="min-w-0 truncate text-sm text-muted-foreground">
           {formatYmd(snapshotDate)} · {totalCount.toLocaleString()}건
         </p>
 
         {showPagination ? (
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex shrink-0 flex-wrap items-center gap-3">
             <ShoplingPageSizeSelect
               basePath="/data/shopling/products"
               pageSize={pageSize}
@@ -120,6 +121,6 @@ export function ShoplingProductsToolbar({
           </div>
         ) : null}
       </div>
-    </div>
+    </DataListToolbarShell>
   );
 }

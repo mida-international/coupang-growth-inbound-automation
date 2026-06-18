@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { DataListPanel } from "@/components/data-list/data-list-panel";
 import { CoupangGrowthInventoryHealthTable } from "@/components/coupang-growth-data/coupang-growth-inventory-health-table";
 import { CoupangGrowthInventoryHealthToolbar } from "@/components/coupang-growth-data/coupang-growth-inventory-health-toolbar";
 import { INVENTORY_HEALTH_ALL_SELLERS } from "@/services/coupang-growth-data/resolve-inventory-health-seller-filter";
@@ -103,7 +104,7 @@ export function CoupangGrowthInventoryHealthPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <DataListPanel>
       <CoupangGrowthInventoryHealthToolbar
         accounts={accounts}
         sellerFilter={sellerFilter}
@@ -128,6 +129,6 @@ export function CoupangGrowthInventoryHealthPanel({
       ) : (
         <CoupangGrowthInventoryHealthTable rows={data.rows} />
       )}
-    </div>
+    </DataListPanel>
   );
 }

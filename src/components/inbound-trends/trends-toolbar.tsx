@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { buildTrendsQuery } from "@/components/inbound-trends/build-trends-query";
+import { DataListToolbarShell } from "@/components/data-list/data-list-toolbar-shell";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -136,14 +137,14 @@ export function TrendsToolbar({
   };
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-muted/30 px-3 py-3">
+    <DataListToolbarShell>
       <form
         method="GET"
         action={BASE_PATH}
-        className="flex flex-col gap-3"
+        className="flex min-w-0 flex-col gap-3"
       >
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
-          <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex min-w-[8rem] flex-col gap-1">
             <label htmlFor="seller" className="text-xs text-muted-foreground">
               판매자
             </label>
@@ -153,7 +154,7 @@ export function TrendsToolbar({
               defaultValue={sellerId}
               disabled={activeAccounts.length === 0}
               aria-label="쿠팡 판매자 계정"
-              className="h-9 min-w-[160px] rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+              className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
             >
               {activeAccounts.length === 0 ? (
                 <option value="">판매자 계정 없음</option>
@@ -167,7 +168,7 @@ export function TrendsToolbar({
             </select>
           </div>
 
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-[8rem] flex-col gap-1">
             <label htmlFor="days" className="text-xs text-muted-foreground">
               조회 기간
             </label>
@@ -186,7 +187,7 @@ export function TrendsToolbar({
             </select>
           </div>
 
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-[9rem] flex-col gap-1">
             <label htmlFor="from" className="text-xs text-muted-foreground">
               시작일
             </label>
@@ -195,11 +196,11 @@ export function TrendsToolbar({
               name="from"
               type="date"
               defaultValue={from}
-              className="h-9 w-full min-w-[150px] lg:w-[170px]"
+              className="h-9 w-full"
             />
           </div>
 
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-[9rem] flex-col gap-1">
             <label htmlFor="to" className="text-xs text-muted-foreground">
               종료일
             </label>
@@ -208,18 +209,18 @@ export function TrendsToolbar({
               name="to"
               type="date"
               defaultValue={to}
-              className="h-9 w-full min-w-[150px] lg:w-[170px]"
+              className="h-9 w-full"
             />
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <Input
             name="q"
             type="search"
             defaultValue={search}
             placeholder="상품명 · 옵션명 · 바코드 · 자사상품코드 검색"
-            className="min-w-[200px] flex-1 sm:max-w-md"
+            className="min-w-0 flex-1 sm:max-w-md"
           />
           <input type="hidden" name="pageSize" value={pageSize} />
           <Button type="submit" size="sm" className="shrink-0">
@@ -240,8 +241,8 @@ export function TrendsToolbar({
         </div>
       </form>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="min-w-0 truncate text-sm text-muted-foreground">
           {formatSnapshotLine(snapshotDates)} · {totalCount.toLocaleString()}건
           {from && to ? (
             <>
@@ -252,7 +253,7 @@ export function TrendsToolbar({
         </p>
 
         {showPagination ? (
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex shrink-0 flex-wrap items-center gap-3">
             <select
               value={pageSize}
               aria-label="표시 건수"
@@ -309,6 +310,6 @@ export function TrendsToolbar({
           </div>
         ) : null}
       </div>
-    </div>
+    </DataListToolbarShell>
   );
 }

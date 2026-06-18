@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { DataListPanel } from "@/components/data-list/data-list-panel";
 import { TrendsToolbar } from "@/components/inbound-trends/trends-toolbar";
 import { TrendsTable } from "@/components/inbound-trends/trends-table";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
@@ -89,7 +90,7 @@ export function TrendsPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <DataListPanel>
       <TrendsToolbar
         accounts={accounts}
         sellerId={sellerId}
@@ -108,6 +109,6 @@ export function TrendsPanel({
       {!emptyContent && data.totalCount > 0 ? (
         <TrendsTable rows={data.rows} dates={data.dates} />
       ) : null}
-    </div>
+    </DataListPanel>
   );
 }

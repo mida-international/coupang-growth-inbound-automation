@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
+import { DataListPanel } from "@/components/data-list/data-list-panel";
 import {
   InboundWorkbenchTable,
   type InboundWorkbenchDraftEntry,
@@ -263,7 +264,7 @@ export function InboundWorkbenchPanelClient({
   }
 
   return (
-    <div className="space-y-4">
+    <DataListPanel>
       <InboundWorkbenchToolbar
         accounts={accounts}
         appliedSellerIds={sellerIds}
@@ -306,6 +307,6 @@ export function InboundWorkbenchPanelClient({
       ) : (
         children
       )}
-    </div>
+    </DataListPanel>
   );
 }
