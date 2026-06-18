@@ -130,7 +130,7 @@ function HistoryRow({
 
   async function handleDelete() {
     const confirmed = window.confirm(
-      `"${row.outputFileName}" 입고리스트 기록과 저장된 엑셀을 삭제할까요?`,
+      `"${row.outputFileName}" 입고리스트 기록과 저장된 엑셀을 삭제할까요?\n추세관리(창고 입고) 수치에서도 제외됩니다.`,
     );
 
     if (!confirmed) {

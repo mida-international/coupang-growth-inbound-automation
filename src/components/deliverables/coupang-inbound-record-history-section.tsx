@@ -122,7 +122,7 @@ function HistoryRow({
 
   async function handleDelete() {
     const confirmed = window.confirm(
-      `"${row.outputFileName}" 입고리스트 기록과 저장된 엑셀을 삭제할까요?`,
+      `"${row.outputFileName}" 입고리스트 기록과 저장된 엑셀을 삭제할까요?\n추세관리(쿠팡 입고)와 작업대 회전 수치에서도 제외됩니다.`,
     );
 
     if (!confirmed) {
