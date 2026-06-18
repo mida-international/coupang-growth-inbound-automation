@@ -199,6 +199,11 @@ export function buildWorkbenchDisplayCtes(sellerIn: Prisma.Sql): Prisma.Sql {
         (o.safety_stock IS NOT NULL) AS has_safety_stock_override,
         COALESCE(o.growth_inbound_recommend_qty, v.calculated_growth_inbound_recommend)
           AS growth_inbound_recommend,
+        GREATEST(
+          0,
+          v.shopling_available_stock
+            - COALESCE(o.growth_inbound_recommend_qty, v.calculated_growth_inbound_recommend)
+        ) AS remaining_after_inbound,
         COALESCE(ap.actual_packed_qty, 0) AS actual_packed_qty,
         rot.rotation_1_qty,
         rot.rotation_1_date,

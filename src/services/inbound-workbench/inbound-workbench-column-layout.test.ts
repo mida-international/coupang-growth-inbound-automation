@@ -93,6 +93,7 @@ describe("getVisibleColumnOrder", () => {
       "pendingInbounds",
       "safetyStock",
       "growthInboundRecommend",
+      "remainingAfterInbound",
       "actualPackedQty",
       "rotation1Qty",
       "rotation2Qty",

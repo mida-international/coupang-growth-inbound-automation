@@ -12,6 +12,7 @@ export const INBOUND_WORKBENCH_SORT_COLUMNS = [
   "pendingInbounds",
   "safetyStock",
   "growthInboundRecommend",
+  "remainingAfterInbound",
   "actualPackedQty",
   "rotation1Qty",
   "rotation2Qty",

@@ -51,6 +51,7 @@ type RawWorkbenchRow = {
   has_safety_stock_override: boolean;
   calculated_growth_inbound_recommend: number;
   growth_inbound_recommend: number;
+  remaining_after_inbound: number;
   actual_packed_qty: number;
   rotation_1_qty: number | null;
   rotation_2_qty: number | null;
@@ -101,6 +102,7 @@ function mapRow(row: RawWorkbenchRow): InboundWorkbenchRowView {
     hasSafetyStockOverride: row.has_safety_stock_override,
     calculatedGrowthInboundRecommend: row.calculated_growth_inbound_recommend,
     growthInboundRecommend: row.growth_inbound_recommend,
+    remainingAfterInbound: row.remaining_after_inbound,
     actualPackedQty: row.actual_packed_qty,
     rotation1Qty: row.rotation_1_qty,
     rotation2Qty: row.rotation_2_qty,
@@ -220,6 +222,7 @@ export async function listInboundWorkbench(
           d.has_safety_stock_override,
           d.calculated_growth_inbound_recommend,
           d.growth_inbound_recommend,
+          d.remaining_after_inbound,
           d.actual_packed_qty,
           d.rotation_1_qty,
           d.rotation_1_date,
