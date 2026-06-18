@@ -249,6 +249,15 @@ export const INBOUND_WORKBENCH_COLUMN_DEFS: Record<
       />
     ),
   },
+  remainingAfterInbound: {
+    id: "remainingAfterInbound",
+    label: "입고후 잔여",
+    align: "right",
+    defaultWidth: DEFAULT_COLUMN_WIDTHS.remainingAfterInbound,
+    cellClassName: "text-right",
+    renderCell: (row) =>
+      Math.max(0, row.shoplingAvailableStock - row.growthInboundRecommend).toLocaleString(),
+  },
   actualPackedQty: {
     id: "actualPackedQty",
     label: "실포장수량",

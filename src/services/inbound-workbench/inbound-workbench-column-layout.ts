@@ -26,6 +26,7 @@ export const DEFAULT_COLUMN_WIDTHS: Record<
   pendingInbounds: 104,
   safetyStock: 88,
   growthInboundRecommend: 128,
+  remainingAfterInbound: 96,
   actualPackedQty: 96,
   rotation1Qty: 80,
   rotation2Qty: 80,

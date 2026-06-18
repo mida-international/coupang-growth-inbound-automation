@@ -18,6 +18,7 @@ const SORT_COLUMN_SQL: Record<InboundWorkbenchSortColumn, string> = {
   pendingInbounds: "d.pending_inbounds",
   safetyStock: "d.safety_stock",
   growthInboundRecommend: "d.growth_inbound_recommend",
+  remainingAfterInbound: "d.remaining_after_inbound",
   actualPackedQty: "d.actual_packed_qty",
   rotation1Qty: "d.rotation_1_qty",
   rotation2Qty: "d.rotation_2_qty",
