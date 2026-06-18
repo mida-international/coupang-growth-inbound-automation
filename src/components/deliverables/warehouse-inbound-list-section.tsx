@@ -13,10 +13,10 @@ type WarehouseInboundListSectionProps = {
 };
 
 const WAREHOUSE_INBOUND_ROTATION_OPTIONS = [
-  { value: "", label: "없음" },
   { value: "1", label: "1회전" },
   { value: "2", label: "2회전" },
   { value: "3", label: "3회전" },
+  { value: "", label: "없음" },
 ] as const;
 
 const sellerSelectClassName =
@@ -46,7 +46,7 @@ export function WarehouseInboundListSection({
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [canRecordInbound, setCanRecordInbound] = useState(false);
-  const [inboundRotation, setInboundRotation] = useState("");
+  const [inboundRotation, setInboundRotation] = useState("1");
   const hasSeller = sellerId.trim().length > 0;
 
   useEffect(() => {
