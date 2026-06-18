@@ -99,6 +99,47 @@ export const deliverablesTabGroup: PageTabGroup = {
   ],
 };
 
+export const boardWorkflowTabGroup: PageTabGroup = {
+  id: "board-workflow",
+  basePath: "/board",
+  tabs: [
+    {
+      title: "구 대시보드 작업흐름",
+      href: "/board/legacy-dashboard",
+    },
+  ],
+};
+
+export const boardCategoryTabGroup: PageTabGroup = {
+  id: "board-category",
+  basePath: "/board/legacy-dashboard",
+  tabs: [
+    {
+      title: "전체",
+      href: "/board/legacy-dashboard/all",
+    },
+    {
+      title: "공지",
+      href: "/board/legacy-dashboard/notice",
+    },
+    {
+      title: "버그/오류",
+      href: "/board/legacy-dashboard/bug",
+    },
+    {
+      title: "요청사항",
+      href: "/board/legacy-dashboard/request",
+    },
+    {
+      title: "일반",
+      href: "/board/legacy-dashboard/general",
+    },
+  ],
+};
+
+/** @deprecated Use boardWorkflowTabGroup or boardCategoryTabGroup */
+export const boardTabGroup = boardCategoryTabGroup;
+
 export const pageTabGroups: PageTabGroup[] = [
   dashboardTabGroup,
   coupangGrowthTabGroup,
@@ -106,6 +147,8 @@ export const pageTabGroups: PageTabGroup[] = [
   coupangGrowthSyncTabGroup,
   integrationsTabGroup,
   deliverablesTabGroup,
+  boardWorkflowTabGroup,
+  boardCategoryTabGroup,
 ];
 
 export function isPageTabActive(pathname: string, href: string) {
@@ -121,7 +164,9 @@ export function getDefaultTabHref(group: PageTabGroup) {
 }
 
 export function findPageTabGroup(pathname: string) {
-  return pageTabGroups.find((group) => isPageTabActive(pathname, group.basePath));
+  return pageTabGroups
+    .filter((group) => isPageTabActive(pathname, group.basePath))
+    .sort((a, b) => b.basePath.length - a.basePath.length)[0];
 }
 
 export function getActivePageTabHref(pathname: string, tabs: PageTab[]) {
