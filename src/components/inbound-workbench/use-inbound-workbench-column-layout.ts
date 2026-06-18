@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { apiPatch } from "@/lib/api-client";
 import {
   DEFAULT_COLUMN_WIDTHS,
   getDefaultColumnLayout,
+  getVisibleColumnOrder,
   MIN_COLUMN_WIDTH,
   normalizeColumnLayout,
   type InboundWorkbenchColumnLayout,
@@ -69,6 +70,16 @@ export function useInboundWorkbenchColumnLayout({
     };
   }, []);
 
+  const hiddenColumnSet = useMemo(
+    () => new Set(layout.hiddenColumns),
+    [layout.hiddenColumns],
+  );
+
+  const visibleColumnOrder = useMemo(
+    () => getVisibleColumnOrder(layout),
+    [layout],
+  );
+
   const getColumnWidth = useCallback(
     (columnId: InboundWorkbenchSortColumn) => {
       return (
@@ -76,6 +87,50 @@ export function useInboundWorkbenchColumnLayout({
       );
     },
     [layout.columnWidths],
+  );
+
+  const isColumnHidden = useCallback(
+    (columnId: InboundWorkbenchSortColumn) => hiddenColumnSet.has(columnId),
+    [hiddenColumnSet],
+  );
+
+  const setColumnHidden = useCallback(
+    (columnId: InboundWorkbenchSortColumn, hidden: boolean) => {
+      if (disabled) {
+        return;
+      }
+
+      setLayout((current) => {
+        const hiddenSet = new Set(current.hiddenColumns);
+        const currentlyHidden = hiddenSet.has(columnId);
+
+        if (hidden === currentlyHidden) {
+          return current;
+        }
+
+        if (hidden) {
+          const visibleCount = current.columnOrder.filter(
+            (id) => !hiddenSet.has(id),
+          ).length;
+
+          if (visibleCount <= 1) {
+            return current;
+          }
+
+          hiddenSet.add(columnId);
+        } else {
+          hiddenSet.delete(columnId);
+        }
+
+        const nextLayout = normalizeColumnLayout({
+          ...current,
+          hiddenColumns: [...hiddenSet],
+        });
+        persistLayout(nextLayout);
+        return nextLayout;
+      });
+    },
+    [disabled, persistLayout],
   );
 
   const reorderColumn = useCallback(
@@ -142,7 +197,11 @@ export function useInboundWorkbenchColumnLayout({
 
   return {
     columnOrder: layout.columnOrder,
+    visibleColumnOrder,
+    hiddenColumns: layout.hiddenColumns,
     getColumnWidth,
+    isColumnHidden,
+    setColumnHidden,
     reorderColumn,
     resizeColumn,
     resetLayout,

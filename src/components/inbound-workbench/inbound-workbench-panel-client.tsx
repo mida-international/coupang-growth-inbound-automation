@@ -95,7 +95,10 @@ export function InboundWorkbenchPanelClient({
   const parsedSort = parseInboundWorkbenchSort(sort ?? undefined, dir ?? undefined);
   const {
     columnOrder,
+    visibleColumnOrder,
     getColumnWidth,
+    isColumnHidden,
+    setColumnHidden,
     reorderColumn,
     resizeColumn,
     resetLayout,
@@ -286,6 +289,9 @@ export function InboundWorkbenchPanelClient({
         onCancel={cancelEdit}
         onSave={() => void saveEdits()}
         onResetColumns={resetLayout}
+        columnOrder={columnOrder}
+        isColumnHidden={isColumnHidden}
+        onColumnHiddenChange={setColumnHidden}
       />
       {saveError ? (
         <p className="text-sm text-destructive">{saveError}</p>
@@ -294,7 +300,7 @@ export function InboundWorkbenchPanelClient({
         <DataListTableScrollArea>
           <InboundWorkbenchTable
             rows={displayRows}
-            columnOrder={columnOrder}
+            columnOrder={visibleColumnOrder}
             getColumnWidth={getColumnWidth}
             onReorderColumn={reorderColumn}
             onResizeColumn={resizeColumn}

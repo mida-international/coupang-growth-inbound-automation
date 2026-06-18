@@ -49,10 +49,11 @@ model Profile {
 }
 
 model InboundWorkbenchColumnLayout {
-  profileId    String   @id @map("profile_id")
-  columnOrder  Json     @map("column_order")
-  columnWidths Json     @map("column_widths")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  profileId     String   @id @map("profile_id")
+  columnOrder   Json     @map("column_order")
+  columnWidths  Json     @map("column_widths")
+  hiddenColumns Json     @default("[]") @map("hidden_columns")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
