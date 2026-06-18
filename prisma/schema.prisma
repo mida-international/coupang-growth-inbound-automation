@@ -347,6 +347,16 @@ model ShoplingPackageMapping {
   @@map("shopling_package_mapping")
 }
 
+/// 쿠팡 Growth 센터분리 관리 (바코드만 저장, 상품 정보는 대시보드 조회)
+model CoupangCenterSeparation {
+  id        String   @id @default(cuid())
+  barcode   String   @unique @map("barcode")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("coupang_center_separation")
+}
+
 /// 입고 작업대 수동값 (안전재고·쿠팡그로스 입고추천). 계산값은 VIEW에서 처리.
 model InboundPlanningOverride {
   id                        String               @id @default(cuid())

@@ -1,0 +1,342 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { ExcelDropzone } from "@/components/excel/excel-dropzone";
+import { ExcelFileList } from "@/components/excel/excel-file-list";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { apiPost, apiPostFormData } from "@/lib/api-client";
+import { CENTER_SEPARATION_TEMPLATE_FILENAME } from "@/lib/excel/generators/center-separation-template";
+import { isExcelFile } from "@/lib/excel/validate-file";
+import { cn } from "@/lib/utils";
+import type { UpsertCenterSeparationResult } from "@/services/center-separation/types";
+
+function summarizeUpsert(stats: UpsertCenterSeparationResult["stats"]): string {
+  const parts = [
+    `${stats.upserted.toLocaleString()}건 반영`,
+    `신규 ${stats.created.toLocaleString()}건`,
+    `갱신 ${stats.updated.toLocaleString()}건`,
+  ];
+
+  if (stats.skippedEmptyBarcode > 0) {
+    parts.push(`바코드 없음 ${stats.skippedEmptyBarcode.toLocaleString()}행 스킵`);
+  }
+
+  if (stats.errors.length > 0) {
+    parts.push(`오류 ${stats.errors.length.toLocaleString()}건`);
+  }
+
+  return parts.join(" · ");
+}
+
+function AddCard({
+  title,
+  description,
+  children,
+  className,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-background p-4 sm:p-5",
+        className,
+      )}
+    >
+      <div className="space-y-1">
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+export function CenterSeparationAddSection() {
+  const router = useRouter();
+
+  const [barcode, setBarcode] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dialogError, setDialogError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const isBusy = isAdding || isUploading || isDownloading;
+  const canAdd = barcode.trim().length > 0 && !isBusy;
+  const canConfirmUpload = file !== null && !isUploading;
+
+  function resetUploadDialog() {
+    setUploadDialogOpen(false);
+    setFile(null);
+    setDialogError(null);
+  }
+
+  function handleFilesSelected(files: File[]) {
+    setDialogError(null);
+
+    const nextFile = files[0];
+
+    if (!nextFile) {
+      return;
+    }
+
+    if (!isExcelFile(nextFile)) {
+      setFile(null);
+      setDialogError("엑셀 파일(.xlsx, .xls)만 업로드할 수 있습니다.");
+      return;
+    }
+
+    setFile(nextFile);
+  }
+
+  async function handleAddBarcode() {
+    if (!canAdd) {
+      return;
+    }
+
+    setIsAdding(true);
+    setError(null);
+    setNotice(null);
+
+    const result = await apiPost<UpsertCenterSeparationResult>(
+      "/api/coupang-growth/center-separation",
+      { barcode: barcode.trim() },
+    );
+
+    setIsAdding(false);
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    setBarcode("");
+    setNotice(summarizeUpsert(result.data.stats));
+    router.refresh();
+  }
+
+  async function handleDownloadTemplate() {
+    if (isBusy) {
+      return;
+    }
+
+    setIsDownloading(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response = await fetch("/api/downloads/center-separation-template");
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+
+        throw new Error(
+          payload?.error ?? "엑셀 템플릿 다운로드에 실패했습니다.",
+        );
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = CENTER_SEPARATION_TEMPLATE_FILENAME;
+      anchor.click();
+      URL.revokeObjectURL(url);
+
+      setNotice("엑셀 템플릿을 다운로드했습니다.");
+    } catch (downloadError) {
+      setError(
+        downloadError instanceof Error
+          ? downloadError.message
+          : "엑셀 템플릿 다운로드에 실패했습니다.",
+      );
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
+  async function handleConfirmUpload() {
+    if (!canConfirmUpload || !file) {
+      return;
+    }
+
+    setIsUploading(true);
+    setError(null);
+    setNotice(null);
+    setDialogError(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const result = await apiPostFormData<UpsertCenterSeparationResult>(
+      "/api/coupang-growth/center-separation/excel-upload",
+      formData,
+    );
+
+    setIsUploading(false);
+
+    if (!result.ok) {
+      setDialogError(result.error);
+      return;
+    }
+
+    resetUploadDialog();
+    setNotice(summarizeUpsert(result.data.stats));
+    router.refresh();
+  }
+
+  return (
+    <>
+      <section className="grid gap-4 lg:grid-cols-2">
+        <AddCard
+          title="바코드 단건 추가"
+          description="바코드 하나를 입력해 바로 등록합니다. 대시보드에 있는 상품 정보가 목록에 표시됩니다."
+        >
+          <form
+            className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleAddBarcode();
+            }}
+          >
+            <Input
+              value={barcode}
+              onChange={(event) => setBarcode(event.target.value)}
+              placeholder="바코드 입력"
+              className="min-w-0 flex-1 font-mono"
+              disabled={isBusy}
+            />
+            <Button type="submit" size="sm" disabled={!canAdd} className="shrink-0">
+              {isAdding ? "추가 중..." : "추가"}
+            </Button>
+          </form>
+        </AddCard>
+
+        <AddCard
+          title="엑셀 대량 등록"
+          description="여러 바코드를 한 번에 등록합니다. 템플릿을 받아 바코드 열을 채운 뒤 업로드하세요."
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isBusy}
+              onClick={handleDownloadTemplate}
+            >
+              {isDownloading ? "다운로드 중..." : "엑셀 템플릿 다운로드"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isBusy}
+              onClick={() => {
+                setDialogError(null);
+                setUploadDialogOpen(true);
+              }}
+            >
+              엑셀 업로드
+            </Button>
+          </div>
+        </AddCard>
+      </section>
+
+      {error ? (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {notice ? (
+        <p className="text-sm text-muted-foreground" role="status">
+          {notice}
+        </p>
+      ) : null}
+
+      <Dialog
+        open={uploadDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (!isUploading) {
+              resetUploadDialog();
+            }
+            return;
+          }
+
+          setUploadDialogOpen(true);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>엑셀 업로드</DialogTitle>
+            <DialogDescription>
+              바코드 열이 포함된 엑셀 파일을 드래그하거나 선택한 뒤 확인을
+              누르면 등록됩니다.
+            </DialogDescription>
+          </DialogHeader>
+
+          <ExcelDropzone
+            multiple={false}
+            disabled={isUploading}
+            description="엑셀 파일을 드래그하거나 클릭하여 선택"
+            onFilesSelected={handleFilesSelected}
+          />
+
+          {file ? (
+            <ExcelFileList
+              files={[{ id: file.name, file, targetId: null }]}
+              onRemove={() => {
+                setFile(null);
+                setDialogError(null);
+              }}
+            />
+          ) : null}
+
+          {dialogError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {dialogError}
+            </p>
+          ) : null}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isUploading}
+              onClick={resetUploadDialog}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              disabled={!canConfirmUpload}
+              onClick={handleConfirmUpload}
+            >
+              {isUploading ? "업로드 중..." : "확인"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
