@@ -38,12 +38,14 @@ export const DEFAULT_COLUMN_WIDTHS: Record<
 export type InboundWorkbenchColumnLayout = {
   columnOrder: InboundWorkbenchSortColumn[];
   columnWidths: Partial<Record<InboundWorkbenchSortColumn, number>>;
+  hiddenColumns: InboundWorkbenchSortColumn[];
 };
 
 export function getDefaultColumnLayout(): InboundWorkbenchColumnLayout {
   return {
     columnOrder: [...DEFAULT_COLUMN_ORDER],
     columnWidths: { ...DEFAULT_COLUMN_WIDTHS },
+    hiddenColumns: [],
   };
 }
 
@@ -66,6 +68,45 @@ function clampWidth(
   }
 
   return Math.max(MIN_COLUMN_WIDTH, Math.round(parsed));
+}
+
+function normalizeHiddenColumns(
+  raw: Partial<InboundWorkbenchColumnLayout> | null | undefined,
+  columnOrder: InboundWorkbenchSortColumn[],
+): InboundWorkbenchSortColumn[] {
+  const seen = new Set<InboundWorkbenchSortColumn>();
+  const hiddenColumns: InboundWorkbenchSortColumn[] = [];
+
+  if (Array.isArray(raw?.hiddenColumns)) {
+    for (const item of raw.hiddenColumns) {
+      if (isSortColumn(item) && !seen.has(item)) {
+        seen.add(item);
+        hiddenColumns.push(item);
+      }
+    }
+  }
+
+  const visibleCount = columnOrder.filter((id) => !seen.has(id)).length;
+
+  if (visibleCount === 0 && columnOrder.length > 0) {
+    return hiddenColumns.filter((id) => id !== columnOrder[0]);
+  }
+
+  return hiddenColumns;
+}
+
+export function isColumnVisible(
+  layout: InboundWorkbenchColumnLayout,
+  columnId: InboundWorkbenchSortColumn,
+): boolean {
+  return !layout.hiddenColumns.includes(columnId);
+}
+
+export function getVisibleColumnOrder(
+  layout: InboundWorkbenchColumnLayout,
+): InboundWorkbenchSortColumn[] {
+  const hiddenSet = new Set(layout.hiddenColumns);
+  return layout.columnOrder.filter((columnId) => !hiddenSet.has(columnId));
 }
 
 export function normalizeColumnLayout(
@@ -102,5 +143,7 @@ export function normalizeColumnLayout(
     }
   }
 
-  return { columnOrder, columnWidths };
+  const hiddenColumns = normalizeHiddenColumns(raw, columnOrder);
+
+  return { columnOrder, columnWidths, hiddenColumns };
 }

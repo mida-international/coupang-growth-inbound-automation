@@ -10,6 +10,7 @@ import {
   areSellerSelectionsEqual,
   SellerAccountCheckboxList,
 } from "@/components/inbound-workbench/seller-account-checkbox-list";
+import { WorkbenchColumnVisibilityMenu } from "@/components/inbound-workbench/workbench-column-visibility-menu";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -42,6 +43,12 @@ type InboundWorkbenchToolbarProps = {
   onCancel?: () => void;
   onSave?: () => void;
   onResetColumns?: () => void;
+  columnOrder?: InboundWorkbenchSortColumn[];
+  isColumnHidden?: (columnId: InboundWorkbenchSortColumn) => boolean;
+  onColumnHiddenChange?: (
+    columnId: InboundWorkbenchSortColumn,
+    hidden: boolean,
+  ) => void;
 };
 
 function formatSnapshotLine(
@@ -96,6 +103,9 @@ export function InboundWorkbenchToolbar({
   onCancel,
   onSave,
   onResetColumns,
+  columnOrder = [],
+  isColumnHidden,
+  onColumnHiddenChange,
 }: InboundWorkbenchToolbarProps) {
   const router = useRouter();
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -194,6 +204,14 @@ export function InboundWorkbenchToolbar({
             </form>
 
             <div className="flex shrink-0 flex-wrap items-center gap-2 lg:border-l lg:border-border lg:pl-3">
+              {columnOrder.length > 0 && isColumnHidden && onColumnHiddenChange ? (
+                <WorkbenchColumnVisibilityMenu
+                  columnOrder={columnOrder}
+                  isColumnHidden={isColumnHidden}
+                  onColumnHiddenChange={onColumnHiddenChange}
+                  disabled={editMode}
+                />
+              ) : null}
               <Button
                 type="button"
                 variant="outline"

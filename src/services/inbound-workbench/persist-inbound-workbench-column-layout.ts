@@ -19,6 +19,7 @@ export async function getInboundWorkbenchColumnLayout(
   return normalizeColumnLayout({
     columnOrder: record.columnOrder as InboundWorkbenchColumnLayout["columnOrder"],
     columnWidths: record.columnWidths as InboundWorkbenchColumnLayout["columnWidths"],
+    hiddenColumns: record.hiddenColumns as InboundWorkbenchColumnLayout["hiddenColumns"],
   });
 }
 
@@ -34,10 +35,12 @@ export async function upsertInboundWorkbenchColumnLayout(
       profileId,
       columnOrder: normalized.columnOrder,
       columnWidths: normalized.columnWidths,
+      hiddenColumns: normalized.hiddenColumns,
     },
     update: {
       columnOrder: normalized.columnOrder,
       columnWidths: normalized.columnWidths,
+      hiddenColumns: normalized.hiddenColumns,
     },
   });
 
