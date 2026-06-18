@@ -3,6 +3,10 @@
 import { useState } from "react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
+import {
+  DeliverablesActionBar,
+  DELIVERABLES_PRIMARY_BUTTON_CLASS,
+} from "@/components/deliverables/deliverables-action-bar";
 import { ExcelDropzone } from "@/components/excel/excel-dropzone";
 import { Button } from "@/components/ui/button";
 
@@ -112,16 +116,19 @@ export function ShoplingInboundOriginalSection() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-          <Button
-            type="button"
-            size="sm"
-            disabled={!canDownload}
-            onClick={handleDownloadClick}
-          >
-            {isDownloading ? "생성 중..." : "다운로드"}
-          </Button>
-        </div>
+        <DeliverablesActionBar
+          center={
+            <Button
+              type="button"
+              size="default"
+              className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
+              disabled={!canDownload}
+              onClick={handleDownloadClick}
+            >
+              {isDownloading ? "생성 중..." : "다운로드"}
+            </Button>
+          }
+        />
 
         {!excelFile ? (
           <p className="text-sm text-muted-foreground">

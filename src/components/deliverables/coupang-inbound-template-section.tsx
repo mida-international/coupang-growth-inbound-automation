@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
+import {
+  DeliverablesActionBar,
+  DELIVERABLES_PRIMARY_BUTTON_CLASS,
+} from "@/components/deliverables/deliverables-action-bar";
 import { ExcelDropzone } from "@/components/excel/excel-dropzone";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -469,40 +473,58 @@ export function CoupangInboundTemplateSection({
           </Tabs>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={!canRecordInbound || isRecording || isDownloading || isDownloadingShoplingOutbound}
-            onClick={handleRecordInboundClick}
-          >
-            {isRecording ? "기록 중..." : "입고 기록하기"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={
-              !canDownloadShoplingOutbound ||
-              isDownloading ||
-              isRecording
-            }
-            onClick={handleShoplingOutboundClick}
-          >
-            {isDownloadingShoplingOutbound
-              ? "생성 중..."
-              : "샵플링 출고 템플릿 생성"}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            disabled={downloadDisabled || isRecording || isDownloadingShoplingOutbound}
-            onClick={handleDownloadClick}
-          >
-            {isDownloading ? "생성 중..." : "다운로드"}
-          </Button>
-        </div>
+        <DeliverablesActionBar
+          center={
+            <>
+              <Button
+                type="button"
+                size="default"
+                className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
+                disabled={
+                  downloadDisabled ||
+                  isRecording ||
+                  isDownloadingShoplingOutbound
+                }
+                onClick={handleDownloadClick}
+              >
+                {isDownloading ? "생성 중..." : "다운로드"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="default"
+                className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
+                disabled={
+                  !canDownloadShoplingOutbound ||
+                  isDownloading ||
+                  isRecording
+                }
+                onClick={handleShoplingOutboundClick}
+              >
+                {isDownloadingShoplingOutbound
+                  ? "생성 중..."
+                  : "샵플링 출고 템플릿 생성"}
+              </Button>
+            </>
+          }
+          end={
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
+              disabled={
+                !canRecordInbound ||
+                isRecording ||
+                isDownloading ||
+                isDownloadingShoplingOutbound
+              }
+              onClick={handleRecordInboundClick}
+            >
+              {isRecording ? "기록 중..." : "기록하기"}
+            </Button>
+          }
+        />
 
         {!hasSeller ? (
           <p className="text-sm text-muted-foreground">
