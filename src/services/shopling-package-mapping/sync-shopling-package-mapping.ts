@@ -10,20 +10,18 @@ import type {
   SyncShoplingPackageMappingStats,
 } from "@/services/shopling-package-mapping/types";
 
-const UPSERT_BATCH_SIZE = 500;
-const PRUNE_PAGE_SIZE = 1000;
-const PRUNE_DELETE_CHUNK_SIZE = 200;
-const UPSERT_TX_BASE_MS = 30_000;
-const UPSERT_TX_PER_BATCH_MS = 15_000;
-const UPSERT_TX_MAX_MS = 240_000;
-const UPSERT_TX_MAX_WAIT_MS = 10_000;
+const CREATE_MANY_BATCH_SIZE = 1000;
+const RELOAD_TX_BASE_MS = 30_000;
+const RELOAD_TX_PER_BATCH_MS = 15_000;
+const RELOAD_TX_MAX_MS = 240_000;
+const RELOAD_TX_MAX_WAIT_MS = 10_000;
 
-function computeUpsertTransactionTimeoutMs(batchSize: number): number {
-  const batches = Math.max(1, Math.ceil(batchSize / UPSERT_BATCH_SIZE));
+function computeReloadTransactionTimeoutMs(rowCount: number): number {
+  const batches = Math.max(1, Math.ceil(rowCount / CREATE_MANY_BATCH_SIZE));
 
   return Math.min(
-    UPSERT_TX_BASE_MS + batches * UPSERT_TX_PER_BATCH_MS,
-    UPSERT_TX_MAX_MS,
+    RELOAD_TX_BASE_MS + batches * RELOAD_TX_PER_BATCH_MS,
+    RELOAD_TX_MAX_MS,
   );
 }
 
@@ -183,136 +181,48 @@ function buildUpsertRow(
   };
 }
 
-async function upsertPackageMappingRows(
+async function reloadPackageMappingRows(
   rows: UpsertPackageMappingRow[],
   stats: SyncShoplingPackageMappingStats,
-  errors: string[],
-): Promise<void> {
-  for (let offset = 0; offset < rows.length; offset += UPSERT_BATCH_SIZE) {
-    const batch = rows.slice(offset, offset + UPSERT_BATCH_SIZE);
+): Promise<string | null> {
+  const txTimeout = computeReloadTransactionTimeoutMs(rows.length);
 
-    try {
-      await prisma.$transaction(
-        async (tx) => {
-          for (const row of batch) {
-            await tx.shoplingPackageMapping.upsert({
-              where: {
-                packageOptId_singleOptId: {
-                  packageOptId: row.packageOptId,
-                  singleOptId: row.singleOptId,
-                },
-              },
-              create: {
-                ...row,
-                manuallyEdited: false,
-              },
-              update: {
-                packageBarcode: row.packageBarcode,
-                packageGoodsKey: row.packageGoodsKey,
-                packagePtnGoodsCd: row.packagePtnGoodsCd,
-                packageOptValue: row.packageOptValue,
-                singleBarcode: row.singleBarcode,
-                singleGoodsKey: row.singleGoodsKey,
-                singleOptValue: row.singleOptValue,
-                singlePtnGoodsCd: row.singlePtnGoodsCd,
-                mapCnt: row.mapCnt,
-              },
-            });
-          }
-        },
-        {
-          maxWait: UPSERT_TX_MAX_WAIT_MS,
-          timeout: computeUpsertTransactionTimeoutMs(batch.length),
-        },
-      );
+  try {
+    await prisma.$transaction(
+      async (tx) => {
+        const deleteResult = await tx.shoplingPackageMapping.deleteMany({
+          where: { manuallyEdited: false },
+        });
 
-      stats.upserted += batch.length;
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "패키지 매핑 upsert에 실패했습니다.";
+        stats.deleted = deleteResult.count;
 
-      errors.push(message);
-    }
-  }
-}
+        for (
+          let offset = 0;
+          offset < rows.length;
+          offset += CREATE_MANY_BATCH_SIZE
+        ) {
+          const batch = rows.slice(offset, offset + CREATE_MANY_BATCH_SIZE);
 
-async function pruneStalePackageMappings(
-  packageMappings: ParsedShoplingPackageMappingRow[],
-  stats: SyncShoplingPackageMappingStats,
-  errors: string[],
-): Promise<void> {
-  const responseKeys = new Set(
-    packageMappings.map((m) => mappingPairKey(m.packageOptId, m.singleOptId)),
-  );
-
-  const safeToPrune =
-    packageMappings.length > 0 && errors.length === 0 && responseKeys.size > 0;
-
-  if (!safeToPrune) {
-    stats.prune_skipped = true;
-    return;
-  }
-
-  const toDelete: string[] = [];
-  let skip = 0;
-
-  while (true) {
-    const page = await prisma.shoplingPackageMapping.findMany({
-      skip,
-      take: PRUNE_PAGE_SIZE,
-      orderBy: [{ packageOptId: "asc" }, { singleOptId: "asc" }],
-      select: {
-        id: true,
-        packageOptId: true,
-        singleOptId: true,
-        manuallyEdited: true,
+          await tx.shoplingPackageMapping.createMany({
+            data: batch.map((row) => ({
+              ...row,
+              manuallyEdited: false,
+            })),
+          });
+        }
       },
-    });
+      {
+        maxWait: RELOAD_TX_MAX_WAIT_MS,
+        timeout: txTimeout,
+      },
+    );
 
-    if (page.length === 0) {
-      break;
-    }
-
-    for (const row of page) {
-      const key = mappingPairKey(row.packageOptId, row.singleOptId);
-
-      if (responseKeys.has(key)) {
-        continue;
-      }
-
-      if (row.manuallyEdited) {
-        stats.prune_protected_manual++;
-        continue;
-      }
-
-      toDelete.push(row.id);
-    }
-
-    if (page.length < PRUNE_PAGE_SIZE) {
-      break;
-    }
-
-    skip += PRUNE_PAGE_SIZE;
-  }
-
-  for (let offset = 0; offset < toDelete.length; offset += PRUNE_DELETE_CHUNK_SIZE) {
-    const chunk = toDelete.slice(offset, offset + PRUNE_DELETE_CHUNK_SIZE);
-
-    try {
-      const result = await prisma.shoplingPackageMapping.deleteMany({
-        where: { id: { in: chunk } },
-      });
-
-      stats.deleted += result.count;
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? `prune: 삭제 실패: ${error.message}`
-          : "prune: 삭제에 실패했습니다.";
-
-      errors.push(message);
-      break;
-    }
+    stats.upserted = rows.length;
+    return null;
+  } catch (error) {
+    return error instanceof Error
+      ? error.message
+      : "패키지 매핑 적재에 실패했습니다.";
   }
 }
 
@@ -326,7 +236,6 @@ export async function syncShoplingPackageMapping(): Promise<
   }
 
   const { products, packageMappings } = fetchResult.data;
-  const errors: string[] = [];
   const stats: SyncShoplingPackageMappingStats = {
     total: packageMappings.length,
     upserted: 0,
@@ -336,7 +245,7 @@ export async function syncShoplingPackageMapping(): Promise<
     missing_package_barcode: 0,
     duplicates_removed: 0,
     deleted: 0,
-    prune_skipped: false,
+    prune_skipped: true,
     prune_protected_manual: 0,
   };
 
@@ -353,6 +262,8 @@ export async function syncShoplingPackageMapping(): Promise<
   const manualKeys = new Set(
     manualRows.map((row) => mappingPairKey(row.packageOptId, row.singleOptId)),
   );
+
+  stats.prune_protected_manual = manualRows.length;
 
   const upsertRows: UpsertPackageMappingRow[] = [];
 
@@ -374,16 +285,12 @@ export async function syncShoplingPackageMapping(): Promise<
   const dedupedRows = [...dedupMap.values()];
   stats.duplicates_removed = upsertRows.length - dedupedRows.length;
 
-  if (dedupedRows.length > 0) {
-    await upsertPackageMappingRows(dedupedRows, stats, errors);
-  }
+  const reloadError = await reloadPackageMappingRows(dedupedRows, stats);
 
-  await pruneStalePackageMappings(packageMappings, stats, errors);
-
-  if (errors.length > 0) {
+  if (reloadError) {
     return {
       ok: false,
-      error: errors.join("; "),
+      error: reloadError,
     };
   }
 
