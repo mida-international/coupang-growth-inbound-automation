@@ -24,7 +24,8 @@ export default async function CenterSeparationPage({
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">센터분리 관리</h1>
         <p className="text-muted-foreground">
-          센터분리 대상 바코드를 등록하고, 대시보드 기준 상품 정보를 조회합니다.
+          센터분리 대상 바코드를 등록합니다. 바코드만 먼저 저장할 수 있으며,
+          쿠팡·샵플링 연동 시 상품정보가 자동으로 표시됩니다.
         </p>
       </div>
 

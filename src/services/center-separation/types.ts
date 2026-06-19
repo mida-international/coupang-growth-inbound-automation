@@ -44,11 +44,8 @@ export type UpsertCenterSeparationResult = {
   existingBarcodes: string[];
 };
 
-export const CENTER_SEPARATION_MISSING_BARCODE_ERROR =
-  "대시보드에 해당 바코드가 없습니다.";
-
-export const CENTER_SEPARATION_ALL_MISSING_ERROR =
-  "대시보드에 없는 바코드만 포함되어 등록할 수 없습니다.";
+export const CENTER_SEPARATION_UNLINKED_BARCODE_NOTICE =
+  "등록됐으나 쿠팡 대시보드 상품정보가 아직 연동되지 않았습니다.";
 
 export const CENTER_SEPARATION_ALREADY_EXISTS_ERROR =
   "이미 등록된 바코드입니다.";

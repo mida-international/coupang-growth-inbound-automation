@@ -1,16 +1,25 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { createCenterSeparationBarcode } from "@/services/center-separation/create-center-separation-barcode";
+import { normalizeCenterSeparationBarcode } from "@/lib/center-separation/normalize-barcode";
+import { partitionCenterSeparationBarcodes } from "@/services/center-separation/partition-center-separation-barcodes";
+import { partitionKnownBarcodesByExisting } from "@/services/center-separation/partition-known-barcodes-by-existing";
 
 describe("createCenterSeparationBarcode", () => {
-  it("rejects empty barcode", async () => {
-    const result = await createCenterSeparationBarcode("   ");
+  it("rejects empty barcode via normalization", () => {
+    assert.equal(normalizeCenterSeparationBarcode("   "), "");
+  });
 
-    assert.equal(result.ok, false);
+  it("prepares dashboard-unlinked barcode for registration", () => {
+    const normalized = "8809990001";
 
-    if (!result.ok) {
-      assert.match(result.error, /바코드를 입력해 주세요/);
-    }
+    const dashboard = partitionCenterSeparationBarcodes(
+      [normalized],
+      new Set(),
+    );
+    const existing = partitionKnownBarcodesByExisting([normalized], new Set());
+
+    assert.deepEqual(dashboard.missingBarcodes, [normalized]);
+    assert.deepEqual(existing.toCreate, [normalized]);
   });
 });

@@ -5,9 +5,6 @@ import type {
   CenterSeparationServiceResult,
   UpsertCenterSeparationResult,
 } from "@/services/center-separation/types";
-import {
-  CENTER_SEPARATION_ALL_MISSING_ERROR,
-} from "@/services/center-separation/types";
 import { validateCenterSeparationBarcodes } from "@/services/center-separation/validate-center-separation-barcodes";
 
 function dedupeBarcodes(barcodes: string[]): string[] {
@@ -40,28 +37,20 @@ export async function upsertCenterSeparationBarcodes(
     };
   }
 
-  const { knownBarcodes, missingBarcodes } =
+  const { missingBarcodes } =
     await validateCenterSeparationBarcodes(dedupedBarcodes);
-
-  if (knownBarcodes.length === 0) {
-    return {
-      ok: false,
-      error: CENTER_SEPARATION_ALL_MISSING_ERROR,
-      missingBarcodes,
-    };
-  }
 
   const existingInDb = new Set(
     (
       await prisma.coupangCenterSeparation.findMany({
-        where: { barcode: { in: knownBarcodes } },
+        where: { barcode: { in: dedupedBarcodes } },
         select: { barcode: true },
       })
     ).map((row) => row.barcode),
   );
 
   const { toCreate, existingBarcodes } = partitionKnownBarcodesByExisting(
-    knownBarcodes,
+    dedupedBarcodes,
     existingInDb,
   );
 

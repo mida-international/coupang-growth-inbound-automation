@@ -47,6 +47,20 @@ function buildSearchCondition(search?: string) {
           OR d.shopling_option_value ILIKE ${pattern}
         )
     )
+    OR EXISTS (
+      SELECT 1
+      FROM shopling_inventory s
+      INNER JOIN (
+        SELECT MAX(snapshot_date) AS max_date
+        FROM shopling_inventory
+      ) sm ON s.snapshot_date = sm.max_date
+      WHERE TRIM(s.barcode) = TRIM(cs.barcode)
+        AND TRIM(s.barcode) <> ''
+        AND (
+          s.ptn_goods_cd ILIKE ${pattern}
+          OR s.option_value ILIKE ${pattern}
+        )
+    )
   )`;
 }
 
@@ -114,6 +128,22 @@ export async function listCenterSeparation(
             AND TRIM(product_barcode) <> ''
             AND TRIM(product_barcode) IN (SELECT TRIM(barcode) FROM paged)
           ORDER BY TRIM(product_barcode), registered_product_name NULLS LAST
+        ),
+        shopling_max AS (
+          SELECT MAX(snapshot_date) AS max_date
+          FROM shopling_inventory
+        ),
+        shopling_lookup AS (
+          SELECT DISTINCT ON (TRIM(s.barcode))
+            TRIM(s.barcode) AS barcode,
+            s.ptn_goods_cd,
+            s.option_value AS shopling_option_value
+          FROM shopling_inventory s
+          CROSS JOIN shopling_max sm
+          WHERE s.snapshot_date = sm.max_date
+            AND TRIM(s.barcode) <> ''
+            AND TRIM(s.barcode) IN (SELECT TRIM(barcode) FROM paged)
+          ORDER BY TRIM(s.barcode), s.ptn_goods_cd NULLS LAST
         )
         SELECT
           p.id,
@@ -122,11 +152,13 @@ export async function listCenterSeparation(
           p.updated_at,
           d.registered_product_name,
           d.option_name,
-          d.ptn_goods_cd,
-          d.shopling_option_value
+          COALESCE(d.ptn_goods_cd, sl.ptn_goods_cd) AS ptn_goods_cd,
+          COALESCE(d.shopling_option_value, sl.shopling_option_value) AS shopling_option_value
         FROM paged p
         LEFT JOIN dashboard_lookup d
           ON TRIM(p.barcode) = d.product_barcode
+        LEFT JOIN shopling_lookup sl
+          ON TRIM(p.barcode) = sl.barcode
         ORDER BY p.barcode ASC
       `,
     ),

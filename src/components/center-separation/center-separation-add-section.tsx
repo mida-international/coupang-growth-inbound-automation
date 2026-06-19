@@ -22,7 +22,6 @@ import { isExcelFile } from "@/lib/excel/validate-file";
 import { cn } from "@/lib/utils";
 import {
   CENTER_SEPARATION_ALREADY_EXISTS_ERROR,
-  CENTER_SEPARATION_MISSING_BARCODE_ERROR,
 } from "@/services/center-separation/types";
 import type { UpsertCenterSeparationResult } from "@/services/center-separation/types";
 
@@ -50,7 +49,7 @@ function summarizeUpsert(
   }
 
   if (missingBarcodes.length > 0) {
-    parts.push(`대시보드 없음 ${missingBarcodes.length.toLocaleString()}건`);
+    parts.push(`상품정보 미연동 ${missingBarcodes.length.toLocaleString()}건`);
   }
 
   if (stats.errors.length > 0) {
@@ -125,7 +124,6 @@ export function CenterSeparationAddSection() {
   const [barcode, setBarcode] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [singleMissingDialogOpen, setSingleMissingDialogOpen] = useState(false);
   const [singleExistingDialogOpen, setSingleExistingDialogOpen] = useState(false);
   const [singleExistingBarcode, setSingleExistingBarcode] = useState<string | null>(
     null,
@@ -209,14 +207,6 @@ export function CenterSeparationAddSection() {
         return;
       }
 
-      if (
-        result.error === CENTER_SEPARATION_MISSING_BARCODE_ERROR ||
-        result.missingBarcodes.length > 0
-      ) {
-        setSingleMissingDialogOpen(true);
-        return;
-      }
-
       setError(result.error);
       return;
     }
@@ -229,6 +219,14 @@ export function CenterSeparationAddSection() {
         result.data.existingBarcodes,
       ),
     );
+
+    if (result.data.missingBarcodes.length > 0) {
+      setUploadResultDialog({
+        existingBarcodes: result.data.existingBarcodes,
+        missingBarcodes: result.data.missingBarcodes,
+      });
+    }
+
     router.refresh();
   }
 
@@ -308,15 +306,6 @@ export function CenterSeparationAddSection() {
     setIsUploading(false);
 
     if (!result.ok) {
-      if (result.missingBarcodes.length > 0) {
-        resetUploadDialog();
-        setUploadResultDialog({
-          existingBarcodes: result.existingBarcodes,
-          missingBarcodes: result.missingBarcodes,
-        });
-        return;
-      }
-
       setDialogError(result.error);
       return;
     }
@@ -338,7 +327,7 @@ export function CenterSeparationAddSection() {
       <section className="grid gap-4 lg:grid-cols-2">
         <AddCard
           title="바코드 단건 추가"
-          description="바코드 하나를 입력해 바로 등록합니다. 대시보드에 있는 상품만 등록할 수 있습니다."
+          description="바코드만 먼저 등록할 수 있습니다. 쿠팡·샵플링 연동 시 상품정보가 자동으로 표시됩니다."
         >
           <form
             className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center"
@@ -362,7 +351,7 @@ export function CenterSeparationAddSection() {
 
         <AddCard
           title="엑셀 대량 등록"
-          description="여러 바코드를 한 번에 등록합니다. 대시보드에 있는 바코드만 등록되며, 없는 바코드는 업로드 후 목록으로 안내됩니다."
+          description="여러 바코드를 한 번에 등록합니다. 상품정보가 없는 바코드도 저장되며, 연동 후 목록에 자동 반영됩니다."
         >
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Button
@@ -443,7 +432,8 @@ export function CenterSeparationAddSection() {
           <DialogHeader>
             <DialogTitle>등록 결과 안내</DialogTitle>
             <DialogDescription>
-              아래 바코드는 등록되지 않았습니다. 목록을 확인해 주세요.
+              아래 바코드는 저장됐으나 쿠팡 대시보드 상품정보가 아직 없습니다.
+              샵플링만 연동된 경우 샵플링 컬럼만 표시됩니다.
             </DialogDescription>
           </DialogHeader>
 
@@ -456,7 +446,7 @@ export function CenterSeparationAddSection() {
                   barcodes={uploadResultDialog.existingBarcodes}
                 />
                 <BarcodeListSection
-                  title="대시보드에 없는 바코드"
+                  title="상품정보 미연동 바코드"
                   description={`${uploadResultDialog.missingBarcodes.length.toLocaleString()}건`}
                   barcodes={uploadResultDialog.missingBarcodes}
                 />
@@ -468,28 +458,6 @@ export function CenterSeparationAddSection() {
             <Button
               type="button"
               onClick={() => setUploadResultDialog(null)}
-            >
-              확인
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={singleMissingDialogOpen}
-        onOpenChange={setSingleMissingDialogOpen}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>바코드를 등록할 수 없습니다</DialogTitle>
-            <DialogDescription>
-              {CENTER_SEPARATION_MISSING_BARCODE_ERROR}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              onClick={() => setSingleMissingDialogOpen(false)}
             >
               확인
             </Button>

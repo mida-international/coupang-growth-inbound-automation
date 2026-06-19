@@ -22,6 +22,7 @@ function dedupeBarcodes(barcodes: string[]): string[] {
   return [...unique.values()];
 }
 
+/** Classifies barcodes by Coupang dashboard linkage (informational; does not gate registration). */
 export async function validateCenterSeparationBarcodes(
   barcodes: string[],
 ): Promise<ValidateCenterSeparationBarcodesResult> {
