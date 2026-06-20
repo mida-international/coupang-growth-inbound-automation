@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   parseSellerSearchParam,
+  resolveExplicitSellerAccountId,
   resolveSellerAccountIds,
 } from "@/services/coupang-seller-accounts/get-default-seller-account-id";
 import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
@@ -67,6 +68,26 @@ describe("resolveSellerAccountIds", () => {
     assert.deepEqual(
       resolveSellerAccountIds(ACCOUNTS, ["seller-2", "seller-1"]),
       ["seller-2", "seller-1"],
+    );
+  });
+});
+
+describe("resolveExplicitSellerAccountId", () => {
+  it("returns empty when param is missing", () => {
+    assert.equal(resolveExplicitSellerAccountId(ACCOUNTS), "");
+  });
+
+  it("returns the first valid active id from param", () => {
+    assert.equal(
+      resolveExplicitSellerAccountId(ACCOUNTS, "seller-2"),
+      "seller-2",
+    );
+  });
+
+  it("ignores inactive or invalid ids", () => {
+    assert.equal(
+      resolveExplicitSellerAccountId(ACCOUNTS, ["invalid", "seller-3"]),
+      "",
     );
   });
 });
