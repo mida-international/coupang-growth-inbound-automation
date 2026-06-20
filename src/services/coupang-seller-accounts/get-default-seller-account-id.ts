@@ -59,3 +59,20 @@ export function resolveSellerAccountId(
 ): string {
   return resolveSellerAccountIds(accounts, sellerParam)[0] ?? "";
 }
+
+export function resolveExplicitSellerAccountId(
+  accounts: SellerAccountView[],
+  sellerParam?: string | string[],
+): string {
+  const activeIds = new Set(
+    accounts.filter((account) => account.isActive).map((account) => account.id),
+  );
+
+  for (const id of parseSellerSearchParam(sellerParam)) {
+    if (activeIds.has(id)) {
+      return id;
+    }
+  }
+
+  return "";
+}
