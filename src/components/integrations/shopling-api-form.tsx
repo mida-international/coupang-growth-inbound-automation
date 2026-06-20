@@ -83,7 +83,7 @@ export function ShoplingApiForm({
       <CardHeader>
         <CardTitle>API 설정</CardTitle>
         <CardDescription>
-          샵플링 상품조회 API 인증 정보를 저장합니다. API 인증 키는 마스터만
+          샵플링 상품조회 API 인증 정보를 저장합니다. API 인증 키는 시스템만
           조회·수정할 수 있습니다.
         </CardDescription>
       </CardHeader>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { apiPost } from "@/lib/api-client";
+import { getRoleLabel } from "@/lib/auth/role-label";
 import type { CreateAdminInput } from "@/services/members/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +29,7 @@ export function AddAdminForm() {
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<CreateAdminInput["role"]>("admin");
+  const [role, setRole] = useState<CreateAdminInput["role"]>("master");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -54,7 +55,7 @@ export function AddAdminForm() {
     setLoginId("");
     setPassword("");
     setName("");
-    setRole("admin");
+    setRole("master");
     router.refresh();
   }
 
@@ -63,7 +64,7 @@ export function AddAdminForm() {
       <CardHeader>
         <CardTitle>관리자 추가</CardTitle>
         <CardDescription>
-          새 관리자 계정을 생성합니다. 역할은 관리자 또는 마스터 중 선택할 수
+          새 관리자 계정을 생성합니다. 역할은 관리자 또는 시스템 중 선택할 수
           있습니다.
         </CardDescription>
       </CardHeader>
@@ -98,7 +99,7 @@ export function AddAdminForm() {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="member-name">이름 (선택)</FieldLabel>
+              <FieldLabel htmlFor="member-name">이름</FieldLabel>
               <Input
                 id="member-name"
                 type="text"
@@ -116,11 +117,11 @@ export function AddAdminForm() {
                 }
               >
                 <SelectTrigger id="member-role" className="w-full">
-                  <SelectValue />
+                  <SelectValue>{getRoleLabel(role)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">관리자</SelectItem>
-                  <SelectItem value="master">마스터</SelectItem>
+                  <SelectItem value="master">시스템</SelectItem>
                 </SelectContent>
               </Select>
             </Field>

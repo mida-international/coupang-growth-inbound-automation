@@ -20,7 +20,7 @@ export default async function MembersPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">회원관리</h1>
         <p className="text-muted-foreground">
-          관리자 계정을 추가하고 등록된 관리자 목록을 확인합니다.
+          관리자 계정을 추가·수정·삭제하고 등록된 관리자 목록을 확인합니다.
         </p>
       </div>
 

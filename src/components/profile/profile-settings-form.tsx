@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { apiPatch } from "@/lib/api-client";
+import { getRoleLabel } from "@/lib/auth/role-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,10 +17,6 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import type { ProfileView } from "@/services/profile/types";
-
-function roleLabel(role: ProfileView["role"]) {
-  return role === "master" ? "마스터" : "관리자";
-}
 
 export function ProfileSettingsForm({ profile }: { profile: ProfileView }) {
   const router = useRouter();
@@ -78,7 +75,7 @@ export function ProfileSettingsForm({ profile }: { profile: ProfileView }) {
                 <Badge
                   variant={profile.role === "master" ? "default" : "secondary"}
                 >
-                  {roleLabel(profile.role)}
+                  {getRoleLabel(profile.role)}
                 </Badge>
               </div>
             </Field>
