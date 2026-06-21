@@ -25,7 +25,8 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const isBusy = loading || isPending;
+  const [isNavigating, setIsNavigating] = useState(false);
+  const isBusy = loading || isPending || isNavigating;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,6 +45,7 @@ export function LoginForm() {
       return;
     }
 
+    setIsNavigating(true);
     startTransition(() => {
       router.push("/");
       router.refresh();

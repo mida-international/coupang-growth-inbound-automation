@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,15 @@ export function DeliverablesSellerAccountPicker({
 }: DeliverablesSellerAccountPickerProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isApplying, setIsApplying] = useState(false);
   const [draftAccountId, setDraftAccountId] = useState(selectedSellerId);
+  const isBusy = isPending || isApplying;
+
+  useEffect(() => {
+    if (isApplying && draftAccountId === selectedSellerId) {
+      setIsApplying(false);
+    }
+  }, [draftAccountId, isApplying, selectedSellerId]);
 
   const draftAccount = accounts.find((account) => account.id === draftAccountId);
   const appliedAccount = accounts.find(
@@ -36,10 +44,11 @@ export function DeliverablesSellerAccountPicker({
   const canApply = draftAccountId.trim().length > 0 && hasPendingAccountChange;
 
   function handleApplyAccount() {
-    if (!canApply || isPending) {
+    if (!canApply || isBusy) {
       return;
     }
 
+    setIsApplying(true);
     startTransition(() => {
       router.push(
         `/downloads/coupang-growth-inbound?seller=${encodeURIComponent(draftAccountId)}`,
@@ -69,7 +78,7 @@ export function DeliverablesSellerAccountPicker({
       <div className="flex flex-wrap items-center gap-2">
         <Select
           value={draftAccountId || undefined}
-          disabled={isPending}
+          disabled={isBusy}
           onValueChange={(value) => {
             if (value) {
               setDraftAccountId(value);
@@ -80,7 +89,7 @@ export function DeliverablesSellerAccountPicker({
             id="deliverables-seller-account"
             className="h-9 w-full min-w-[12rem] max-w-sm bg-background"
             aria-label="쿠팡 판매자 계정"
-            disabled={isPending}
+            disabled={isBusy}
           >
             <span
               className={cn(
@@ -104,10 +113,10 @@ export function DeliverablesSellerAccountPicker({
           size="sm"
           className="h-9 shrink-0 px-5"
           variant={hasPendingAccountChange ? "default" : "outline"}
-          disabled={!canApply || isPending}
+          disabled={!canApply || isBusy}
           onClick={handleApplyAccount}
         >
-          {isPending ? (
+          {isBusy ? (
             <>
               <Loader2 className="animate-spin" aria-hidden />
               적용 중...
@@ -117,7 +126,7 @@ export function DeliverablesSellerAccountPicker({
           )}
         </Button>
       </div>
-      {isPending ? (
+      {isBusy ? (
         <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
           계정 정보를 불러오는 중입니다...
         </p>
