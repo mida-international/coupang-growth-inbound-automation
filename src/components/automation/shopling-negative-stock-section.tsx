@@ -4,8 +4,6 @@ import { useRef, useState } from "react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
 import { Button } from "@/components/ui/button";
-import { apiPost } from "@/lib/api-client";
-import type { ShoplingWmsLoginData } from "@/services/shopling-wms-automation/login-shopling-wms";
 
 const RUN_ENDPOINT = "/api/automation/shopling-negative-stock/run";
 
@@ -19,8 +17,6 @@ type RunEvent =
   | { type: "result"; ok: false; error: string };
 
 export function ShoplingNegativeStockSection() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isSubtracting, setIsSubtracting] = useState(false);
   const [showPluginGuide, setShowPluginGuide] = useState(false);
   const [progress, setProgress] = useState<string[]>([]);
@@ -35,30 +31,6 @@ export function ShoplingNegativeStockSection() {
     link.click();
     link.remove();
     setShowPluginGuide(true);
-  }
-
-  async function handleLoginClick() {
-    if (isLoggingIn) {
-      return;
-    }
-
-    setIsLoggingIn(true);
-
-    try {
-      const response = await apiPost<ShoplingWmsLoginData>(
-        "/api/automation/shopling-negative-stock/login",
-        {},
-      );
-
-      if (!response.ok) {
-        window.alert(response.error);
-        return;
-      }
-
-      setIsLoggedIn(true);
-    } finally {
-      setIsLoggingIn(false);
-    }
   }
 
   async function handleSubtractClick() {
@@ -158,14 +130,6 @@ export function ShoplingNegativeStockSection() {
           onClick={handlePluginInstallClick}
         >
           플러그인 설치
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          disabled={isLoggingIn || isLoggedIn}
-          onClick={handleLoginClick}
-        >
-          {isLoggingIn ? "로그인 중..." : "로그인"}
         </Button>
         <Button
           type="button"
