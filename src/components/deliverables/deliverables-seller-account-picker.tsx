@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ export function DeliverablesSellerAccountPicker({
   selectedSellerId,
 }: DeliverablesSellerAccountPickerProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [draftAccountId, setDraftAccountId] = useState(selectedSellerId);
 
   const draftAccount = accounts.find((account) => account.id === draftAccountId);
@@ -34,13 +36,15 @@ export function DeliverablesSellerAccountPicker({
   const canApply = draftAccountId.trim().length > 0 && hasPendingAccountChange;
 
   function handleApplyAccount() {
-    if (!canApply) {
+    if (!canApply || isPending) {
       return;
     }
 
-    router.push(
-      `/downloads/coupang-growth-inbound?seller=${encodeURIComponent(draftAccountId)}`,
-    );
+    startTransition(() => {
+      router.push(
+        `/downloads/coupang-growth-inbound?seller=${encodeURIComponent(draftAccountId)}`,
+      );
+    });
   }
 
   if (accounts.length === 0) {
@@ -65,6 +69,7 @@ export function DeliverablesSellerAccountPicker({
       <div className="flex flex-wrap items-center gap-2">
         <Select
           value={draftAccountId || undefined}
+          disabled={isPending}
           onValueChange={(value) => {
             if (value) {
               setDraftAccountId(value);
@@ -75,6 +80,7 @@ export function DeliverablesSellerAccountPicker({
             id="deliverables-seller-account"
             className="h-9 w-full min-w-[12rem] max-w-sm bg-background"
             aria-label="쿠팡 판매자 계정"
+            disabled={isPending}
           >
             <span
               className={cn(
@@ -98,12 +104,24 @@ export function DeliverablesSellerAccountPicker({
           size="sm"
           className="h-9 shrink-0 px-5"
           variant={hasPendingAccountChange ? "default" : "outline"}
-          disabled={!canApply}
+          disabled={!canApply || isPending}
           onClick={handleApplyAccount}
         >
-          선택
+          {isPending ? (
+            <>
+              <Loader2 className="animate-spin" aria-hidden />
+              적용 중...
+            </>
+          ) : (
+            "선택"
+          )}
         </Button>
       </div>
+      {isPending ? (
+        <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
+          계정 정보를 불러오는 중입니다...
+        </p>
+      ) : null}
       {appliedAccount ? (
         <p className="text-xs text-muted-foreground">
           적용된 계정:{" "}

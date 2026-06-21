@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,10 +20,12 @@ import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const isBusy = loading || isPending;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,15 +38,16 @@ export function LoginForm() {
       password,
     });
 
-    setLoading(false);
-
     if (signInError) {
+      setLoading(false);
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    startTransition(() => {
+      router.push("/");
+      router.refresh();
+    });
   }
 
   return (
@@ -53,7 +57,7 @@ export function LoginForm() {
         <CardDescription>관리자 로그인</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} aria-busy={isBusy}>
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="email">아이디</FieldLabel>
@@ -65,7 +69,7 @@ export function LoginForm() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
-                disabled={loading}
+                disabled={isBusy}
               />
             </Field>
             <Field>
@@ -77,7 +81,7 @@ export function LoginForm() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
-                disabled={loading}
+                disabled={isBusy}
               />
             </Field>
             {error ? (
@@ -85,8 +89,15 @@ export function LoginForm() {
                 {error}
               </p>
             ) : null}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "로그인 중..." : "로그인"}
+            <Button type="submit" className="w-full" disabled={isBusy}>
+              {isBusy ? (
+                <>
+                  <Loader2 className="animate-spin" aria-hidden />
+                  로그인 중...
+                </>
+              ) : (
+                "로그인"
+              )}
             </Button>
           </FieldGroup>
         </form>
