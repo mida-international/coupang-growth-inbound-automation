@@ -12,6 +12,10 @@ import { ExcelDropzone } from "@/components/excel/excel-dropzone";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { downloadShoplingOutboundTemplate } from "@/lib/deliverables/client/download-shopling-outbound-template";
+import {
+  buildBoxListExcelFile,
+  extractVisionDataFromImages,
+} from "@/lib/vision/client/vision-box-list-client";
 import { cn } from "@/lib/utils";
 
 type ShoplingOutboundTemplateSectionProps = {
@@ -37,7 +41,7 @@ export function ShoplingOutboundTemplateSection({
   const downloadDisabled =
     activeTab === "excel"
       ? !canDownloadExcel
-      : !hasSeller || isDownloading;
+      : !hasSeller || imageFile === null || isDownloading;
 
   useEffect(() => {
     if (!imageFile) {
@@ -69,16 +73,13 @@ export function ShoplingOutboundTemplateSection({
   }
 
   async function handleDownloadClick() {
-    if (!hasSeller) {
+    if (!hasSeller || isDownloading) {
       return;
     }
 
-    if (activeTab === "image") {
-      setNotice("준비 중입니다. 이미지 OCR 연동은 곧 제공됩니다.");
-      return;
-    }
+    const hasInput = activeTab === "excel" ? excelFile !== null : imageFile !== null;
 
-    if (!canDownloadExcel || !excelFile) {
+    if (!hasInput) {
       return;
     }
 
@@ -86,9 +87,19 @@ export function ShoplingOutboundTemplateSection({
     setNotice(null);
 
     try {
+      // 이미지 탭: OCR로 엑셀 변환 후, 엑셀 업로드와 동일한 경로로 보낸다.
+      const boxListFile =
+        activeTab === "excel"
+          ? (excelFile as File)
+          : buildBoxListExcelFile(
+              (await extractVisionDataFromImages([imageFile as File]))
+                .visionData,
+              "샵플링_출고리스트_이미지변환.xlsx",
+            );
+
       const noticeMessage = await downloadShoplingOutboundTemplate(
         sellerId,
-        excelFile,
+        boxListFile,
       );
       setNotice(noticeMessage);
     } catch (error) {
@@ -243,7 +254,8 @@ export function ShoplingOutboundTemplateSection({
               ) : null}
 
               <p className="text-xs text-muted-foreground">
-                종이 출고 리스트 사진 OCR 예정 (기능 연동 전)
+                사진 속 표를 자동 인식(OCR)해 엑셀로 변환한 뒤 출고 템플릿을
+                생성합니다.
               </p>
             </TabsContent>
           </Tabs>

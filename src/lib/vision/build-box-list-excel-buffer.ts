@@ -78,7 +78,12 @@ export function buildBoxListExcelBytes(
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
 
-  return XLSX.write(workbook, { type: "array", bookType: "xlsx" });
+  // XLSX.write({type:"array"})는 런타임에 ArrayBuffer를 반환하므로 항상 Uint8Array로 정규화한다.
+  const written = XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as
+    | ArrayBuffer
+    | Uint8Array;
+
+  return written instanceof Uint8Array ? written : new Uint8Array(written);
 }
 
 export function buildBoxListExcelBuffer(

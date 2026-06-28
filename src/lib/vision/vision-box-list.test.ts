@@ -30,14 +30,14 @@ describe("parseVisionJsonResponse", () => {
 });
 
 describe("convertVisionDataToBoxItems", () => {
-  it("prefers 가용 over printed 수량", () => {
+  it("uses 수량 (가용 is left empty by the new correction rule)", () => {
     const { items } = convertVisionDataToBoxItems({
       columns: ["바코드", "수량", "가용"],
       rows: [
         {
           바코드: "2016340979072",
-          수량: "7",
-          가용: "0",
+          수량: "0", // 보정된 값이 수량에 들어옴 (가용은 비움)
+          가용: "",
           confidence: "0.9",
         },
       ],

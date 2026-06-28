@@ -13,11 +13,11 @@ export function convertVisionDataToBoxItems(visionData: VisionExtractedData): {
   const barcodeCol = visionData.columns.find((column) =>
     /바코드|barcode|상품코드|code|sku|품번|ean|upc|gtin/i.test(column),
   );
+  // 수량(보정 완료된 값)을 우선. 가용은 비어 있을 수 있으므로 폴백으로만 사용.
   const qtyCol =
-    visionData.columns.find((column) => /^가용$|가용수량/.test(column)) ??
     visionData.columns.find((column) =>
       /수량|qty|quantity|개수|pcs|ea/i.test(column),
-    );
+    ) ?? visionData.columns.find((column) => /^가용$|가용수량/.test(column));
 
   if (!barcodeCol || !qtyCol) {
     return {

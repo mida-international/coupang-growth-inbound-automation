@@ -145,17 +145,27 @@ export function CoupangInboundTemplateSection({
     return extracted.visionData;
   }
 
-  async function downloadCoupangTemplateFromVision(
-    data: VisionExtractedData,
+  // 이미지 탭은 OCR 결과를 엑셀로 변환한 뒤, 엑셀 업로드와 동일한 경로로 보낸다.
+  async function resolveBoxListFile(): Promise<File | null> {
+    if (activeTab === "excel") {
+      return excelFile;
+    }
+
+    const data = visionData ?? (await resolveVisionData());
+    return buildBoxListExcelFile(data, "쿠팡_입고리스트_이미지변환.xlsx");
+  }
+
+  async function downloadCoupangTemplateFromFile(
+    boxListFile: File,
   ): Promise<{ matched: string | null; unmatched: string | null }> {
     const formData = new FormData();
     formData.append("seller", sellerId);
-    formData.append("visionData", JSON.stringify(data));
+    formData.append("boxListFile", boxListFile);
 
-    const response = await fetch(
-      "/api/downloads/coupang-inbound-template/from-image",
-      { method: "POST", body: formData },
-    );
+    const response = await fetch("/api/downloads/coupang-inbound-template", {
+      method: "POST",
+      body: formData,
+    });
 
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as {
@@ -169,7 +179,7 @@ export function CoupangInboundTemplateSection({
     const filenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
     const filename = filenameMatch
       ? decodeURIComponent(filenameMatch[1])
-      : "쿠팡_입고템플릿_생성_이미지.xlsx";
+      : "쿠팡_입고템플릿_생성.xlsx";
 
     const objectUrl = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -184,6 +194,32 @@ export function CoupangInboundTemplateSection({
     };
   }
 
+  async function recordCoupangInboundFromFile(boxListFile: File): Promise<number> {
+    const formData = new FormData();
+    formData.append("seller", sellerId);
+    formData.append("boxListFile", boxListFile);
+
+    const response = await fetch("/api/coupang-inbound-deliverables", {
+      method: "POST",
+      body: formData,
+    });
+
+    const payload = (await response.json().catch(() => null)) as
+      | { ok: true; data: { recordedCount: number } }
+      | { ok: false; error?: string }
+      | null;
+
+    if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
+      throw new Error(
+        payload && "error" in payload && payload.error
+          ? payload.error
+          : "입고 기록에 실패했습니다.",
+      );
+    }
+
+    return payload.data.recordedCount;
+  }
+
   async function handleDownloadClick() {
     if (!canDownload) {
       return;
@@ -193,71 +229,25 @@ export function CoupangInboundTemplateSection({
     setNotice(null);
 
     try {
-      if (activeTab === "excel") {
-        if (!excelFile) {
-          return;
-        }
+      const boxListFile = await resolveBoxListFile();
 
-        const formData = new FormData();
-        formData.append("seller", sellerId);
-        formData.append("boxListFile", excelFile);
-
-        const response = await fetch("/api/downloads/coupang-inbound-template", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const payload = (await response.json().catch(() => null)) as {
-            error?: string;
-          } | null;
-          throw new Error(
-            payload?.error ?? "입고 템플릿 생성에 실패했습니다.",
-          );
-        }
-
-        const blob = await response.blob();
-        const disposition = response.headers.get("Content-Disposition") ?? "";
-        const filenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-        const filename = filenameMatch
-          ? decodeURIComponent(filenameMatch[1])
-          : "쿠팡_입고템플릿_생성.xlsx";
-
-        const matched = response.headers.get("X-Filter-Matched");
-        const unmatched = response.headers.get("X-Filter-Unmatched");
-
-        const objectUrl = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = objectUrl;
-        anchor.download = filename;
-        anchor.click();
-        URL.revokeObjectURL(objectUrl);
-
-        const statsParts = [
-          matched !== null ? `매칭 ${matched}건` : null,
-          unmatched !== null ? `미매칭 ${unmatched}건` : null,
-        ].filter(Boolean);
-
-        setNotice(
-          statsParts.length > 0
-            ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
-            : "입고 템플릿 파일을 다운로드했습니다.",
-        );
-      } else {
-        const data = await resolveVisionData();
-        const { matched, unmatched } = await downloadCoupangTemplateFromVision(data);
-
-        const statsParts = [
-          matched !== null ? `매칭 ${matched}건` : null,
-          unmatched !== null ? `미매칭 ${unmatched}건` : null,
-        ].filter(Boolean);
-
-        setNotice(
-          statsParts.length > 0
-            ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
-            : "입고 템플릿 파일을 다운로드했습니다.",
-        );
+      if (!boxListFile) {
+        return;
       }
+
+      const { matched, unmatched } =
+        await downloadCoupangTemplateFromFile(boxListFile);
+
+      const statsParts = [
+        matched !== null ? `매칭 ${matched}건` : null,
+        unmatched !== null ? `미매칭 ${unmatched}건` : null,
+      ].filter(Boolean);
+
+      setNotice(
+        statsParts.length > 0
+          ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
+          : "입고 템플릿 파일을 다운로드했습니다.",
+      );
 
       setCanRecordInbound(true);
     } catch (error) {
@@ -316,68 +306,14 @@ export function CoupangInboundTemplateSection({
     setNotice(null);
 
     try {
-      if (activeTab === "excel") {
-        if (!excelFile) {
-          return;
-        }
+      const boxListFile = await resolveBoxListFile();
 
-        const formData = new FormData();
-        formData.append("seller", sellerId);
-        formData.append("boxListFile", excelFile);
-
-        const response = await fetch("/api/coupang-inbound-deliverables", {
-          method: "POST",
-          body: formData,
-        });
-
-        const payload = (await response.json().catch(() => null)) as
-          | { ok: true; data: { recordedCount: number } }
-          | { ok: false; error?: string }
-          | null;
-
-        if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
-          throw new Error(
-            payload && "error" in payload && payload.error
-              ? payload.error
-              : "입고 기록에 실패했습니다.",
-          );
-        }
-
-        setNotice(
-          `${payload.data.recordedCount}개 바코드 입고를 기록했습니다.`,
-        );
-      } else {
-        const data = visionData ?? (await resolveVisionData());
-        const formData = new FormData();
-        formData.append("seller", sellerId);
-        formData.append("visionData", JSON.stringify(data));
-        formData.append(
-          "sourceFileName",
-          imageFiles.map((file) => file.name).join(", ") || "이미지 업로드",
-        );
-
-        const response = await fetch("/api/coupang-inbound-deliverables/from-image", {
-          method: "POST",
-          body: formData,
-        });
-
-        const payload = (await response.json().catch(() => null)) as
-          | { ok: true; data: { recordedCount: number } }
-          | { ok: false; error?: string }
-          | null;
-
-        if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
-          throw new Error(
-            payload && "error" in payload && payload.error
-              ? payload.error
-              : "입고 기록에 실패했습니다.",
-          );
-        }
-
-        setNotice(
-          `${payload.data.recordedCount}개 바코드 입고를 기록했습니다.`,
-        );
+      if (!boxListFile) {
+        return;
       }
+
+      const recordedCount = await recordCoupangInboundFromFile(boxListFile);
+      setNotice(`${recordedCount}개 바코드 입고를 기록했습니다.`);
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : "입고 기록에 실패했습니다.",

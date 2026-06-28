@@ -11,7 +11,8 @@ export function buildBoxListExcelFile(
 ): File {
   const bytes = buildBoxListExcelBytes(visionData);
 
-  return new File([Uint8Array.from(bytes)], filename, {
+  // bytes는 Uint8Array — Uint8Array.from(ArrayBuffer)는 빈 배열이 되므로 직접 전달한다.
+  return new File([bytes as BlobPart], filename, {
     type: BOX_LIST_EXCEL_CONTENT_TYPE,
   });
 }
