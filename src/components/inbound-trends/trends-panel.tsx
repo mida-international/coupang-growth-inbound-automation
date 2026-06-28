@@ -109,7 +109,11 @@ export function TrendsPanel({
 
       {!emptyContent && data.totalCount > 0 ? (
         <DataListTableScrollArea>
-          <TrendsTable rows={data.rows} dates={data.dates} />
+          <TrendsTable
+            rows={data.rows}
+            dates={data.dates}
+            sellerId={sellerId}
+          />
         </DataListTableScrollArea>
       ) : null}
     </DataListPanel>

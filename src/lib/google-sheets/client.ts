@@ -84,3 +84,36 @@ export function buildSpreadsheetUrl(
 ): string {
   return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit#gid=${sheetId}`;
 }
+
+/**
+ * 추세 조회 → 시트 기입 대상 시트.
+ * GOOGLE_TRENDS_SHEET_ID(스프레드시트) + GOOGLE_TRENDS_SHEET_GID(탭 gid).
+ * GOOGLE_TRENDS_SHEET_ID 미설정 시 GOOGLE_SHEET_ID로 폴백.
+ */
+export function getTrendsSheetTarget():
+  | { spreadsheetId: string; sheetGid: number }
+  | null {
+  const raw = (
+    process.env.GOOGLE_TRENDS_SHEET_ID?.trim() ||
+    process.env.GOOGLE_SHEET_ID?.trim() ||
+    ""
+  ).trim();
+
+  if (!raw) {
+    return null;
+  }
+
+  const spreadsheetId = parseGoogleSpreadsheetId(raw);
+
+  if (validateGoogleSpreadsheetId(spreadsheetId)) {
+    return null;
+  }
+
+  const gidRaw = process.env.GOOGLE_TRENDS_SHEET_GID?.trim();
+  const gid = gidRaw ? Number(gidRaw) : 0;
+
+  return {
+    spreadsheetId,
+    sheetGid: Number.isFinite(gid) ? gid : 0,
+  };
+}
