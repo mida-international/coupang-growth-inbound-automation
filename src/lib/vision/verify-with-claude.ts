@@ -42,7 +42,7 @@ export async function verifyWithClaude(
 
   const response = await client.messages.create({
     model: getAnthropicVisionModel(),
-    max_tokens: 8192,
+    max_tokens: 16000,
     system: EXTRACT_BOX_LIST_SYSTEM_PROMPT,
     messages: [{ role: "user", content }],
   });

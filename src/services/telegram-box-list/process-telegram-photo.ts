@@ -54,6 +54,13 @@ export async function processTelegramPhotoMessage(
     throw error;
   }
 
+  // 처리 시작 즉시 "작업 중" 알림 (완료/실패 메시지와 별도)
+  await sendTelegramMessage({
+    chatId: message.chatId,
+    text: "🔄 이미지를 받았어요. OCR 변환 작업 중입니다… 잠시만 기다려 주세요.",
+    replyToMessageId: message.messageId,
+  }).catch(() => undefined);
+
   try {
     const file = await getTelegramFile(message.fileId);
 

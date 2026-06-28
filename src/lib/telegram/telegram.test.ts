@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 
 import {
   buildTelegramCaptionHint,
-  getTelegramCaptionKeyword,
   matchesTelegramCaption,
 } from "@/lib/telegram/caption";
 import { isAllowedTelegramChat } from "@/lib/telegram/is-allowed-chat";
@@ -14,39 +13,17 @@ import {
 } from "@/lib/telegram/parse-update";
 
 describe("matchesTelegramCaption", () => {
-  it("requires caption to include the keyword", () => {
-    const previous = process.env.TELEGRAM_CAPTION_KEYWORD;
-    process.env.TELEGRAM_CAPTION_KEYWORD = "#박스";
-
-    try {
-      assert.equal(matchesTelegramCaption(null), false);
-      assert.equal(matchesTelegramCaption(""), false);
-      assert.equal(matchesTelegramCaption("그냥 사진"), false);
-      assert.equal(matchesTelegramCaption("#박스 1번"), true);
-      assert.equal(matchesTelegramCaption("  #박스  "), true);
-    } finally {
-      if (previous === undefined) {
-        delete process.env.TELEGRAM_CAPTION_KEYWORD;
-      } else {
-        process.env.TELEGRAM_CAPTION_KEYWORD = previous;
-      }
-    }
+  it("accepts any non-empty caption regardless of keyword", () => {
+    assert.equal(matchesTelegramCaption(null), false);
+    assert.equal(matchesTelegramCaption(""), false);
+    assert.equal(matchesTelegramCaption("   "), false);
+    assert.equal(matchesTelegramCaption("그냥 사진"), true);
+    assert.equal(matchesTelegramCaption("#박스 1번"), true);
+    assert.equal(matchesTelegramCaption("  박스  "), true);
   });
 
-  it("defaults keyword to #박스", () => {
-    const previous = process.env.TELEGRAM_CAPTION_KEYWORD;
-    delete process.env.TELEGRAM_CAPTION_KEYWORD;
-
-    try {
-      assert.equal(getTelegramCaptionKeyword(), "#박스");
-      assert.ok(buildTelegramCaptionHint().includes("#박스"));
-    } finally {
-      if (previous === undefined) {
-        delete process.env.TELEGRAM_CAPTION_KEYWORD;
-      } else {
-        process.env.TELEGRAM_CAPTION_KEYWORD = previous;
-      }
-    }
+  it("provides a caption hint", () => {
+    assert.ok(buildTelegramCaptionHint().includes("캡션"));
   });
 });
 

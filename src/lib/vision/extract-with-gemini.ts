@@ -12,6 +12,33 @@ export type VisionImageInput = {
   mimeType: string;
 };
 
+/** 일시적 서버 오류(503/429/네트워크)면 지수 백오프로 재시도한다. */
+async function withRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      const retriable =
+        /\b(429|500|502|503|504)\b|overload|unavailable|rate.?limit|temporar|timeout|fetch|ECONNRESET|ETIMEDOUT/i.test(
+          message,
+        );
+
+      if (!retriable || attempt === attempts - 1) {
+        throw error;
+      }
+
+      // 1s, 2s, 4s 백오프
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt));
+    }
+  }
+
+  throw lastError;
+}
+
 async function extractSingleImage(
   client: GoogleGenerativeAI,
   image: VisionImageInput,
@@ -23,15 +50,17 @@ async function extractSingleImage(
     systemInstruction: EXTRACT_BOX_LIST_SYSTEM_PROMPT,
   });
 
-  const result = await model.generateContent([
-    buildGeminiExtractUserPrompt(imageIndex, total),
-    {
-      inlineData: {
-        mimeType: image.mimeType,
-        data: image.buffer.toString("base64"),
+  const result = await withRetry(() =>
+    model.generateContent([
+      buildGeminiExtractUserPrompt(imageIndex, total),
+      {
+        inlineData: {
+          mimeType: image.mimeType,
+          data: image.buffer.toString("base64"),
+        },
       },
-    },
-  ]);
+    ]),
+  );
 
   const text = result.response.text();
 

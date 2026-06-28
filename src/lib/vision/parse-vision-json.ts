@@ -1,13 +1,22 @@
 import type { VisionExtractedData } from "@/lib/vision/types";
 
 function stripMarkdownFences(text: string): string {
-  const trimmed = text.trim();
+  let trimmed = text.trim();
 
-  if (trimmed.startsWith("```")) {
-    return trimmed
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
+  // 코드펜스(```json ... ```)가 앞뒤에 있으면 벗긴다.
+  trimmed = trimmed
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
+  // 모델이 JSON 앞뒤에 설명 문구를 붙인 경우, 가장 바깥 {...} 만 추출한다.
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+
+    if (start !== -1 && end !== -1 && end > start) {
+      trimmed = trimmed.slice(start, end + 1);
+    }
   }
 
   return trimmed;

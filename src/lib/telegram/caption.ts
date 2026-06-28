@@ -1,21 +1,10 @@
-export function getTelegramCaptionKeyword(): string {
-  return process.env.TELEGRAM_CAPTION_KEYWORD?.trim() || "#박스";
-}
-
 export function matchesTelegramCaption(
   caption: string | undefined | null,
 ): boolean {
-  const keyword = getTelegramCaptionKeyword();
-  const text = caption?.trim() ?? "";
-
-  if (!text) {
-    return false;
-  }
-
-  return text.toLowerCase().includes(keyword.toLowerCase());
+  // 특정 키워드를 요구하지 않는다. 캡션에 아무 내용이나 있으면 처리한다.
+  return (caption?.trim().length ?? 0) > 0;
 }
 
 export function buildTelegramCaptionHint(): string {
-  const keyword = getTelegramCaptionKeyword();
-  return `사진과 함께 캡션에 ${keyword} 를 포함해 주세요. (예: ${keyword} 1번 박스)`;
+  return "사진과 함께 캡션(아무 메모나)을 입력해 주세요. (예: 박스 17)";
 }
