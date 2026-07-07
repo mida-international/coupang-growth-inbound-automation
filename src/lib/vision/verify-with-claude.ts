@@ -8,9 +8,14 @@ import {
 import { parseVisionJsonResponse, type ParsedVisionPayload } from "@/lib/vision/parse-vision-json";
 import type { VisionImageInput } from "@/lib/vision/extract-with-gemini";
 
-export async function verifyWithClaude(
-  geminiResults: ParsedVisionPayload[],
-  images: VisionImageInput[],
+/**
+ * 이미지 한 장을, 그 이미지의 Gemini 추출 결과와 대조해 검증/보정한다.
+ * 여러 장이면 호출하는 쪽에서 장별로 이 함수를 호출한 뒤 결과 행을 이어 붙인다
+ * (한 번의 호출에 여러 이미지를 넣으면 모델이 일부 이미지의 행을 누락시킨다).
+ */
+export async function verifyImageWithClaude(
+  geminiResult: ParsedVisionPayload,
+  image: VisionImageInput,
 ): Promise<ParsedVisionPayload> {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
 
@@ -19,25 +24,25 @@ export async function verifyWithClaude(
   }
 
   const client = new Anthropic({ apiKey });
-  const geminiJson = JSON.stringify(
-    geminiResults.length === 1
-      ? geminiResults[0]
-      : { images: geminiResults },
-  );
+  const geminiJson = JSON.stringify(geminiResult);
 
   const content: Anthropic.MessageCreateParams["messages"][0]["content"] = [
     {
       type: "text",
-      text: buildClaudeVerifyUserPrompt(geminiJson, images.length),
+      text: buildClaudeVerifyUserPrompt(geminiJson, 1),
     },
-    ...images.map((image) => ({
+    {
       type: "image" as const,
       source: {
         type: "base64" as const,
-        media_type: image.mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+        media_type: image.mimeType as
+          | "image/jpeg"
+          | "image/png"
+          | "image/gif"
+          | "image/webp",
         data: image.buffer.toString("base64"),
       },
-    })),
+    },
   ];
 
   const response = await client.messages.create({
