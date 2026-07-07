@@ -13,6 +13,7 @@ import {
   parseTelegramPhotoMessage,
   type TelegramUpdate,
 } from "@/lib/telegram/parse-update";
+import { accumulateTelegramAlbumPhoto } from "@/services/telegram-box-list/accumulate-album";
 import { processTelegramPhotoMessage } from "@/services/telegram-box-list/process-telegram-photo";
 
 export const runtime = "nodejs";
@@ -60,6 +61,21 @@ export async function POST(request: Request) {
   const allowedChatIds = getTelegramAllowedChatIds();
 
   if (!isAllowedTelegramChat(candidate.chatId, allowedChatIds)) {
+    return new Response("ok", { status: 200 });
+  }
+
+  // 앨범(미디어 그룹): 여러 장을 모아 하나의 산출물로 처리한다.
+  // 캡션은 앨범 전체에서 하나라도 있으면 되므로 여기서 캡션 검사를 하지 않는다.
+  if (candidate.mediaGroupId) {
+    try {
+      await accumulateTelegramAlbumPhoto(candidate, candidate.mediaGroupId);
+    } catch (error) {
+      logRouteError(error, {
+        route: "/api/telegram/webhook",
+        method: "POST",
+      });
+    }
+
     return new Response("ok", { status: 200 });
   }
 

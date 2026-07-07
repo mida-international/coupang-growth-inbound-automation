@@ -18,6 +18,7 @@ export type TelegramPhotoCandidate = {
   mimeType: string;
   userName: string | null;
   caption: string | null;
+  mediaGroupId: string | null;
 };
 
 type TelegramPhotoSize = {
@@ -28,6 +29,7 @@ type TelegramPhotoSize = {
 
 type TelegramMessage = {
   message_id: number;
+  media_group_id?: string;
   caption?: string;
   from?: {
     username?: string;
@@ -84,6 +86,7 @@ export function parseTelegramPhotoCandidate(
     messageId: message.message_id,
     userName: message.from?.username ?? message.from?.first_name ?? null,
     caption: message.caption?.trim() || null,
+    mediaGroupId: message.media_group_id ?? null,
   };
 
   if (message.photo?.length) {

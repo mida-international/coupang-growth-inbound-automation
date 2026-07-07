@@ -562,3 +562,25 @@ model TelegramBoxListUpload {
   @@index([status, createdAt], map: "idx_telegram_box_list_upload_status_at")
   @@map("telegram_box_list_upload")
 }
+
+/// 텔레그램 앨범(미디어 그룹)으로 여러 장이 각각 도착할 때, 잠시 모았다가
+/// debounce 후 한 번에 하나의 산출물로 처리하기 위한 임시 버퍼.
+model TelegramMediaGroup {
+  id             String   @id @default(cuid())
+  chatId         String   @map("chat_id")
+  mediaGroupId   String   @map("media_group_id")
+  fileIds        String[] @default([]) @map("file_ids")
+  mimeType       String   @default("image/jpeg") @map("mime_type")
+  caption        String?
+  userName       String?  @map("user_name")
+  firstMessageId BigInt   @map("first_message_id")
+  firstUpdateId  BigInt   @map("first_update_id")
+  // collecting | processing | completed | failed | skipped
+  status         String   @default("collecting")
+  lastPhotoAt    DateTime @map("last_photo_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([chatId, mediaGroupId], map: "uq_telegram_media_group_chat_group")
+  @@index([status, lastPhotoAt], map: "idx_telegram_media_group_status_at")
+  @@map("telegram_media_group")
+}
