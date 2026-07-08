@@ -10,7 +10,7 @@ import { loadOutboundDecomposeContext } from "@/services/deliverables/load-outbo
 import { loadShoplingInboundRotationBatches } from "@/services/deliverables/load-shopling-inbound-rotation-batches";
 import {
   listWarehouseInboundRows,
-  listWarehouseInboundRowsIgnoringShoplingStock,
+  listWarehouseInboundRowsShoplingZeroShortage,
 } from "@/services/deliverables/list-warehouse-inbound-rows";
 import type { ListWarehouseInboundRowsResult } from "@/services/deliverables/types";
 
@@ -45,8 +45,11 @@ export type WarehouseInboundListContext = {
 };
 
 export type GenerateWarehouseInboundListContextOptions = {
-  /** 샵플링 재고 상한을 무시한 추천 수량으로 생성 (기존 다운로드와 별개 추가 기능) */
-  ignoreShoplingStock?: boolean;
+  /**
+   * 입고 필요량은 있으나 샵플링 재고가 0이라 표준 리스트에서 빠진 상품만 뽑는다
+   * (기존 표준 다운로드와 별개의 추가 목록).
+   */
+  shoplingZeroShortageOnly?: boolean;
 };
 
 export async function generateWarehouseInboundListContext(
@@ -60,11 +63,11 @@ export async function generateWarehouseInboundListContext(
     throw new Error("유효한 판매자 계정이 아닙니다.");
   }
 
-  const ignoreShoplingStock = options?.ignoreShoplingStock ?? false;
+  const shoplingZeroShortageOnly = options?.shoplingZeroShortageOnly ?? false;
 
   const [listResult, centerSeparationBarcodes] = await Promise.all([
-    ignoreShoplingStock
-      ? listWarehouseInboundRowsIgnoringShoplingStock({
+    shoplingZeroShortageOnly
+      ? listWarehouseInboundRowsShoplingZeroShortage({
           coupangSellerAccountId: sellerId,
         })
       : listWarehouseInboundRows({
@@ -94,7 +97,7 @@ export async function generateWarehouseInboundListContext(
   const outputFileName = buildWarehouseInboundListFilename(
     seller.displayName,
     undefined,
-    ignoreShoplingStock ? "샵플링미고려" : undefined,
+    shoplingZeroShortageOnly ? "샵플링재고0누락분" : undefined,
   );
 
   return {

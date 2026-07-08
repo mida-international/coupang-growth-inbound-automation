@@ -105,21 +105,20 @@ export async function listWarehouseInboundRows(
 }
 
 /**
- * 샵플링 재고를 고려하지 않는 버전.
+ * "샵플링 재고 0 누락분" — 입고 필요량은 계산되는데 샵플링 가용재고가 0(또는
+ * 샵플링에 아예 없음)이라 표준 리스트에서 빠진 상품만 모은 목록.
  *
- * 기존 `listWarehouseInboundRows`(= inbound_workbench_display_v의
- * growth_inbound_recommend)는 추천 수량을 `LEAST(소요량, 샵플링_가용재고)`로
- * 샵플링 재고 상한을 걸고, 샵플링에 없는 상품(재고 0)은 추천 0으로 제외한다.
+ * 표준(`listWarehouseInboundRows`)은 추천 = LEAST(소요량, 샵플링_가용재고)라서
+ * 샵플링 재고가 0이면 추천이 0으로 잘려 `> 0` 필터에서 제외된다. 이 함수는 바로
+ * 그 "샵플링 0 때문에 빠진" 항목만 골라, 잘리기 전 계산 소요량을 수량으로 준다:
+ *   수량 = GREATEST(0, MAX(30일판매, 7일판매×3) − 미착입고 − 주문가능수량)
  *
- * 이 함수는 그 상한만 제거해, 판매추세 기반 소요량을 그대로 추천으로 사용한다
- * (수동 override는 기존과 동일하게 우선 적용). 즉:
- *   추천 = COALESCE(override,
- *            GREATEST(0, MAX(30일판매, 7일판매×3) − 미착입고 − 주문가능수량))
- * 샵플링에 없는 상품도 소요량이 있으면 포함된다.
+ * 조건: 샵플링 가용재고 = 0  AND  수동 override 없음  AND  위 계산 소요량 > 0.
+ * (override가 있으면 표준에서 그 값으로 이미 나가므로 "못 나간" 게 아니라서 제외)
  *
- * 기존 뷰/로직은 전혀 건드리지 않고 표시 뷰의 원자재 컬럼으로 새로 계산한다.
+ * 기존 뷰/로직은 전혀 건드리지 않고 표시 뷰의 원자재 컬럼으로 계산한다.
  */
-export async function listWarehouseInboundRowsIgnoringShoplingStock(
+export async function listWarehouseInboundRowsShoplingZeroShortage(
   options: ListWarehouseInboundRowsOptions,
 ): Promise<ListWarehouseInboundRowsResult> {
   const sellerId = options.coupangSellerAccountId;
@@ -142,14 +141,11 @@ export async function listWarehouseInboundRowsIgnoringShoplingStock(
           v.product_barcode,
           v.template_snapshot_date,
           v.shopling_snapshot_date,
-          COALESCE(
-            o.growth_inbound_recommend_qty,
-            GREATEST(
-              0,
-              GREATEST(v.recent_sales_qty_30days, v.recent_sales_qty_7days * 3)
-                - v.pending_inbounds
-                - v.orderable_quantity
-            )
+          GREATEST(
+            0,
+            GREATEST(v.recent_sales_qty_30days, v.recent_sales_qty_7days * 3)
+              - v.pending_inbounds
+              - v.orderable_quantity
           ) AS growth_inbound_recommend
         FROM inbound_workbench_display_v v
         LEFT JOIN inbound_planning_override o
@@ -159,7 +155,12 @@ export async function listWarehouseInboundRowsIgnoringShoplingStock(
             OR (v.option_id IS NULL AND v.template_id = o.template_id)
           )
         WHERE v.coupang_seller_account_id = ${sellerId}
+          -- 샵플링 가용재고 0(또는 샵플링에 없음)
+          AND v.shopling_available_stock = 0
+          -- 수동 조정이 없는 순수 계산 항목만 (override 있으면 표준에서 이미 나감)
+          AND o.growth_inbound_recommend_qty IS NULL
       ) sub
+      -- 그러나 계산상 입고 필요량은 있는 것만
       WHERE growth_inbound_recommend > 0
       ORDER BY location ASC NULLS LAST,
                registered_product_name ASC NULLS LAST,

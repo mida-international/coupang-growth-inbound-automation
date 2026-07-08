@@ -18,8 +18,8 @@ export async function GET(request: Request) {
     const searchParams = new URL(request.url).searchParams;
     const sellerId = searchParams.get("seller")?.trim();
     const rotation = parseWarehouseInboundRotation(searchParams.get("rotation"));
-    const ignoreShoplingStock = ["1", "true", "yes"].includes(
-      (searchParams.get("noShopling") ?? "").toLowerCase(),
+    const shoplingZeroShortageOnly = ["1", "true", "yes"].includes(
+      (searchParams.get("shoplingZeroShortage") ?? "").toLowerCase(),
     );
 
     if (!sellerId) {
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     }
 
     const context = await generateWarehouseInboundListContext(sellerId, rotation, {
-      ignoreShoplingStock,
+      shoplingZeroShortageOnly,
     });
 
     return new Response(new Uint8Array(context.buffer), {

@@ -103,7 +103,7 @@ export function WarehouseInboundListSection({
     }
   }
 
-  async function handleDownloadClick(ignoreShoplingStock = false) {
+  async function handleDownloadClick(shoplingZeroShortageOnly = false) {
     if (!hasSeller) {
       return;
     }
@@ -115,7 +115,7 @@ export function WarehouseInboundListSection({
       const response = await fetch(
         `/api/downloads/warehouse-inbound-list?seller=${encodeURIComponent(sellerId)}${
           inboundRotation ? `&rotation=${encodeURIComponent(inboundRotation)}` : ""
-        }${ignoreShoplingStock ? "&noShopling=1" : ""}`,
+        }${shoplingZeroShortageOnly ? "&shoplingZeroShortage=1" : ""}`,
       );
 
       if (!response.ok) {
@@ -139,9 +139,11 @@ export function WarehouseInboundListSection({
       anchor.click();
       URL.revokeObjectURL(objectUrl);
 
-      if (ignoreShoplingStock) {
-        // 샵플링 미고려 버전은 별개 다운로드이므로 기록(기존 로직 기반)은 활성화하지 않는다.
-        setNotice("샵플링 미고려 버전을 다운로드했습니다.");
+      if (shoplingZeroShortageOnly) {
+        // 별개 목록이므로 기록(기존 표준 로직 기반)은 활성화하지 않는다.
+        setNotice(
+          "샵플링 재고0 누락분(입고 필요하나 샵플링 재고 0)을 다운로드했습니다.",
+        );
       } else {
         setNotice(
           rowCount > 0
@@ -261,9 +263,9 @@ export function WarehouseInboundListSection({
                 !hasSeller || isDownloading || isCopyingToSheet || isRecording
               }
               onClick={() => handleDownloadClick(true)}
-              title="샵플링 재고 상한을 무시한 입고추천 수량으로 다운로드합니다."
+              title="입고 필요량은 계산되나 샵플링 재고가 0이라 표준 리스트에서 빠진 상품만 다운로드합니다."
             >
-              {isDownloading ? "생성 중..." : "샵플링 미고려"}
+              {isDownloading ? "생성 중..." : "샵플링 재고0 누락분"}
             </Button>
             <Button
               type="button"
