@@ -47,7 +47,11 @@ export function WarehouseInboundListSection({
   snapshotDates,
 }: WarehouseInboundListSectionProps) {
   const [notice, setNotice] = useState<string | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
+  // 어떤 다운로드가 진행 중인지 구분 (둘이 같은 로딩 상태를 공유하지 않도록)
+  const [downloadingVariant, setDownloadingVariant] = useState<
+    "standard" | "shortage" | null
+  >(null);
+  const isDownloading = downloadingVariant !== null;
   const [isCopyingToSheet, setIsCopyingToSheet] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [canRecordInbound, setCanRecordInbound] = useState(false);
@@ -108,7 +112,7 @@ export function WarehouseInboundListSection({
       return;
     }
 
-    setIsDownloading(true);
+    setDownloadingVariant(shoplingZeroShortageOnly ? "shortage" : "standard");
     setNotice(null);
 
     try {
@@ -157,7 +161,7 @@ export function WarehouseInboundListSection({
         error instanceof Error ? error.message : "다운로드에 실패했습니다.",
       );
     } finally {
-      setIsDownloading(false);
+      setDownloadingVariant(null);
     }
   }
 
@@ -252,7 +256,7 @@ export function WarehouseInboundListSection({
               }
               onClick={() => handleDownloadClick(false)}
             >
-              {isDownloading ? "생성 중..." : "다운로드"}
+              {downloadingVariant === "standard" ? "생성 중..." : "다운로드"}
             </Button>
             <Button
               type="button"
@@ -265,7 +269,7 @@ export function WarehouseInboundListSection({
               onClick={() => handleDownloadClick(true)}
               title="입고 필요량은 계산되나 샵플링 재고가 0이라 표준 리스트에서 빠진 상품만 다운로드합니다."
             >
-              {isDownloading ? "생성 중..." : "샵플링 재고0 누락분"}
+              {downloadingVariant === "shortage" ? "생성 중..." : "샵플링 재고0 누락분"}
             </Button>
             <Button
               type="button"
