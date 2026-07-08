@@ -18,12 +18,17 @@ export async function GET(request: Request) {
     const searchParams = new URL(request.url).searchParams;
     const sellerId = searchParams.get("seller")?.trim();
     const rotation = parseWarehouseInboundRotation(searchParams.get("rotation"));
+    const ignoreShoplingStock = ["1", "true", "yes"].includes(
+      (searchParams.get("noShopling") ?? "").toLowerCase(),
+    );
 
     if (!sellerId) {
       return jsonError("판매자 계정을 선택해 주세요.", 400);
     }
 
-    const context = await generateWarehouseInboundListContext(sellerId, rotation);
+    const context = await generateWarehouseInboundListContext(sellerId, rotation, {
+      ignoreShoplingStock,
+    });
 
     return new Response(new Uint8Array(context.buffer), {
       status: 200,

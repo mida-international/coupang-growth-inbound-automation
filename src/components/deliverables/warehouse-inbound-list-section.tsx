@@ -103,7 +103,7 @@ export function WarehouseInboundListSection({
     }
   }
 
-  async function handleDownloadClick() {
+  async function handleDownloadClick(ignoreShoplingStock = false) {
     if (!hasSeller) {
       return;
     }
@@ -115,7 +115,7 @@ export function WarehouseInboundListSection({
       const response = await fetch(
         `/api/downloads/warehouse-inbound-list?seller=${encodeURIComponent(sellerId)}${
           inboundRotation ? `&rotation=${encodeURIComponent(inboundRotation)}` : ""
-        }`,
+        }${ignoreShoplingStock ? "&noShopling=1" : ""}`,
       );
 
       if (!response.ok) {
@@ -139,12 +139,17 @@ export function WarehouseInboundListSection({
       anchor.click();
       URL.revokeObjectURL(objectUrl);
 
-      setNotice(
-        rowCount > 0
-          ? `${rowCount}건이 포함된 파일을 다운로드했습니다.`
-          : "다운로드 가능한 항목이 없어 헤더만 포함된 파일을 다운로드했습니다.",
-      );
-      setCanRecordInbound(true);
+      if (ignoreShoplingStock) {
+        // 샵플링 미고려 버전은 별개 다운로드이므로 기록(기존 로직 기반)은 활성화하지 않는다.
+        setNotice("샵플링 미고려 버전을 다운로드했습니다.");
+      } else {
+        setNotice(
+          rowCount > 0
+            ? `${rowCount}건이 포함된 파일을 다운로드했습니다.`
+            : "다운로드 가능한 항목이 없어 헤더만 포함된 파일을 다운로드했습니다.",
+        );
+        setCanRecordInbound(true);
+      }
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : "다운로드에 실패했습니다.",
@@ -243,9 +248,22 @@ export function WarehouseInboundListSection({
               disabled={
                 !hasSeller || isDownloading || isCopyingToSheet || isRecording
               }
-              onClick={handleDownloadClick}
+              onClick={() => handleDownloadClick(false)}
             >
               {isDownloading ? "생성 중..." : "다운로드"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
+              disabled={
+                !hasSeller || isDownloading || isCopyingToSheet || isRecording
+              }
+              onClick={() => handleDownloadClick(true)}
+              title="샵플링 재고 상한을 무시한 입고추천 수량으로 다운로드합니다."
+            >
+              {isDownloading ? "생성 중..." : "샵플링 미고려"}
             </Button>
             <Button
               type="button"

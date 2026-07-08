@@ -8,7 +8,10 @@ import {
 import { loadCenterSeparationBarcodeSet } from "@/services/deliverables/load-center-separation-barcode-set";
 import { loadOutboundDecomposeContext } from "@/services/deliverables/load-outbound-decompose-context";
 import { loadShoplingInboundRotationBatches } from "@/services/deliverables/load-shopling-inbound-rotation-batches";
-import { listWarehouseInboundRows } from "@/services/deliverables/list-warehouse-inbound-rows";
+import {
+  listWarehouseInboundRows,
+  listWarehouseInboundRowsIgnoringShoplingStock,
+} from "@/services/deliverables/list-warehouse-inbound-rows";
 import type { ListWarehouseInboundRowsResult } from "@/services/deliverables/types";
 
 export function parseWarehouseInboundRotation(
@@ -41,9 +44,15 @@ export type WarehouseInboundListContext = {
   outputFileName: string;
 };
 
+export type GenerateWarehouseInboundListContextOptions = {
+  /** 샵플링 재고 상한을 무시한 추천 수량으로 생성 (기존 다운로드와 별개 추가 기능) */
+  ignoreShoplingStock?: boolean;
+};
+
 export async function generateWarehouseInboundListContext(
   sellerId: string,
   rotation: 0 | 1 | 2 | 3,
+  options?: GenerateWarehouseInboundListContextOptions,
 ): Promise<WarehouseInboundListContext> {
   const seller = await resolveActiveSellerAccount(sellerId);
 
@@ -51,10 +60,16 @@ export async function generateWarehouseInboundListContext(
     throw new Error("유효한 판매자 계정이 아닙니다.");
   }
 
+  const ignoreShoplingStock = options?.ignoreShoplingStock ?? false;
+
   const [listResult, centerSeparationBarcodes] = await Promise.all([
-    listWarehouseInboundRows({
-      coupangSellerAccountId: sellerId,
-    }),
+    ignoreShoplingStock
+      ? listWarehouseInboundRowsIgnoringShoplingStock({
+          coupangSellerAccountId: sellerId,
+        })
+      : listWarehouseInboundRows({
+          coupangSellerAccountId: sellerId,
+        }),
     loadCenterSeparationBarcodeSet(),
   ]);
 
@@ -76,7 +91,11 @@ export async function generateWarehouseInboundListContext(
 
   const grid = buildWarehouseInboundListGrid(listResult.rows, listOptions);
   const buffer = generateWarehouseInboundListBuffer(listResult.rows, listOptions);
-  const outputFileName = buildWarehouseInboundListFilename(seller.displayName);
+  const outputFileName = buildWarehouseInboundListFilename(
+    seller.displayName,
+    undefined,
+    ignoreShoplingStock ? "샵플링미고려" : undefined,
+  );
 
   return {
     seller: {

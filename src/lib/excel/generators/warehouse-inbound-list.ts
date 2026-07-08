@@ -174,11 +174,13 @@ export function buildWarehouseInboundListGrid(
 export function buildWarehouseInboundListFilename(
   displayName: string,
   date = getKstTodayDate(),
+  variantSuffix?: string,
 ): string {
   const datePart = formatKstIsoDate(date);
   const slug = displayName.trim().replace(/\s+/g, "_");
+  const suffix = variantSuffix ? `_${variantSuffix}` : "";
 
-  return `창고전송용_입고리스트_${slug}_${datePart}.xlsx`;
+  return `창고전송용_입고리스트${suffix}_${slug}_${datePart}.xlsx`;
 }
 
 export function generateWarehouseInboundListBuffer(
