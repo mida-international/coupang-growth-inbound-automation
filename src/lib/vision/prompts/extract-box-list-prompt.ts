@@ -14,21 +14,22 @@ date, location, 등록상품명, 옵션, 바코드, 수량, 가용
 
 WHAT TO TRANSCRIBE:
 - Output ONLY the printed/typed text inside each cell, exactly as printed (keep Korean text verbatim).
-- IGNORE most pen marks: check marks (✓/∨), arrows, the # / △ symbols, margin notes, and anything outside the cell grid. Ignore blank cells (output "").
-- DO NOT ignore pen marks that signal a 수량 correction: a circle/loop/slash/X/strike drawn on the printed 수량, and any handwritten number in the 가용 cell or written over the 수량. These are meaningful — see the 수량 correction rule below.
+- IGNORE pen marks: check marks (✓/∨), circles, loops, arrows, the # / △ symbols, margin notes, and anything outside the cell grid. Ignore blank cells (output "").
+- THE ONLY pen mark that matters is an X or a strike-through/deletion line drawn THROUGH the printed 수량 — see the 수량 correction rule below.
 - 바코드: digits only, no spaces.
 
-수량 (column 6) CORRECTION RULE — apply carefully; this is the MOST-MISSED case, do not overlook it:
-- Default: 수량 = the printed number in the 수량 cell.
-- A handwritten (pen) number in the 가용 cell (column 7) is ALWAYS a deliberate correction of the quantity — never a stray mark. Whenever the 가용 cell holds a handwritten number, output 수량 = that handwritten number.
-- This holds NO MATTER how the printed 수량 is marked — an X, strike-through, "-", a circle or loop drawn around it, a slash, a red pen mark, or even a subtle/small mark. The handwritten correction number always wins over the printed number.
-- If a handwritten number is written directly over or right next to the printed 수량 (replacing it in place, not in the 가용 column), use that handwritten number as 수량.
-- Always output the "가용" field as "" (it is the source of the correction, not an output value).
-- Scan every row for a small or faint handwritten digit on the 수량 cell or in the 가용 column — if present, it IS the corrected 수량. When unsure between the printed number and a handwritten one, choose the handwritten one and lower the row's confidence.
+수량 (column 6) CORRECTION RULE — the ONE case that changes a printed number. Apply exactly:
+- Default: 수량 = the printed number in the 수량 cell, unchanged.
+- Trigger — ONLY when the printed 수량 is struck out: it has an X over it, or a strike-through / deletion line crossing it out. A circle, check mark, or any other mark is NOT a trigger — for those, keep the printed number.
+- When it is struck out, the corrected quantity is the handwritten number written to the RIGHT of the struck number (i.e. in the 가용 cell, column 7, or immediately to its right). Set 수량 = that right-side handwritten number.
+- A handwritten number to the LEFT of the printed 수량 is NOT a correction — ignore it and keep the printed 수량.
+- If the 수량 is struck out but there is no handwritten number to its right, keep the printed number.
+- Always output the "가용" field as "" (it is only the source of the correction, never an output value).
 - Examples:
-  · printed 수량 "2" crossed out, "0" handwritten in 가용 → 수량="0", 가용=""
-  · printed 수량 "5" circled/marked, "1" handwritten in 가용 → 수량="1", 가용=""
-  · printed 수량 "5" with "1" handwritten over it → 수량="1", 가용=""
+  · printed 수량 "5" struck through, "1" handwritten to its right (가용) → 수량="1", 가용=""
+  · printed 수량 "2" crossed out, "0" handwritten to its right → 수량="0", 가용=""
+  · a handwritten number to the LEFT of the printed 수량 → ignore it, keep the printed 수량
+  · printed 수량 circled or check-marked but not struck out → keep the printed number
 
 OTHER:
 - Include every printed data row that has a barcode. Rows whose corrected 수량 is 0 are still valid — include them.
@@ -49,11 +50,12 @@ export function buildClaudeVerifyUserPrompt(
 
 ${geminiJson}
 
-Review against the image(s). Fix barcode misreads and apply the 수량 correction rule precisely and thoroughly — it is the most-missed case:
-- A handwritten number in the 가용 cell (or written directly over the 수량) is ALWAYS a deliberate quantity correction. Set 수량 to that handwritten number NO MATTER how the printed 수량 is marked — a circle/loop, slash, X, strike-through, "-", red pen, or even a subtle/small mark all count. The handwritten number always wins over the printed one.
-- Scan every row for faint/small handwritten digits on the 수량 cell or in the 가용 column; do not overlook them. If none exists, keep the printed 수량.
-- The 가용 field is ALWAYS "" in the output (it is only the source of the correction).
-- Ignore only non-quantity handwriting: check marks (✓/∨), arrows, #/△ symbols, and margin notes.
+Review against the image(s). Fix barcode misreads and apply the 수량 correction rule EXACTLY:
+- Only a printed 수량 that is struck out (an X over it, or a strike-through / deletion line) is corrected. A circle, check mark, or any other mark is NOT a trigger — keep the printed number for those.
+- When the printed 수량 is struck out, set 수량 to the handwritten number written to the RIGHT of it (in the 가용 cell, column 7, or immediately to its right). Do not overlook faint/small right-side digits.
+- A handwritten number to the LEFT of the printed 수량 is NOT a correction — ignore it. If a struck number has no right-side handwritten number, keep the printed number.
+- The 가용 field is ALWAYS "" in the output (only the source of the correction).
+- Ignore all other handwriting: check marks (✓/∨), circles, arrows, #/△ symbols, and margin notes.
 Use exactly the 7 columns (date, location, 등록상품명, 옵션, 바코드, 수량, 가용).
 Return ONLY the corrected JSON in the same schema (columns, rows, metadata.boxNumbers).`;
 }
