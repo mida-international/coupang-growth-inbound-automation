@@ -81,11 +81,11 @@ export async function extractWithGemini(
   }
 
   const client = new GoogleGenerativeAI(apiKey);
-  const results: ParsedVisionPayload[] = [];
 
-  for (let index = 0; index < images.length; index += 1) {
-    results.push(await extractSingleImage(client, images[index], index, images.length));
-  }
-
-  return results;
+  // 이미지별로 병렬 처리 (순차로 하면 장수가 늘수록 함수 타임아웃에 걸린다).
+  return Promise.all(
+    images.map((image, index) =>
+      extractSingleImage(client, image, index, images.length),
+    ),
+  );
 }

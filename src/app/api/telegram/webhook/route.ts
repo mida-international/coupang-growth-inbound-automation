@@ -19,7 +19,8 @@ import { accumulateTelegramAlbumPhoto } from "@/services/telegram-box-list/accum
 import { processTelegramPhotoMessage } from "@/services/telegram-box-list/process-telegram-photo";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+// after()로 도는 백그라운드 OCR(여러 장)까지 여유 있게 완료되도록 상향.
+export const maxDuration = 300;
 
 function verifyWebhookSecret(request: Request): boolean {
   const configuredSecret = getTelegramWebhookSecret();

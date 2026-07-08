@@ -7,7 +7,6 @@ import {
 } from "@/lib/vision/extract-with-gemini";
 import { mergeVisionPayloads } from "@/lib/vision/merge-vision-results";
 import { computeVisionStats } from "@/lib/vision/compute-vision-stats";
-import type { ParsedVisionPayload } from "@/lib/vision/parse-vision-json";
 import { verifyImageWithClaude } from "@/lib/vision/verify-with-claude";
 import type { VisionExtractResult } from "@/lib/vision/types";
 
@@ -27,13 +26,12 @@ export async function extractBoxListFromImages(
   // 모델이 일부 이미지 행을 누락시키므로, 반드시 장별로 검증한 뒤 merge 한다.
   const geminiResults = await extractWithGemini(images);
 
-  const verifiedResults: ParsedVisionPayload[] = [];
-
-  for (let index = 0; index < images.length; index += 1) {
-    verifiedResults.push(
-      await verifyImageWithClaude(geminiResults[index], images[index]),
-    );
-  }
+  // 이미지별 검증도 병렬로 (순차 처리 시 2장부터 함수 타임아웃에 걸린다).
+  const verifiedResults = await Promise.all(
+    geminiResults.map((geminiResult, index) =>
+      verifyImageWithClaude(geminiResult, images[index]),
+    ),
+  );
 
   const merged = mergeVisionPayloads(verifiedResults);
 

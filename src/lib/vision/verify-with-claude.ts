@@ -8,6 +8,32 @@ import {
 import { parseVisionJsonResponse, type ParsedVisionPayload } from "@/lib/vision/parse-vision-json";
 import type { VisionImageInput } from "@/lib/vision/extract-with-gemini";
 
+/** 일시적 오류(429/5xx/네트워크)면 지수 백오프로 재시도한다. */
+async function withRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      const retriable =
+        /\b(429|500|502|503|504|529)\b|overload|unavailable|rate.?limit|temporar|timeout|fetch|ECONNRESET|ETIMEDOUT/i.test(
+          message,
+        );
+
+      if (!retriable || attempt === attempts - 1) {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt));
+    }
+  }
+
+  throw lastError;
+}
+
 /**
  * 이미지 한 장을, 그 이미지의 Gemini 추출 결과와 대조해 검증/보정한다.
  * 여러 장이면 호출하는 쪽에서 장별로 이 함수를 호출한 뒤 결과 행을 이어 붙인다
@@ -45,12 +71,14 @@ export async function verifyImageWithClaude(
     },
   ];
 
-  const response = await client.messages.create({
-    model: getAnthropicVisionModel(),
-    max_tokens: 16000,
-    system: EXTRACT_BOX_LIST_SYSTEM_PROMPT,
-    messages: [{ role: "user", content }],
-  });
+  const response = await withRetry(() =>
+    client.messages.create({
+      model: getAnthropicVisionModel(),
+      max_tokens: 16000,
+      system: EXTRACT_BOX_LIST_SYSTEM_PROMPT,
+      messages: [{ role: "user", content }],
+    }),
+  );
 
   const textBlock = response.content.find((block) => block.type === "text");
 

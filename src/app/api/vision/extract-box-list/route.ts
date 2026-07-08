@@ -5,7 +5,7 @@ import { extractBoxListFromImages } from "@/lib/vision/extract-box-list-from-ima
 import { readVisionImageFiles } from "@/lib/vision/parse-vision-form-data";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
