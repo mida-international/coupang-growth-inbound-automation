@@ -192,15 +192,17 @@ export async function listInboundWorkbench(
     };
   }
 
-  const snapshotDates = await fetchSnapshotDates(sellerIds[0]!);
   const queryPrefix = buildWorkbenchDisplayQueryPrefix(queryContext);
   const sellerIn = buildSellerInClause(sellerIds);
   const paginationClause = exportAll
     ? Prisma.empty
     : Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
 
-  const rows = await prisma.$queryRaw<RawWorkbenchRow[]>(
-    Prisma.sql`
+  // 스냅샷 날짜 조회는 본 쿼리 결과와 무관하므로 병렬 실행 (순차 왕복 제거)
+  const [snapshotDates, rows] = await Promise.all([
+    fetchSnapshotDates(sellerIds[0]!),
+    prisma.$queryRaw<RawWorkbenchRow[]>(
+      Prisma.sql`
       ${queryPrefix},
       filtered AS (
         SELECT
@@ -258,7 +260,8 @@ export async function listInboundWorkbench(
       FROM filtered
       CROSS JOIN total_count
     `,
-  );
+    ),
+  ]);
 
   return {
     snapshotDates,

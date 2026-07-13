@@ -26,7 +26,12 @@ export default async function DashboardPage({
   const profile = await requireProfile();
 
   const params = await searchParams;
-  const accounts = await listSellerAccounts();
+  // 판매자 목록과 컬럼 레이아웃은 서로 독립적이므로 병렬 조회
+  // (컬럼 레이아웃을 본 쿼리 뒤에서 순차로 부르던 것을 앞으로 당겨 왕복 제거)
+  const [accounts, columnLayout] = await Promise.all([
+    listSellerAccounts(),
+    getInboundWorkbenchColumnLayout(profile.id),
+  ]);
   const sellerIds = resolveSellerAccountIds(accounts, params.seller);
   const search = params.q?.trim() ?? "";
   const pageSize = normalizeInboundWorkbenchPageSize(Number(params.pageSize));
@@ -43,8 +48,6 @@ export default async function DashboardPage({
           dir: params.dir,
         })
       : EMPTY_INBOUND_WORKBENCH_RESULT;
-
-  const columnLayout = await getInboundWorkbenchColumnLayout(profile.id);
 
   return (
     <div className="flex min-w-0 flex-col gap-6">

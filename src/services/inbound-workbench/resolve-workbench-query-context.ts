@@ -8,14 +8,15 @@ export async function resolveWorkbenchQueryContext(
     return null;
   }
 
-  const shopling = await prisma.shoplingInventory.aggregate({
-    _max: { snapshotDate: true },
-  });
-
-  const template = await prisma.coupangGrowthInboundTemplate.aggregate({
-    where: { coupangSellerAccountId: { in: sellerIds } },
-    _max: { snapshotDate: true },
-  });
+  const [shopling, template] = await Promise.all([
+    prisma.shoplingInventory.aggregate({
+      _max: { snapshotDate: true },
+    }),
+    prisma.coupangGrowthInboundTemplate.aggregate({
+      where: { coupangSellerAccountId: { in: sellerIds } },
+      _max: { snapshotDate: true },
+    }),
+  ]);
 
   if (!template._max.snapshotDate) {
     return null;
