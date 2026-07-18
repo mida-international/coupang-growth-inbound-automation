@@ -122,6 +122,7 @@ export async function processTelegramBoxList(
         storagePath,
         rowCount,
         imageCount: result.stats.imageCount,
+        visionData: result.visionData as Prisma.InputJsonValue,
         status: "completed",
         completedAt: new Date(),
       },

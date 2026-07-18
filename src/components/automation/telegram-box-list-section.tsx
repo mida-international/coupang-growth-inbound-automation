@@ -1,7 +1,9 @@
 "use client";
 
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { TelegramCoupangTemplatePanel } from "@/components/automation/telegram-coupang-template-panel";
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { apiDelete } from "@/lib/api-client";
+import type { SellerAccountView } from "@/services/coupang-seller-accounts/types";
 
 const DEFAULT_CAPTION_KEYWORD = "#박스";
 
@@ -62,14 +65,17 @@ function statusLabel(status: TelegramBoxListUploadItem["status"]): string {
 
 function UploadRow({
   upload,
+  accounts,
   onDeleted,
 }: {
   upload: TelegramBoxListUploadItem;
+  accounts: SellerAccountView[];
   onDeleted: () => void;
 }) {
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [templateOpen, setTemplateOpen] = useState(false);
 
   async function handleDownload() {
     if (upload.status !== "completed") {
@@ -172,6 +178,20 @@ function UploadRow({
             </Button>
             <Button
               type="button"
+              variant="outline"
+              size="sm"
+              disabled={upload.status !== "completed"}
+              onClick={() => setTemplateOpen((open) => !open)}
+            >
+              쿠팡 템플릿
+              {templateOpen ? (
+                <ChevronUp className="size-3.5" aria-hidden />
+              ) : (
+                <ChevronDown className="size-3.5" aria-hidden />
+              )}
+            </Button>
+            <Button
+              type="button"
               variant="ghost"
               size="sm"
               disabled={deleting}
@@ -182,6 +202,17 @@ function UploadRow({
           </div>
         </TableCell>
       </TableRow>
+      {templateOpen && upload.status === "completed" ? (
+        <TableRow className="hover:bg-transparent">
+          <TableCell colSpan={7} className="p-3">
+            <TelegramCoupangTemplatePanel
+              uploadId={upload.id}
+              outputFileName={upload.outputFileName}
+              accounts={accounts}
+            />
+          </TableCell>
+        </TableRow>
+      ) : null}
       {error || upload.errorMessage ? (
         <TableRow>
           <TableCell colSpan={7} className="text-xs text-destructive">
@@ -193,7 +224,11 @@ function UploadRow({
   );
 }
 
-export function TelegramBoxListSection() {
+export function TelegramBoxListSection({
+  accounts,
+}: {
+  accounts: SellerAccountView[];
+}) {
   const [uploads, setUploads] = useState<TelegramBoxListUploadItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -260,6 +295,11 @@ export function TelegramBoxListSection() {
             <li>
               OCR 완료 후 아래 목록에서 엑셀을 다운로드합니다.
             </li>
+            <li>
+              완료된 행에서 <span className="font-medium text-foreground">쿠팡 템플릿</span>을 누르고
+              판매자 계정을 선택하면 쿠팡그로스 입고 템플릿을 바로 생성할 수
+              있습니다.
+            </li>
           </ol>
           <p className="mt-2 text-xs">
             캡션 없이 올린 사진은 처리되지 않으며, 봇이 캡션 입력 방법을
@@ -312,6 +352,7 @@ export function TelegramBoxListSection() {
                   <UploadRow
                     key={upload.id}
                     upload={upload}
+                    accounts={accounts}
                     onDeleted={() => void loadUploads()}
                   />
                 ))

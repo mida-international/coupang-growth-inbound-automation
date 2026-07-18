@@ -555,6 +555,8 @@ model TelegramBoxListUpload {
   imageCount        Int                         @default(1) @map("image_count")
   status            TelegramBoxListUploadStatus @default(processing)
   errorMessage      String?                     @map("error_message")
+  /// OCR 원본 인식 데이터(신뢰도 포함) — 미리보기용. 완료 시에만 채워진다.
+  visionData        Json?                       @map("vision_data")
   createdAt         DateTime                    @default(now()) @map("created_at")
   completedAt       DateTime?                   @map("completed_at")
 
