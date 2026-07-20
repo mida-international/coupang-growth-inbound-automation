@@ -29,7 +29,12 @@ export async function generateShoplingInboundTemplate(input: {
 
   const lookup = await lookupShoplingInboundBarcodes(parsed.items);
 
-  if (lookup.rows.length === 0) {
+  // 수량 0 행은 rows에 포함되지 않으므로, 매칭 자체가 하나도 없을 때만 실패 처리한다.
+  const matchedCount = lookup.validation.filter(
+    (row) => row.status === "matched",
+  ).length;
+
+  if (matchedCount === 0) {
     const lookupError = formatShoplingInboundLookupError(lookup);
 
     throw new Error(
@@ -50,6 +55,7 @@ export async function generateShoplingInboundTemplate(input: {
   return {
     buffer,
     rows: lookup.rows,
+    validation: lookup.validation,
     stats: {
       inputRows: parsed.items.length,
       outputRows: lookup.rows.length,

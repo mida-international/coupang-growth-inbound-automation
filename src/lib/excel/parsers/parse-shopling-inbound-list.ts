@@ -64,7 +64,8 @@ export function parseShoplingInboundList(
     const quantityRaw = readCellValue(firstSheet, rowIndex, QUANTITY_COL);
     const quantity = parseQuantity(quantityRaw);
 
-    if (!ptnGoodsCd || quantity == null || quantity <= 0) {
+    // 수량 0 행도 바코드 검증 대상이므로 유지한다 (음수·빈 값만 스킵).
+    if (!ptnGoodsCd || quantity == null || quantity < 0) {
       const hasAnyValue = [ptnGoodsCd, optionValue, quantityRaw].some(
         (value) => value.length > 0,
       );

@@ -1,7 +1,6 @@
 import { requireApiProfile } from "@/lib/api/auth";
-import { encodeContentDispositionFilename } from "@/lib/api/download-helpers";
 import { logRouteError } from "@/lib/api/log-route-error";
-import { jsonError } from "@/lib/api/response";
+import { jsonError, jsonSuccess } from "@/lib/api/response";
 import { resolveShoplingInboundErrorStatus } from "@/lib/deliverables/resolve-shopling-inbound-error-status";
 import { buildShoplingInboundFilename } from "@/lib/excel/generators/build-shopling-inbound-filename";
 import { generateShoplingInboundTemplate } from "@/services/deliverables/generate-shopling-inbound-template";
@@ -27,21 +26,19 @@ export async function POST(request: Request) {
       inboundListBuffer,
     });
 
-    const filename = buildShoplingInboundFilename();
-
-    return new Response(new Uint8Array(result.buffer), {
-      status: 200,
-      headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": encodeContentDispositionFilename(filename),
-        "X-Inbound-Rows": String(result.stats.outputRows),
-        "X-Inbound-Input-Rows": String(result.stats.inputRows),
-        "X-Inbound-Skipped-Rows": String(result.stats.skippedRows),
-        "X-Inbound-Unmapped": String(result.stats.unmapped.length),
-        "X-Inbound-Ambiguous": String(result.stats.ambiguous.length),
-        "Cache-Control": "no-store",
+    // 파일과 행별 검증 결과를 함께 내려야 하므로 base64 JSON으로 반환한다.
+    return jsonSuccess({
+      fileName: buildShoplingInboundFilename(),
+      fileBase64: result.buffer.toString("base64"),
+      stats: {
+        inputRows: result.stats.inputRows,
+        outputRows: result.stats.outputRows,
+        skippedRows: result.stats.skippedRows,
+        skippedDummy: result.stats.skippedDummy,
+        unmapped: result.stats.unmapped.length,
+        ambiguous: result.stats.ambiguous.length,
       },
+      validation: result.validation,
     });
   } catch (error) {
     logRouteError(error, {

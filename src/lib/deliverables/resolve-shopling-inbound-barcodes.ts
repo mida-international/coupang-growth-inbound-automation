@@ -5,7 +5,10 @@ import {
   type ShoplingInboundOptionMatchTier,
 } from "@/lib/deliverables/normalize-shopling-inbound-option";
 import type { ShoplingInboundListItem } from "@/lib/excel/parsers/parse-shopling-inbound-list";
-import type { OutboundDeductRow } from "@/services/deliverables/types";
+import type {
+  OutboundDeductRow,
+  ShoplingInboundValidationRow,
+} from "@/services/deliverables/types";
 
 export type ShoplingInboundInventoryRow = {
   ptnGoodsCd: string | null;
@@ -25,6 +28,7 @@ export type ResolveShoplingInboundBarcodesResult = {
   unmapped: ShoplingInboundLookupIssue[];
   ambiguous: ShoplingInboundLookupIssue[];
   skippedDummy: number;
+  validation: ShoplingInboundValidationRow[];
 };
 
 const OPTION_MATCH_TIERS: ShoplingInboundOptionMatchTier[] = [
@@ -206,6 +210,7 @@ export function resolveShoplingInboundBarcodes(
   const rows: OutboundDeductRow[] = [];
   const unmapped: ShoplingInboundLookupIssue[] = [];
   const ambiguous: ShoplingInboundLookupIssue[] = [];
+  const validation: ShoplingInboundValidationRow[] = [];
   let skippedDummy = 0;
 
   for (const item of items) {
@@ -214,6 +219,14 @@ export function resolveShoplingInboundBarcodes(
       item.optionValue,
       inventoryRows,
     );
+
+    validation.push({
+      ptnGoodsCd: item.ptnGoodsCd,
+      optionValue: item.optionValue,
+      quantity: item.quantity,
+      status: match.status,
+      barcode: match.status === "matched" ? match.barcode : null,
+    });
 
     if (match.status === "unmapped") {
       unmapped.push(formatLookupIssue(item));
@@ -230,6 +243,11 @@ export function resolveShoplingInboundBarcodes(
       continue;
     }
 
+    // 수량 0 행은 바코드 검증까지만 하고 WMS 출력/기록 대상에는 넣지 않는다.
+    if (item.quantity <= 0) {
+      continue;
+    }
+
     rows.push({
       barcode: match.barcode,
       deductQty: item.quantity,
@@ -241,5 +259,6 @@ export function resolveShoplingInboundBarcodes(
     unmapped,
     ambiguous,
     skippedDummy,
+    validation,
   };
 }

@@ -114,10 +114,26 @@ export type ShoplingInboundTemplateStats = {
   ambiguous: Array<{ ptnGoodsCd: string; optionValue: string }>;
 };
 
+export type ShoplingInboundValidationStatus =
+  | "matched"
+  | "unmapped"
+  | "ambiguous"
+  | "skippedDummy";
+
+/** 업로드 파일의 유효 행 1건당 바코드 매칭 검증 결과 (입력 순서 유지) */
+export type ShoplingInboundValidationRow = {
+  ptnGoodsCd: string;
+  optionValue: string;
+  quantity: number;
+  status: ShoplingInboundValidationStatus;
+  barcode: string | null;
+};
+
 export type GenerateShoplingInboundTemplateResult = {
   buffer: Buffer;
   stats: ShoplingInboundTemplateStats;
   rows: OutboundDeductRow[];
+  validation: ShoplingInboundValidationRow[];
 };
 
 export type ShoplingInboundOriginalStats = {

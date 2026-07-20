@@ -53,6 +53,30 @@ describe("parseShoplingInboundList", () => {
     assert.equal(result.skippedRows, 4);
   });
 
+  it("keeps zero-quantity rows for barcode validation and skips negatives", () => {
+    const buffer = buildInboundListWorkbook([
+      ["", "", "", "品名", "옵션", "", "", "", "总数量"],
+      ["", "", "", "气泡袋", "白色，20*30", "", "", "", 0],
+      ["", "", "", "테이프", "단품", "", "", "", -5],
+      ["", "", "", "라벨", "레드", "", "", "", 3],
+    ]);
+
+    const result = parseShoplingInboundList(buffer);
+
+    assert.equal(result.items.length, 2);
+    assert.deepEqual(result.items[0], {
+      ptnGoodsCd: "气泡袋",
+      optionValue: "白色，20*30",
+      quantity: 0,
+    });
+    assert.deepEqual(result.items[1], {
+      ptnGoodsCd: "라벨",
+      optionValue: "레드",
+      quantity: 3,
+    });
+    assert.equal(result.skippedRows, 2);
+  });
+
   it("validates that at least one usable row exists", () => {
     const emptyBuffer = buildInboundListWorkbook([
       ["", "", "", "品名", "", "", "", "", "总数量"],

@@ -9,7 +9,43 @@ import {
   DELIVERABLES_PRIMARY_BUTTON_CLASS,
 } from "@/components/deliverables/deliverables-action-bar";
 import { ExcelDropzone } from "@/components/excel/excel-dropzone";
+import { ShoplingInboundValidationTable } from "@/components/deliverables/shopling-inbound-validation-table";
 import { Button } from "@/components/ui/button";
+import type { ShoplingInboundValidationRow } from "@/services/deliverables/types";
+
+const XLSX_MIME_TYPE =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+type ShoplingInboundTemplateResponse =
+  | {
+      ok: true;
+      data: {
+        fileName: string;
+        fileBase64: string;
+        stats: {
+          inputRows: number;
+          outputRows: number;
+          skippedRows: number;
+          skippedDummy: number;
+          unmapped: number;
+          ambiguous: number;
+        };
+        validation: ShoplingInboundValidationRow[];
+      };
+    }
+  | { ok: false; error?: string }
+  | null;
+
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return new Blob([bytes], { type: mimeType });
+}
 
 export function ShoplingInboundTemplateSection() {
   const router = useRouter();
@@ -18,6 +54,9 @@ export function ShoplingInboundTemplateSection() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [canRecordInbound, setCanRecordInbound] = useState(false);
+  const [validation, setValidation] = useState<
+    ShoplingInboundValidationRow[] | null
+  >(null);
   const canDownload = excelFile !== null && !isDownloading && !isRecording;
 
   async function handleRecordInboundClick() {
@@ -70,6 +109,7 @@ export function ShoplingInboundTemplateSection() {
 
     setIsDownloading(true);
     setNotice(null);
+    setValidation(null);
 
     try {
       const formData = new FormData();
@@ -80,54 +120,40 @@ export function ShoplingInboundTemplateSection() {
         body: formData,
       });
 
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
+      const payload = (await response
+        .json()
+        .catch(() => null)) as ShoplingInboundTemplateResponse;
+
+      if (!response.ok || !payload || !payload.ok) {
         throw new Error(
-          payload?.error ?? "샵플링 입고 템플릿 생성에 실패했습니다.",
+          payload && "error" in payload && payload.error
+            ? payload.error
+            : "샵플링 입고 템플릿 생성에 실패했습니다.",
         );
       }
 
-      const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition") ?? "";
-      const filenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      const filename = filenameMatch
-        ? decodeURIComponent(filenameMatch[1])
-        : "shopling_gross_inbound.xlsx";
+      const { fileName, fileBase64, stats, validation: validationRows } =
+        payload.data;
 
-      const inboundRows = response.headers.get("X-Inbound-Rows");
-      const skippedRows = response.headers.get("X-Inbound-Skipped-Rows");
-      const unmapped = response.headers.get("X-Inbound-Unmapped");
-      const ambiguous = response.headers.get("X-Inbound-Ambiguous");
-
+      const blob = base64ToBlob(fileBase64, XLSX_MIME_TYPE);
       const objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = objectUrl;
-      anchor.download = filename;
+      anchor.download = fileName;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(objectUrl);
 
       const statsParts = [
-        inboundRows !== null ? `입고 ${inboundRows}건` : null,
-        skippedRows !== null && Number(skippedRows) > 0
-          ? `스킵 ${skippedRows}행`
-          : null,
-        unmapped !== null && Number(unmapped) > 0
-          ? `미매핑 ${unmapped}건`
-          : null,
-        ambiguous !== null && Number(ambiguous) > 0
-          ? `모호한 매칭 ${ambiguous}건`
-          : null,
+        `입고 ${stats.outputRows}건`,
+        stats.skippedRows > 0 ? `스킵 ${stats.skippedRows}행` : null,
+        stats.unmapped > 0 ? `미매핑 ${stats.unmapped}건` : null,
+        stats.ambiguous > 0 ? `모호한 매칭 ${stats.ambiguous}건` : null,
       ].filter(Boolean);
 
-      setNotice(
-        statsParts.length > 0
-          ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
-          : "샵플링 입고 템플릿 파일을 다운로드했습니다.",
-      );
+      setNotice(`${statsParts.join(", ")} — 파일을 다운로드했습니다.`);
+      setValidation(validationRows);
       setCanRecordInbound(true);
     } catch (error) {
       setNotice(
@@ -163,6 +189,7 @@ export function ShoplingInboundTemplateSection() {
               setExcelFile(files[0] ?? null);
               setNotice(null);
               setCanRecordInbound(false);
+              setValidation(null);
             }}
           />
           <p className="mt-2 text-xs text-muted-foreground">
@@ -206,6 +233,10 @@ export function ShoplingInboundTemplateSection() {
           <p className="text-sm text-muted-foreground" role="status">
             {notice}
           </p>
+        ) : null}
+
+        {validation ? (
+          <ShoplingInboundValidationTable rows={validation} />
         ) : null}
       </div>
     </DeliverablesSection>

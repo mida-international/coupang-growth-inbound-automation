@@ -112,6 +112,56 @@ describe("resolveShoplingInboundBarcodes", () => {
     assert.equal(result.ambiguous.length, 1);
   });
 
+  it("matches zero-quantity rows for validation but excludes them from output rows", () => {
+    const result = resolveShoplingInboundBarcodes(
+      [
+        { ptnGoodsCd: "气泡袋", optionValue: "白色，20*30", quantity: 0 },
+        { ptnGoodsCd: "테이프", optionValue: "단품", quantity: 3 },
+      ],
+      inventoryRows,
+    );
+
+    assert.deepEqual(result.rows, [
+      { barcode: "8802222222222", deductQty: 3 },
+    ]);
+    assert.equal(result.validation.length, 2);
+    assert.deepEqual(result.validation[0], {
+      ptnGoodsCd: "气泡袋",
+      optionValue: "白色，20*30",
+      quantity: 0,
+      status: "matched",
+      barcode: "8801111111111",
+    });
+    assert.equal(result.unmapped.length, 0);
+  });
+
+  it("collects per-row validation results in input order", () => {
+    const result = resolveShoplingInboundBarcodes(
+      [
+        { ptnGoodsCd: "气泡袋", optionValue: "白色，20*30", quantity: 2 },
+        { ptnGoodsCd: "없는상품", optionValue: "옵션", quantity: 1 },
+      ],
+      inventoryRows,
+    );
+
+    assert.deepEqual(result.validation, [
+      {
+        ptnGoodsCd: "气泡袋",
+        optionValue: "白色，20*30",
+        quantity: 2,
+        status: "matched",
+        barcode: "8801111111111",
+      },
+      {
+        ptnGoodsCd: "없는상품",
+        optionValue: "옵션",
+        quantity: 1,
+        status: "unmapped",
+        barcode: null,
+      },
+    ]);
+  });
+
   it("keeps duplicate barcodes as separate rows in list order", () => {
     const result = resolveShoplingInboundBarcodes(
       [
