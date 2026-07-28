@@ -12,6 +12,9 @@ export type PushWarehouseInboundListToGoogleSheetsInput = {
   rotation: 0 | 1 | 2 | 3;
 };
 
+// 날짜별로 탭을 새로 만들지 않고, 고정 탭 하나를 최초 1회 생성한 뒤 매번 갱신한다.
+const WAREHOUSE_INBOUND_SHEET_TITLE = "창고전송용 입고리스트";
+
 export type PushWarehouseInboundListToGoogleSheetsResult =
   | {
       ok: true;
@@ -87,7 +90,7 @@ export async function pushWarehouseInboundListToGoogleSheets(
 
     const writeResult = await writeGridToGoogleSheet(sheetsConfig.config, {
       spreadsheetId: sheetsConfig.config.spreadsheetId,
-      sheetTitle: context.grid.sheetTitle,
+      sheetTitle: WAREHOUSE_INBOUND_SHEET_TITLE,
       headers: context.grid.headers,
       rows: context.grid.rows,
     });
