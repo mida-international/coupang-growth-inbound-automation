@@ -7,6 +7,7 @@ import {
 } from "@/lib/vision/extract-with-gemini";
 import { mergeVisionPayloads } from "@/lib/vision/merge-vision-results";
 import { computeVisionStats } from "@/lib/vision/compute-vision-stats";
+import { translateVisionError } from "@/lib/vision/translate-vision-error";
 import { verifyImageWithClaude } from "@/lib/vision/verify-with-claude";
 import type { VisionExtractResult } from "@/lib/vision/types";
 
@@ -24,14 +25,21 @@ export async function extractBoxListFromImages(
   // 1) 이미지별 Gemini 추출 → 2) 이미지별 Claude 검증 → 3) 모든 이미지의 행을
   // 순서대로(1번 아래 2번…) 그대로 이어 붙인다. 여러 이미지를 한 번에 검증하면
   // 모델이 일부 이미지 행을 누락시키므로, 반드시 장별로 검증한 뒤 merge 한다.
-  const geminiResults = await extractWithGemini(images);
+  let verifiedResults;
 
-  // 이미지별 검증도 병렬로 (순차 처리 시 2장부터 함수 타임아웃에 걸린다).
-  const verifiedResults = await Promise.all(
-    geminiResults.map((geminiResult, index) =>
-      verifyImageWithClaude(geminiResult, images[index]),
-    ),
-  );
+  try {
+    const geminiResults = await extractWithGemini(images);
+
+    // 이미지별 검증도 병렬로 (순차 처리 시 2장부터 함수 타임아웃에 걸린다).
+    verifiedResults = await Promise.all(
+      geminiResults.map((geminiResult, index) =>
+        verifyImageWithClaude(geminiResult, images[index]),
+      ),
+    );
+  } catch (error) {
+    console.error("[vision] 이미지 분석 실패 (원본 오류):", error);
+    throw translateVisionError(error);
+  }
 
   const merged = mergeVisionPayloads(verifiedResults);
 

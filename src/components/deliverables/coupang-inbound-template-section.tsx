@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { CoupangInboundImageDropzone } from "@/components/deliverables/vision/coupang-inbound-image-dropzone";
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
+import { ErrorNoticeDialog } from "@/components/deliverables/error-notice-dialog";
 import {
   DeliverablesActionBar,
   DELIVERABLES_PRIMARY_BUTTON_CLASS,
@@ -59,6 +60,7 @@ export function CoupangInboundTemplateSection({
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [visionData, setVisionData] = useState<VisionExtractedData | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingShoplingOutbound, setIsDownloadingShoplingOutbound] =
     useState(false);
@@ -179,7 +181,7 @@ export function CoupangInboundTemplateSection({
       setNotice(noticeMessage);
       setCanRecordInbound(true);
     } catch (error) {
-      setNotice(
+      setErrorMessage(
         error instanceof Error ? error.message : "입고 템플릿 생성에 실패했습니다.",
       );
     } finally {
@@ -215,7 +217,7 @@ export function CoupangInboundTemplateSection({
       );
       setNotice(noticeMessage);
     } catch (error) {
-      setNotice(
+      setErrorMessage(
         error instanceof Error
           ? error.message
           : "샵플링 출고 템플릿 생성에 실패했습니다.",
@@ -243,7 +245,7 @@ export function CoupangInboundTemplateSection({
       const recordedCount = await recordCoupangInbound(sellerId, boxListFile);
       setNotice(`${recordedCount}개 바코드 입고를 기록했습니다.`);
     } catch (error) {
-      setNotice(
+      setErrorMessage(
         error instanceof Error ? error.message : "입고 기록에 실패했습니다.",
       );
     } finally {
@@ -410,6 +412,11 @@ export function CoupangInboundTemplateSection({
           </p>
         ) : null}
       </div>
+
+      <ErrorNoticeDialog
+        message={errorMessage}
+        onClose={() => setErrorMessage(null)}
+      />
     </DeliverablesSection>
   );
 }
