@@ -34,6 +34,9 @@ export function DeliverablesPanel({
 
       <WarehouseInboundListSection
         sellerId={sellerId}
+        sellerName={
+          accounts.find((account) => account.id === sellerId)?.displayName ?? ""
+        }
         rowCount={warehouseInboundList.rowCount}
         snapshotDates={warehouseInboundList.snapshotDates}
       />

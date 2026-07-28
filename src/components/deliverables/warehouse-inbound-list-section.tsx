@@ -20,9 +20,13 @@ import type { WarehouseInboundListSnapshotDates } from "@/services/deliverables/
 
 type WarehouseInboundListSectionProps = {
   sellerId: string;
+  sellerName: string;
   rowCount: number;
   snapshotDates: WarehouseInboundListSnapshotDates | null;
 };
+
+// 추세 날짜열 시트반영(3단계)은 이 계정에서만 자동 실행한다.
+const TRENDS_AUTO_PUSH_ACCOUNT = "mizucos";
 
 const WAREHOUSE_INBOUND_ROTATION_OPTIONS = [
   { value: "1", label: "1회전" },
@@ -39,7 +43,24 @@ type StepStatus = "success" | "error" | "skipped";
 type DownloadRunResult = {
   download: { status: StepStatus; message: string };
   sheet: { status: StepStatus; message: string; sheetUrl: string | null };
+  /** mizucos 계정이 아닐 때는 null (알림창에 표시하지 않음) */
+  trends: {
+    status: StepStatus;
+    message: string;
+    sheetUrl: string | null;
+  } | null;
 };
+
+/** KST 기준 오늘 날짜 (YYYY-MM-DD) */
+function getKstTodayIsoDate(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+}
+
+/** 추세 열 제목: '(완)' 없는 일반 날짜 열 (예: 7/28) */
+function buildTrendsColumnTitle(isoDate: string): string {
+  const [, month, day] = isoDate.split("-");
+  return `${Number(month)}/${Number(day)}`;
+}
 
 const STEP_STATUS_LABEL: Record<StepStatus, string> = {
   success: "완료",
@@ -143,6 +164,7 @@ function formatSnapshotLabel(
 
 export function WarehouseInboundListSection({
   sellerId,
+  sellerName,
   rowCount,
   snapshotDates,
 }: WarehouseInboundListSectionProps) {
@@ -239,6 +261,53 @@ export function WarehouseInboundListSection({
     URL.revokeObjectURL(objectUrl);
   }
 
+  // 추세관리에서 날짜 열을 눌렀을 때와 동일한 동작 (오늘 날짜, '(완)' 없는 열)
+  async function pushTrendsDateColumn(): Promise<{
+    sheetUrl: string;
+    matchedCount: number;
+    barcodeRowCount: number;
+    title: string;
+  }> {
+    const isoDate = getKstTodayIsoDate();
+    const title = buildTrendsColumnTitle(isoDate);
+
+    const response = await fetch(
+      "/api/downloads/inbound-trends/date-column-to-sheet",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seller: sellerId,
+          date: isoDate,
+          kind: "warehouse",
+          title,
+        }),
+      },
+    );
+
+    const payload = (await response.json().catch(() => null)) as
+      | {
+          ok: true;
+          data: {
+            sheetUrl: string;
+            matchedCount: number;
+            barcodeRowCount: number;
+          };
+        }
+      | { ok: false; error?: string }
+      | null;
+
+    if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
+      throw new Error(
+        payload && "error" in payload && payload.error
+          ? payload.error
+          : "추세 시트 기입에 실패했습니다.",
+      );
+    }
+
+    return { ...payload.data, title };
+  }
+
   async function pushToGoogleSheet(): Promise<{
     sheetUrl: string;
     rowCount: number;
@@ -291,7 +360,11 @@ export function WarehouseInboundListSection({
       return;
     }
 
-    // 표준 다운로드: 엑셀 다운로드 → 시트반영을 자동 연속 실행하고 결과 알림창 표시
+    // 표준 다운로드: 엑셀 다운로드 → 시트반영 (→ mizucos면 추세 시트반영)을
+    // 자동 연속 실행하고 결과 알림창 표시
+    const isTrendsAutoPushAccount =
+      sellerName.trim().toLowerCase() === TRENDS_AUTO_PUSH_ACCOUNT;
+
     const result: DownloadRunResult = {
       download: { status: "error", message: "다운로드에 실패했습니다." },
       sheet: {
@@ -299,6 +372,13 @@ export function WarehouseInboundListSection({
         message: "다운로드가 실패해 실행하지 않았습니다.",
         sheetUrl: null,
       },
+      trends: isTrendsAutoPushAccount
+        ? {
+            status: "skipped",
+            message: "다운로드가 실패해 실행하지 않았습니다.",
+            sheetUrl: null,
+          }
+        : null,
     };
 
     try {
@@ -339,6 +419,26 @@ export function WarehouseInboundListSection({
               : "Google Sheets 반영에 실패했습니다.",
           sheetUrl: null,
         };
+      }
+
+      if (isTrendsAutoPushAccount) {
+        try {
+          const trends = await pushTrendsDateColumn();
+          result.trends = {
+            status: "success",
+            message: `'${trends.title}' 열 삽입 완료 — O열 바코드 ${trends.barcodeRowCount}개 중 ${trends.matchedCount}개 매칭`,
+            sheetUrl: trends.sheetUrl || null,
+          };
+        } catch (error) {
+          result.trends = {
+            status: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "추세 시트 기입에 실패했습니다.",
+            sheetUrl: null,
+          };
+        }
       }
     }
 
@@ -505,6 +605,14 @@ export function WarehouseInboundListSection({
                 message={runResult.sheet.message}
                 sheetUrl={runResult.sheet.sheetUrl}
               />
+              {runResult.trends ? (
+                <StepResultRow
+                  label="추세 시트반영"
+                  status={runResult.trends.status}
+                  message={runResult.trends.message}
+                  sheetUrl={runResult.trends.sheetUrl}
+                />
+              ) : null}
             </ul>
           ) : null}
           <DialogFooter>
