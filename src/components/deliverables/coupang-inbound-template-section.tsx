@@ -327,6 +327,11 @@ export function CoupangInboundTemplateSection({
                 imageFiles={imageFiles}
                 onImageFilesChange={(files) => {
                   setImageFiles(files);
+                  // 이미지가 바뀌면 이전 OCR 결과 캐시를 즉시 비운다.
+                  // useEffect 초기화는 커밋 이후에 실행되므로, 그 사이에
+                  // resolveVisionData가 옛 결과를 재사용하는 경합을 없앤다
+                  // (많은 이미지를 연속 처리할 때 "새 창을 열어야" 반영되던 문제).
+                  setVisionData(null);
                   setNotice(null);
                 }}
                 visionData={visionData}

@@ -16,6 +16,7 @@ WHAT TO TRANSCRIBE:
 - Output ONLY the printed/typed text inside each cell, exactly as printed (keep Korean text verbatim).
 - IGNORE pen marks: check marks (✓/∨), circles, loops, arrows, the # / △ symbols, margin notes, and anything outside the cell grid. Ignore blank cells (output "").
 - THE ONLY pen mark that matters is an X or a strike-through/deletion line drawn THROUGH the printed 수량 — see the 수량 correction rule below.
+- COLOR CUE: the strike/X and the right-side correction digit are usually drawn in red (or other colored) ink, distinct from the black printed table text. Use this color contrast to locate corrections you would otherwise miss — but a colored check mark, circle, or any mark that is NOT drawn through the 수량 is still NOT a correction.
 - 바코드: digits only, no spaces.
 
 수량 (column 6) CORRECTION RULE — the ONE case that changes a printed number. Apply exactly:
@@ -25,6 +26,7 @@ WHAT TO TRANSCRIBE:
 - A handwritten number to the LEFT of the printed 수량 is NOT a correction — ignore it and keep the printed 수량.
 - If the 수량 is struck out but there is no handwritten number to its right, keep the printed number.
 - Always output the "가용" field as "" (it is only the source of the correction, never an output value).
+- MOST-MISSED CASE — check every row for it: a struck 수량 with a small red "0" written to its right means the item was cancelled / is out of stock, so the corrected 수량 is 0. Faint or tiny right-side digits — the "0" most of all — are the single most commonly overlooked correction. Deliberately scan the right edge of EVERY 수량 cell for one before concluding the printed number is unchanged.
 - Examples:
   · printed 수량 "5" struck through, "1" handwritten to its right (가용) → 수량="1", 가용=""
   · printed 수량 "2" crossed out, "0" handwritten to its right → 수량="0", 가용=""
@@ -53,6 +55,7 @@ ${geminiJson}
 Review against the image(s). Fix barcode misreads and apply the 수량 correction rule EXACTLY:
 - Only a printed 수량 that is struck out (an X over it, or a strike-through / deletion line) is corrected. A circle, check mark, or any other mark is NOT a trigger — keep the printed number for those.
 - When the printed 수량 is struck out, set 수량 to the handwritten number written to the RIGHT of it (in the 가용 cell, column 7, or immediately to its right). Do not overlook faint/small right-side digits.
+- Do NOT assume Gemini already caught the strikes — independently re-inspect EVERY row's 수량 cell in the image for a red X / strike-through and a red digit beside it. The most frequently missed correction is a struck 수량 with a small red "0" next to it (item cancelled / out of stock) → set 수량 = 0. The strike and correction digit are usually in red ink, distinct from the black printed text.
 - A handwritten number to the LEFT of the printed 수량 is NOT a correction — ignore it. If a struck number has no right-side handwritten number, keep the printed number.
 - The 가용 field is ALWAYS "" in the output (only the source of the correction).
 - Ignore all other handwriting: check marks (✓/∨), circles, arrows, #/△ symbols, and margin notes.

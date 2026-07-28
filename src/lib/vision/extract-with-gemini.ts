@@ -48,6 +48,9 @@ async function extractSingleImage(
   const model = client.getGenerativeModel({
     model: getGeminiVisionModel(),
     systemInstruction: EXTRACT_BOX_LIST_SYSTEM_PROMPT,
+    // temperature 0: 같은 이미지를 같은 결과로 읽게 해 취소(0) 인식이
+    // 실행마다 달라지는 것을 막는다.
+    generationConfig: { temperature: 0 },
   });
 
   const result = await withRetry(() =>

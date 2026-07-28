@@ -75,6 +75,8 @@ export async function verifyImageWithClaude(
     client.messages.create({
       model: getAnthropicVisionModel(),
       max_tokens: 16000,
+      // temperature 0: 검증 결과가 실행마다 흔들리지 않도록 결정적으로 읽는다.
+      temperature: 0,
       system: EXTRACT_BOX_LIST_SYSTEM_PROMPT,
       messages: [{ role: "user", content }],
     }),

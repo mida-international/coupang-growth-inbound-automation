@@ -33,7 +33,7 @@ export async function uploadExcelFile(
   path: string,
   buffer: Buffer,
   contentType: string,
-  options?: { upsert?: boolean },
+  options?: { upsert?: boolean; cacheControl?: string },
 ) {
   const supabase = createAdminClient();
 
@@ -42,6 +42,10 @@ export async function uploadExcelFile(
     .upload(path, buffer, {
       contentType,
       upsert: options?.upsert ?? true,
+      // storage-js 기본값은 cacheControl "3600"(1시간)이다. 같은 경로를
+      // 덮어쓰는 가변 파일(예: 최신 WING 템플릿)은 CDN이 옛 버전을 계속
+      // 내려줄 수 있으므로, 호출부에서 "0"으로 넘겨 항상 재검증하게 한다.
+      ...(options?.cacheControl ? { cacheControl: options.cacheControl } : {}),
     });
 
   if (error) {
