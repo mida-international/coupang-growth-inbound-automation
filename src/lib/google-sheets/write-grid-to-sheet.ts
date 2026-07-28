@@ -11,6 +11,11 @@ export type WriteGridToSheetInput = {
   sheetTitle: string;
   headers: string[];
   rows: string[][];
+  /**
+   * 제목이 정확히 일치하는 탭이 없을 때, 이 매처에 걸리는 기존 탭을
+   * sheetTitle로 리네임해 재사용한다 (날짜 프리픽스가 바뀌는 탭 갱신용).
+   */
+  reuseSheetMatcher?: (title: string) => boolean;
 };
 
 export type WriteGridToSheetResult = {
@@ -40,6 +45,40 @@ export async function writeGridToGoogleSheet(
   });
 
   let sheet = findSheetByTitle(spreadsheet.data.sheets, input.sheetTitle);
+
+  if (!sheet && input.reuseSheetMatcher) {
+    const reusable = spreadsheet.data.sheets?.find((candidate) => {
+      const title = candidate.properties?.title;
+      return typeof title === "string" && input.reuseSheetMatcher!(title);
+    });
+    const reusableSheetId = reusable?.properties?.sheetId;
+
+    if (reusableSheetId !== undefined && reusableSheetId !== null) {
+      await sheetsClient.spreadsheets.batchUpdate({
+        spreadsheetId: input.spreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              updateSheetProperties: {
+                properties: {
+                  sheetId: reusableSheetId,
+                  title: input.sheetTitle,
+                },
+                fields: "title",
+              },
+            },
+          ],
+        },
+      });
+
+      sheet = {
+        properties: {
+          sheetId: reusableSheetId,
+          title: input.sheetTitle,
+        },
+      };
+    }
+  }
 
   if (!sheet) {
     const created = await sheetsClient.spreadsheets.batchUpdate({

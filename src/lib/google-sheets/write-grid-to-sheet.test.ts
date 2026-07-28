@@ -10,6 +10,7 @@ const CONFIG: GoogleSheetsConfig = {
     private_key: "test-key",
   }),
   spreadsheetId: "spreadsheet-1",
+  clientEmail: "test@example.com",
 };
 
 describe("writeGridToGoogleSheet", () => {
@@ -68,5 +69,65 @@ describe("writeGridToGoogleSheet", () => {
       "https://docs.google.com/spreadsheets/d/spreadsheet-1/edit#gid=42",
     );
     assert.equal(result.sheetTitle, "6.17요청");
+  });
+
+  it("renames a matching existing tab instead of creating a new one", async () => {
+    const batchUpdateBodies: unknown[] = [];
+
+    const sheetsClient = {
+      spreadsheets: {
+        get: async () => ({
+          data: {
+            sheets: [
+              {
+                properties: {
+                  sheetId: 7,
+                  title: "260727_계정A_창고 전송용 입고리스트",
+                },
+              },
+            ],
+          },
+        }),
+        batchUpdate: async (request: { requestBody: unknown }) => {
+          batchUpdateBodies.push(request.requestBody);
+          return { data: {} };
+        },
+        values: {
+          clear: async () => ({}),
+          update: async () => ({}),
+        },
+      },
+    };
+
+    const result = await writeGridToGoogleSheet(CONFIG, {
+      spreadsheetId: "spreadsheet-1",
+      sheetTitle: "260728_계정A_창고 전송용 입고리스트",
+      headers: ["box"],
+      rows: [["1"]],
+      reuseSheetMatcher: (title) =>
+        title.endsWith("_계정A_창고 전송용 입고리스트"),
+    }, {
+      sheetsClient: sheetsClient as never,
+    });
+
+    assert.equal(batchUpdateBodies.length, 1);
+    assert.deepEqual(batchUpdateBodies[0], {
+      requests: [
+        {
+          updateSheetProperties: {
+            properties: {
+              sheetId: 7,
+              title: "260728_계정A_창고 전송용 입고리스트",
+            },
+            fields: "title",
+          },
+        },
+      ],
+    });
+    assert.equal(result.sheetTitle, "260728_계정A_창고 전송용 입고리스트");
+    assert.equal(
+      result.sheetUrl,
+      "https://docs.google.com/spreadsheets/d/spreadsheet-1/edit#gid=7",
+    );
   });
 });

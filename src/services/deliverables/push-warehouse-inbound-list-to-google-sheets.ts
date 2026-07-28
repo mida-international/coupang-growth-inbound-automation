@@ -1,3 +1,4 @@
+import { getKstTodayDate } from "@/lib/date/kst-today";
 import { getGoogleSheetsConfig } from "@/lib/google-sheets/client";
 import {
   formatGoogleSheetsPermissionError,
@@ -12,8 +13,18 @@ export type PushWarehouseInboundListToGoogleSheetsInput = {
   rotation: 0 | 1 | 2 | 3;
 };
 
-// 날짜별로 탭을 새로 만들지 않고, 고정 탭 하나를 최초 1회 생성한 뒤 매번 갱신한다.
-const WAREHOUSE_INBOUND_SHEET_TITLE = "창고전송용 입고리스트";
+// 탭 이름: YYMMDD_계정이름_창고 전송용 입고리스트.
+// 계정별 탭 하나를 유지하며, 날짜가 바뀌면 새 탭을 만들지 않고 리네임 + 내용 갱신한다.
+const WAREHOUSE_INBOUND_SHEET_SUFFIX = "창고 전송용 입고리스트";
+const LEGACY_SHEET_TITLE = "창고전송용 입고리스트";
+
+function formatKstYymmdd(date: Date): string {
+  const year = String(date.getUTCFullYear() % 100).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+
+  return `${year}${month}${day}`;
+}
 
 export type PushWarehouseInboundListToGoogleSheetsResult =
   | {
@@ -88,11 +99,18 @@ export async function pushWarehouseInboundListToGoogleSheets(
       input.rotation,
     );
 
+    const accountName = context.seller.displayName.trim();
+    const titleSuffix = `_${accountName}_${WAREHOUSE_INBOUND_SHEET_SUFFIX}`;
+    const sheetTitle = `${formatKstYymmdd(getKstTodayDate())}${titleSuffix}`;
+
     const writeResult = await writeGridToGoogleSheet(sheetsConfig.config, {
       spreadsheetId: sheetsConfig.config.spreadsheetId,
-      sheetTitle: WAREHOUSE_INBOUND_SHEET_TITLE,
+      sheetTitle,
       headers: context.grid.headers,
       rows: context.grid.rows,
+      // 같은 계정의 이전 날짜 탭(또는 구버전 고정 탭)을 리네임해 재사용
+      reuseSheetMatcher: (title) =>
+        title.endsWith(titleSuffix) || title === LEGACY_SHEET_TITLE,
     });
 
     return {
