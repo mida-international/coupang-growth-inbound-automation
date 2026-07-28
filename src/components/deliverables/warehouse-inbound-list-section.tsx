@@ -41,6 +41,12 @@ type DownloadRunResult = {
   sheet: { status: StepStatus; message: string; sheetUrl: string | null };
 };
 
+const STEP_STATUS_LABEL: Record<StepStatus, string> = {
+  success: "완료",
+  error: "실패",
+  skipped: "미실행",
+};
+
 function StepResultRow({
   label,
   status,
@@ -53,30 +59,54 @@ function StepResultRow({
   sheetUrl?: string | null;
 }) {
   return (
-    <li className="flex items-start gap-2.5">
+    <li
+      className={
+        status === "error"
+          ? "flex items-start gap-3.5 rounded-xl border border-destructive/30 bg-destructive/5 p-4"
+          : "flex items-start gap-3.5 rounded-xl border border-border bg-muted/30 p-4"
+      }
+    >
       {status === "success" ? (
-        <CircleCheck
-          className="mt-0.5 size-4.5 shrink-0 text-emerald-600 dark:text-emerald-400"
-          aria-hidden
-        />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/12">
+          <CircleCheck
+            className="size-5.5 text-emerald-600 dark:text-emerald-400"
+            aria-hidden
+          />
+        </span>
       ) : status === "error" ? (
-        <CircleX
-          className="mt-0.5 size-4.5 shrink-0 text-destructive"
-          aria-hidden
-        />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive/12">
+          <CircleX className="size-5.5 text-destructive" aria-hidden />
+        </span>
       ) : (
-        <CircleMinus
-          className="mt-0.5 size-4.5 shrink-0 text-muted-foreground"
-          aria-hidden
-        />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted">
+          <CircleMinus
+            className="size-5.5 text-muted-foreground"
+            aria-hidden
+          />
+        </span>
       )}
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-foreground">{label}</p>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[0.95rem] font-semibold text-foreground">
+            {label}
+          </p>
+          <span
+            className={
+              status === "success"
+                ? "text-xs font-medium text-emerald-600 dark:text-emerald-400"
+                : status === "error"
+                  ? "text-xs font-medium text-destructive"
+                  : "text-xs font-medium text-muted-foreground"
+            }
+          >
+            {STEP_STATUS_LABEL[status]}
+          </span>
+        </div>
         <p
           className={
             status === "error"
-              ? "text-sm break-words text-destructive"
-              : "text-sm break-words text-muted-foreground"
+              ? "text-sm leading-relaxed break-words text-destructive"
+              : "text-sm leading-relaxed break-words text-muted-foreground"
           }
         >
           {message}
@@ -86,9 +116,9 @@ function StepResultRow({
             href={sheetUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-primary underline-offset-4 hover:underline"
+            className="inline-flex items-center gap-1 pt-0.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
           >
-            시트 열기
+            시트 열기 ↗
           </a>
         ) : null}
       </div>
@@ -458,12 +488,12 @@ export function WarehouseInboundListSection({
           }
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="gap-5 p-6 sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>다운로드 결과</DialogTitle>
+            <DialogTitle className="text-lg">다운로드 결과</DialogTitle>
           </DialogHeader>
           {runResult ? (
-            <ul className="space-y-3 py-1">
+            <ul className="space-y-3">
               <StepResultRow
                 label="다운로드"
                 status={runResult.download.status}
@@ -478,7 +508,12 @@ export function WarehouseInboundListSection({
             </ul>
           ) : null}
           <DialogFooter>
-            <Button type="button" onClick={() => setRunResult(null)}>
+            <Button
+              type="button"
+              size="default"
+              className="min-w-[7rem]"
+              onClick={() => setRunResult(null)}
+            >
               확인
             </Button>
           </DialogFooter>
