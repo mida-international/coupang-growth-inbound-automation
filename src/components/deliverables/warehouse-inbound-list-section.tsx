@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleCheck, CircleMinus, CircleX } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
@@ -8,6 +9,13 @@ import {
   DELIVERABLES_PRIMARY_BUTTON_CLASS,
 } from "@/components/deliverables/deliverables-action-bar";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { WarehouseInboundListSnapshotDates } from "@/services/deliverables/types";
 
 type WarehouseInboundListSectionProps = {
@@ -25,6 +33,68 @@ const WAREHOUSE_INBOUND_ROTATION_OPTIONS = [
 
 const sellerSelectClassName =
   "h-9 min-w-[120px] rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+
+type StepStatus = "success" | "error" | "skipped";
+
+type DownloadRunResult = {
+  download: { status: StepStatus; message: string };
+  sheet: { status: StepStatus; message: string; sheetUrl: string | null };
+};
+
+function StepResultRow({
+  label,
+  status,
+  message,
+  sheetUrl,
+}: {
+  label: string;
+  status: StepStatus;
+  message: string;
+  sheetUrl?: string | null;
+}) {
+  return (
+    <li className="flex items-start gap-2.5">
+      {status === "success" ? (
+        <CircleCheck
+          className="mt-0.5 size-4.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+          aria-hidden
+        />
+      ) : status === "error" ? (
+        <CircleX
+          className="mt-0.5 size-4.5 shrink-0 text-destructive"
+          aria-hidden
+        />
+      ) : (
+        <CircleMinus
+          className="mt-0.5 size-4.5 shrink-0 text-muted-foreground"
+          aria-hidden
+        />
+      )}
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p
+          className={
+            status === "error"
+              ? "text-sm break-words text-destructive"
+              : "text-sm break-words text-muted-foreground"
+          }
+        >
+          {message}
+        </p>
+        {sheetUrl ? (
+          <a
+            href={sheetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-primary underline-offset-4 hover:underline"
+          >
+            시트 열기
+          </a>
+        ) : null}
+      </div>
+    </li>
+  );
+}
 
 function formatSnapshotLabel(
   snapshotDates: WarehouseInboundListSnapshotDates | null,
@@ -56,6 +126,7 @@ export function WarehouseInboundListSection({
   const [isRecording, setIsRecording] = useState(false);
   const [canRecordInbound, setCanRecordInbound] = useState(false);
   const [inboundRotation, setInboundRotation] = useState("1");
+  const [runResult, setRunResult] = useState<DownloadRunResult | null>(null);
   const hasSeller = sellerId.trim().length > 0;
 
   useEffect(() => {
@@ -107,6 +178,64 @@ export function WarehouseInboundListSection({
     }
   }
 
+  async function downloadWarehouseInboundExcel(
+    shoplingZeroShortageOnly: boolean,
+  ): Promise<void> {
+    const response = await fetch(
+      `/api/downloads/warehouse-inbound-list?seller=${encodeURIComponent(sellerId)}${
+        inboundRotation ? `&rotation=${encodeURIComponent(inboundRotation)}` : ""
+      }${shoplingZeroShortageOnly ? "&shoplingZeroShortage=1" : ""}`,
+    );
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      throw new Error(payload?.error ?? "다운로드에 실패했습니다.");
+    }
+
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition") ?? "";
+    const filenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    const filename = filenameMatch
+      ? decodeURIComponent(filenameMatch[1])
+      : "창고전송용_입고리스트.xlsx";
+
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(objectUrl);
+  }
+
+  async function pushToGoogleSheet(): Promise<{
+    sheetUrl: string;
+    rowCount: number;
+  }> {
+    const response = await fetch(
+      `/api/downloads/warehouse-inbound-list/google-sheets?seller=${encodeURIComponent(sellerId)}${
+        inboundRotation ? `&rotation=${encodeURIComponent(inboundRotation)}` : ""
+      }`,
+      { method: "POST" },
+    );
+
+    const payload = (await response.json().catch(() => null)) as
+      | { ok: true; data: { sheetUrl: string; rowCount: number } }
+      | { ok: false; error?: string }
+      | null;
+
+    if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
+      throw new Error(
+        payload && "error" in payload && payload.error
+          ? payload.error
+          : "Google Sheets 반영에 실패했습니다.",
+      );
+    }
+
+    return payload.data;
+  }
+
   async function handleDownloadClick(shoplingZeroShortageOnly = false) {
     if (!hasSeller) {
       return;
@@ -115,54 +244,76 @@ export function WarehouseInboundListSection({
     setDownloadingVariant(shoplingZeroShortageOnly ? "shortage" : "standard");
     setNotice(null);
 
-    try {
-      const response = await fetch(
-        `/api/downloads/warehouse-inbound-list?seller=${encodeURIComponent(sellerId)}${
-          inboundRotation ? `&rotation=${encodeURIComponent(inboundRotation)}` : ""
-        }${shoplingZeroShortageOnly ? "&shoplingZeroShortage=1" : ""}`,
-      );
-
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(payload?.error ?? "다운로드에 실패했습니다.");
-      }
-
-      const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition") ?? "";
-      const filenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      const filename = filenameMatch
-        ? decodeURIComponent(filenameMatch[1])
-        : "창고전송용_입고리스트.xlsx";
-
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = filename;
-      anchor.click();
-      URL.revokeObjectURL(objectUrl);
-
-      if (shoplingZeroShortageOnly) {
-        // 별개 목록이므로 기록(기존 표준 로직 기반)은 활성화하지 않는다.
+    // 샵플링 재고0 누락분은 별개 목록이라 시트반영 없이 다운로드만 한다.
+    if (shoplingZeroShortageOnly) {
+      try {
+        await downloadWarehouseInboundExcel(true);
         setNotice(
           "샵플링 재고0 누락분(입고 필요하나 샵플링 재고 0)을 다운로드했습니다.",
         );
-      } else {
+      } catch (error) {
         setNotice(
+          error instanceof Error ? error.message : "다운로드에 실패했습니다.",
+        );
+      } finally {
+        setDownloadingVariant(null);
+      }
+      return;
+    }
+
+    // 표준 다운로드: 엑셀 다운로드 → 시트반영을 자동 연속 실행하고 결과 알림창 표시
+    const result: DownloadRunResult = {
+      download: { status: "error", message: "다운로드에 실패했습니다." },
+      sheet: {
+        status: "skipped",
+        message: "다운로드가 실패해 실행하지 않았습니다.",
+        sheetUrl: null,
+      },
+    };
+
+    try {
+      await downloadWarehouseInboundExcel(false);
+      result.download = {
+        status: "success",
+        message:
           rowCount > 0
             ? `${rowCount}건이 포함된 파일을 다운로드했습니다.`
             : "다운로드 가능한 항목이 없어 헤더만 포함된 파일을 다운로드했습니다.",
-        );
-        setCanRecordInbound(true);
-      }
+      };
+      setCanRecordInbound(true);
     } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "다운로드에 실패했습니다.",
-      );
-    } finally {
-      setDownloadingVariant(null);
+      result.download = {
+        status: "error",
+        message:
+          error instanceof Error ? error.message : "다운로드에 실패했습니다.",
+      };
     }
+
+    if (result.download.status === "success") {
+      try {
+        const pushed = await pushToGoogleSheet();
+        result.sheet = {
+          status: "success",
+          message:
+            pushed.rowCount > 0
+              ? `시트에 ${pushed.rowCount}건 반영했습니다.`
+              : "시트에 헤더만 반영했습니다.",
+          sheetUrl: pushed.sheetUrl,
+        };
+      } catch (error) {
+        result.sheet = {
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Google Sheets 반영에 실패했습니다.",
+          sheetUrl: null,
+        };
+      }
+    }
+
+    setRunResult(result);
+    setDownloadingVariant(null);
   }
 
   async function handleSheetCopyClick() {
@@ -174,31 +325,13 @@ export function WarehouseInboundListSection({
     setNotice(null);
 
     try {
-      const response = await fetch(
-        `/api/downloads/warehouse-inbound-list/google-sheets?seller=${encodeURIComponent(sellerId)}${
-          inboundRotation ? `&rotation=${encodeURIComponent(inboundRotation)}` : ""
-        }`,
-        { method: "POST" },
-      );
+      const pushed = await pushToGoogleSheet();
 
-      const payload = (await response.json().catch(() => null)) as
-        | { ok: true; data: { sheetUrl: string; rowCount: number } }
-        | { ok: false; error?: string }
-        | null;
-
-      if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
-        throw new Error(
-          payload && "error" in payload && payload.error
-            ? payload.error
-            : "Google Sheets 복사에 실패했습니다.",
-        );
-      }
-
-      window.open(payload.data.sheetUrl, "_blank", "noopener,noreferrer");
+      window.open(pushed.sheetUrl, "_blank", "noopener,noreferrer");
 
       setNotice(
-        payload.data.rowCount > 0
-          ? `${payload.data.rowCount}건을 Google 시트에 복사했습니다.`
+        pushed.rowCount > 0
+          ? `${pushed.rowCount}건을 Google 시트에 복사했습니다.`
           : "Google 시트에 헤더만 복사했습니다.",
       );
       setCanRecordInbound(true);
@@ -316,6 +449,41 @@ export function WarehouseInboundListSection({
           {notice}
         </p>
       ) : null}
+
+      <Dialog
+        open={runResult !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRunResult(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>다운로드 결과</DialogTitle>
+          </DialogHeader>
+          {runResult ? (
+            <ul className="space-y-3 py-1">
+              <StepResultRow
+                label="다운로드"
+                status={runResult.download.status}
+                message={runResult.download.message}
+              />
+              <StepResultRow
+                label="시트반영"
+                status={runResult.sheet.status}
+                message={runResult.sheet.message}
+                sheetUrl={runResult.sheet.sheetUrl}
+              />
+            </ul>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" onClick={() => setRunResult(null)}>
+              확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DeliverablesSection>
   );
 }
