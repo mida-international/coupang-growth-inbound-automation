@@ -170,6 +170,8 @@ export type RecordWarehouseInboundDeliverableInput = {
 export type RecordWarehouseInboundDeliverableResult = {
   deliverableId: string;
   recordedCount: number;
+  /** 같은 날 기존 기록을 지우고 갱신한 경우 삭제된 기록 수 */
+  replacedCount: number;
 };
 
 export type WarehouseInboundDeliverableItemView = {

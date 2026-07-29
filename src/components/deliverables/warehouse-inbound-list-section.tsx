@@ -43,8 +43,8 @@ type StepStatus = "success" | "error" | "skipped";
 type DownloadRunResult = {
   download: { status: StepStatus; message: string };
   sheet: { status: StepStatus; message: string; sheetUrl: string | null };
-  /** mizucos 계정이 아닐 때는 null (알림창에 표시하지 않음) */
-  trends: {
+  /** 기록 + 추세 시트반영을 묶은 단계. mizucos 계정이 아닐 때는 null (미표시) */
+  recordAndTrends: {
     status: StepStatus;
     message: string;
     sheetUrl: string | null;
@@ -185,6 +185,37 @@ export function WarehouseInboundListSection({
     setCanRecordInbound(false);
   }, [sellerId, inboundRotation]);
 
+  // 같은 날 기존 기록은 서버에서 지우고 갱신된다 (replacedCount > 0이면 갱신)
+  async function recordWarehouseInbound(): Promise<{
+    recordedCount: number;
+    replacedCount: number;
+  }> {
+    const response = await fetch(
+      `/api/warehouse-inbound-deliverables?seller=${encodeURIComponent(sellerId)}${
+        inboundRotation ? `&rotation=${encodeURIComponent(inboundRotation)}` : ""
+      }`,
+      { method: "POST" },
+    );
+
+    const payload = (await response.json().catch(() => null)) as
+      | { ok: true; data: { recordedCount: number; replacedCount?: number } }
+      | { ok: false; error?: string }
+      | null;
+
+    if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
+      throw new Error(
+        payload && "error" in payload && payload.error
+          ? payload.error
+          : "기록에 실패했습니다.",
+      );
+    }
+
+    return {
+      recordedCount: payload.data.recordedCount,
+      replacedCount: payload.data.replacedCount ?? 0,
+    };
+  }
+
   async function handleRecordClick() {
     if (!canRecordInbound || !hasSeller || isRecording || isDownloading || isCopyingToSheet) {
       return;
@@ -194,31 +225,13 @@ export function WarehouseInboundListSection({
     setNotice(null);
 
     try {
-      const response = await fetch(
-        `/api/warehouse-inbound-deliverables?seller=${encodeURIComponent(sellerId)}${
-          inboundRotation ? `&rotation=${encodeURIComponent(inboundRotation)}` : ""
-        }`,
-        { method: "POST" },
-      );
-
-      const payload = (await response.json().catch(() => null)) as
-        | { ok: true; data: { recordedCount: number } }
-        | { ok: false; error?: string }
-        | null;
-
-      if (!response.ok || !payload || !("ok" in payload) || !payload.ok) {
-        throw new Error(
-          payload && "error" in payload && payload.error
-            ? payload.error
-            : "기록에 실패했습니다.",
-        );
-      }
-
-      const { recordedCount } = payload.data;
+      const { recordedCount, replacedCount } = await recordWarehouseInbound();
 
       setNotice(
         recordedCount > 0
-          ? `${recordedCount}건을 기록했습니다.`
+          ? replacedCount > 0
+            ? `오늘 기존 기록을 갱신해 ${recordedCount}건을 기록했습니다.`
+            : `${recordedCount}건을 기록했습니다.`
           : "기록했습니다. 다운로드 가능한 항목이 없어 헤더만 포함된 파일입니다.",
       );
     } catch (error) {
@@ -372,7 +385,7 @@ export function WarehouseInboundListSection({
         message: "다운로드가 실패해 실행하지 않았습니다.",
         sheetUrl: null,
       },
-      trends: isTrendsAutoPushAccount
+      recordAndTrends: isTrendsAutoPushAccount
         ? {
             status: "skipped",
             message: "다운로드가 실패해 실행하지 않았습니다.",
@@ -422,20 +435,34 @@ export function WarehouseInboundListSection({
       }
 
       if (isTrendsAutoPushAccount) {
+        // 오늘 기록을 갱신(같은 날 기존 기록 삭제 후 재기록)한 뒤 추세 열을 반영한다.
         try {
-          const trends = await pushTrendsDateColumn();
-          result.trends = {
-            status: "success",
-            message: `'${trends.title}' 열 삽입 완료 — O열 바코드 ${trends.barcodeRowCount}개 중 ${trends.matchedCount}개 매칭`,
-            sheetUrl: trends.sheetUrl || null,
-          };
+          const recorded = await recordWarehouseInbound();
+
+          try {
+            const trends = await pushTrendsDateColumn();
+            result.recordAndTrends = {
+              status: "success",
+              message: `오늘 기록 ${recorded.recordedCount}건 ${
+                recorded.replacedCount > 0 ? "갱신" : "저장"
+              } · '${trends.title}' 열 반영 — O열 바코드 ${trends.barcodeRowCount}개 중 ${trends.matchedCount}개 매칭`,
+              sheetUrl: trends.sheetUrl || null,
+            };
+          } catch (error) {
+            result.recordAndTrends = {
+              status: "error",
+              message: `오늘 기록 ${recorded.recordedCount}건은 저장됐지만 추세 시트 반영에 실패했습니다: ${
+                error instanceof Error ? error.message : "알 수 없는 오류"
+              }`,
+              sheetUrl: null,
+            };
+          }
         } catch (error) {
-          result.trends = {
+          result.recordAndTrends = {
             status: "error",
-            message:
-              error instanceof Error
-                ? error.message
-                : "추세 시트 기입에 실패했습니다.",
+            message: `기록에 실패해 추세 시트 반영을 실행하지 못했습니다: ${
+              error instanceof Error ? error.message : "알 수 없는 오류"
+            }`,
             sheetUrl: null,
           };
         }
@@ -605,12 +632,12 @@ export function WarehouseInboundListSection({
                 message={runResult.sheet.message}
                 sheetUrl={runResult.sheet.sheetUrl}
               />
-              {runResult.trends ? (
+              {runResult.recordAndTrends ? (
                 <StepResultRow
-                  label="추세 시트반영"
-                  status={runResult.trends.status}
-                  message={runResult.trends.message}
-                  sheetUrl={runResult.trends.sheetUrl}
+                  label="기록 및 추세반영"
+                  status={runResult.recordAndTrends.status}
+                  message={runResult.recordAndTrends.message}
+                  sheetUrl={runResult.recordAndTrends.sheetUrl}
                 />
               ) : null}
             </ul>
