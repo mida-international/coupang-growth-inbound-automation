@@ -93,3 +93,37 @@ describe("computeVisionStats", () => {
     assert.equal(stats.validBarcodeRows, 2);
   });
 });
+
+describe("computeVisionStats — 1차 개선 (printedQty 기반 집계)", () => {
+  it("counts corrections from printedQty when 가용 is empty (current prompt contract)", () => {
+    const stats = computeVisionStats(
+      {
+        columns: ["바코드", "수량", "가용", "printedQty"],
+        rows: [
+          { 바코드: "2016342540379", 수량: "9", 가용: "", printedQty: "10" },
+          { 바코드: "2016342617675", 수량: "0", 가용: "", printedQty: "5" },
+          { 바코드: "2016342428141", 수량: "3", 가용: "", printedQty: "" },
+          { 바코드: "2016342336088", 수량: "2", 가용: "" },
+        ],
+      },
+      { imageCount: 1, boxNumbers: [] },
+    );
+
+    assert.equal(stats.correctionCount, 2);
+    assert.equal(stats.validBarcodeRows, 4);
+  });
+
+  it("prefers 수량 over 가용 as the effective quantity", () => {
+    const stats = computeVisionStats(
+      {
+        columns: ["바코드", "수량", "가용"],
+        rows: [{ 바코드: "2016342540379", 수량: "0", 가용: "5cm 가능" }],
+      },
+      { imageCount: 1, boxNumbers: [] },
+    );
+
+    // 수량 "0"이 유효값 → 행은 유효(스킵 아님)
+    assert.equal(stats.validBarcodeRows, 1);
+    assert.equal(stats.skippedRows, 0);
+  });
+});
