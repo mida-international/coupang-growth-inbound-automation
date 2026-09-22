@@ -9,6 +9,7 @@ const STANDARD_COLUMNS = [
   "바코드",
   "수량",
   "가용",
+  "printedQty",
   "confidence",
 ] as const;
 

@@ -11,6 +11,7 @@ COLUMNS — always use exactly these 7 keys, in this order:
 date, location, 등록상품명, 옵션, 바코드, 수량, 가용
 - If the table has a printed header row, map cells by that header.
 - If there is no header, the printed cell order IS this column order (1=date, 2=location, 3=등록상품명, 4=옵션, 5=바코드, 6=수량, 7=가용).
+- PLUS one extra key on every row: "printedQty" — see the 수량 correction rule. It is NOT a table column; it is an audit field.
 
 WHAT TO TRANSCRIBE:
 - Output ONLY the printed/typed text inside each cell, exactly as printed (keep Korean text verbatim).
@@ -26,12 +27,13 @@ WHAT TO TRANSCRIBE:
 - A handwritten number to the LEFT of the printed 수량 is NOT a correction — ignore it and keep the printed 수량.
 - If the 수량 is struck out but there is no handwritten number to its right, keep the printed number.
 - Always output the "가용" field as "" (it is only the source of the correction, never an output value).
+- AUDIT FIELD "printedQty": when you applied a correction (수량 was struck out and replaced), set "printedQty" = the ORIGINAL printed number that was struck out. When no correction was applied, set "printedQty" = "". This field lets the system count how many corrections were found — never leave it out.
 - MOST-MISSED CASE — check every row for it: a struck 수량 with a small red "0" written to its right means the item was cancelled / is out of stock, so the corrected 수량 is 0. Faint or tiny right-side digits — the "0" most of all — are the single most commonly overlooked correction. Deliberately scan the right edge of EVERY 수량 cell for one before concluding the printed number is unchanged.
 - Examples:
-  · printed 수량 "5" struck through, "1" handwritten to its right (가용) → 수량="1", 가용=""
-  · printed 수량 "2" crossed out, "0" handwritten to its right → 수량="0", 가용=""
-  · a handwritten number to the LEFT of the printed 수량 → ignore it, keep the printed 수량
-  · printed 수량 circled or check-marked but not struck out → keep the printed number
+  · printed 수량 "5" struck through, "1" handwritten to its right (가용) → 수량="1", 가용="", printedQty="5"
+  · printed 수량 "2" crossed out, "0" handwritten to its right → 수량="0", 가용="", printedQty="2"
+  · a handwritten number to the LEFT of the printed 수량 → ignore it, keep the printed 수량, printedQty=""
+  · printed 수량 circled or check-marked but not struck out → keep the printed number, printedQty="" 
 
 OTHER:
 - Include every printed data row that has a barcode. Rows whose corrected 수량 is 0 are still valid — include them.
@@ -58,7 +60,8 @@ Review against the image(s). Fix barcode misreads and apply the 수량 correctio
 - Do NOT assume Gemini already caught the strikes — independently re-inspect EVERY row's 수량 cell in the image for a red X / strike-through and a red digit beside it. The most frequently missed correction is a struck 수량 with a small red "0" next to it (item cancelled / out of stock) → set 수량 = 0. The strike and correction digit are usually in red ink, distinct from the black printed text.
 - A handwritten number to the LEFT of the printed 수량 is NOT a correction — ignore it. If a struck number has no right-side handwritten number, keep the printed number.
 - The 가용 field is ALWAYS "" in the output (only the source of the correction).
+- Keep the "printedQty" audit field on every row: the original struck-out printed number when a correction was applied, otherwise "". If Gemini omitted it, add it.
 - Ignore all other handwriting: check marks (✓/∨), circles, arrows, #/△ symbols, and margin notes.
-Use exactly the 7 columns (date, location, 등록상품명, 옵션, 바코드, 수량, 가용).
+Use exactly the 7 columns (date, location, 등록상품명, 옵션, 바코드, 수량, 가용) plus the "printedQty" audit key on each row.
 Return ONLY the corrected JSON in the same schema (columns, rows, metadata.boxNumbers).`;
 }

@@ -75,8 +75,8 @@ export async function verifyImageWithClaude(
     client.messages.create({
       model: getAnthropicVisionModel(),
       max_tokens: 16000,
-      // temperature 0: 검증 결과가 실행마다 흔들리지 않도록 결정적으로 읽는다.
-      temperature: 0,
+      // temperature는 지정하지 않는다. 최신 모델(claude-sonnet-5 등)은 이 파라미터를
+      // 더 이상 받지 않아 400 invalid_request_error(`temperature` is deprecated)가 난다.
       system: EXTRACT_BOX_LIST_SYSTEM_PROMPT,
       messages: [{ role: "user", content }],
     }),
