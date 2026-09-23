@@ -131,6 +131,10 @@ export type ShoplingInboundValidationRow = {
   quantity: number;
   status: ShoplingInboundValidationStatus;
   barcode: string | null;
+  /** 미매핑 사유: 상품 자체가 없음 / 상품은 있으나 옵션 불일치 */
+  unmappedReason?: "productNotFound" | "optionNotFound";
+  /** 옵션 불일치일 때 그 상품의 샵플링 옵션 후보 */
+  candidateOptions?: string[];
 };
 
 export type GenerateShoplingInboundTemplateResult = {

@@ -158,6 +158,8 @@ describe("resolveShoplingInboundBarcodes", () => {
         quantity: 1,
         status: "unmapped",
         barcode: null,
+        unmappedReason: "productNotFound",
+        candidateOptions: [],
       },
     ]);
   });
@@ -242,6 +244,69 @@ describe("matchShoplingInboundInventoryRow", () => {
     if (match.status === "matched") {
       assert.equal(match.barcode, "8802222222222");
       assert.equal(match.location, "A-01");
+    }
+  });
+});
+
+describe("matchShoplingInboundInventoryRow — 상품명 공백·대소문자 무시와 실패 사유", () => {
+  const row = (
+    ptnGoodsCd: string,
+    optionValue: string,
+    barcode: string,
+  ) => ({ ptnGoodsCd, productName: null, optionValue, barcode, location: "loc" });
+
+  const inventory = [
+    row("먼지차단립스틱정리함", "1개 뚜껑있음18칸", "2016341223426"),
+    row("먼지차단립스틱정리함", "1개 뚜껑없음18칸", "2016341223433"),
+    row("실리콘어깨끈패드", "검정", "2016341385773"),
+    row("실리콘어깨끈패드", "베이지", "2016341385780"),
+    row("PET자연스티커", "02.잎사귀", "2000337636888"),
+    row("나비집게핀_RM", "화이트+퍼플", "2000337831603"),
+  ];
+
+  const expectMatch = (product: string, option: string, barcode: string) => {
+    const match = matchShoplingInboundInventoryRow(product, option, inventory);
+    assert.equal(match.status, "matched");
+    if (match.status === "matched") {
+      assert.equal(match.barcode, barcode);
+    }
+  };
+
+  const expectOptionNotFound = (product: string, option: string, candidates: string[]) => {
+    const match = matchShoplingInboundInventoryRow(product, option, inventory);
+    assert.equal(match.status, "unmapped");
+    if (match.status === "unmapped") {
+      assert.equal(match.reason, "optionNotFound");
+      assert.deepEqual(match.candidateOptions, candidates);
+    }
+  };
+
+  it("matches product names that differ only in spacing", () => {
+    expectMatch("먼지차단 립스틱정리함", "1개 뚜껑있음18칸", "2016341223426");
+  });
+
+  it("matches product names that differ only in casing", () => {
+    expectMatch("pet자연스티커", "02.잎사귀", "2000337636888");
+  });
+
+  it("matches options that differ only in spacing", () => {
+    expectMatch("먼지차단립스틱정리함", "1개뚜껑있음18칸", "2016341223426");
+  });
+
+  it("does not guess when the option has extra or missing words", () => {
+    // 샵플링 옵션이 "1개 뚜껑있음18칸" 이면 "뚜껑있음18칸" 은 매칭하지 않고 후보를 보여준다.
+    expectOptionNotFound("먼지차단립스틱정리함", "뚜껑있음18칸", [
+      "1개 뚜껑있음18칸",
+      "1개 뚜껑없음18칸",
+    ]);
+    expectOptionNotFound("실리콘어깨끈패드", "검정-옵션추가", ["검정", "베이지"]);
+  });
+
+  it("does not strip product suffixes like _RM", () => {
+    const match = matchShoplingInboundInventoryRow("나비집게핀", "화이트+퍼플", inventory);
+    assert.equal(match.status, "unmapped");
+    if (match.status === "unmapped") {
+      assert.equal(match.reason, "productNotFound");
     }
   });
 });

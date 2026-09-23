@@ -10,6 +10,33 @@ const FAILURE_REASON: Record<string, string> = {
   skippedDummy: "더미 바코드 제외",
 };
 
+const CANDIDATE_OPTION_PREVIEW = 6;
+
+function describeRow(row: ShoplingInboundValidationRow): string {
+  if (row.status === "matched") {
+    return "—";
+  }
+
+  if (row.status === "unmapped" && row.unmappedReason === "productNotFound") {
+    return "샵플링에 해당 상품이 없음 (품명 확인)";
+  }
+
+  if (row.status === "unmapped" && row.unmappedReason === "optionNotFound") {
+    const options = row.candidateOptions ?? [];
+    const preview = options.slice(0, CANDIDATE_OPTION_PREVIEW).join(", ");
+    const more =
+      options.length > CANDIDATE_OPTION_PREVIEW
+        ? ` 외 ${options.length - CANDIDATE_OPTION_PREVIEW}개`
+        : "";
+
+    return options.length > 0
+      ? `옵션 불일치 — 샵플링 옵션: ${preview}${more}`
+      : "옵션 불일치 — 샵플링에 사용 가능한 옵션 없음";
+  }
+
+  return FAILURE_REASON[row.status] ?? "미매칭";
+}
+
 type ShoplingInboundValidationTableProps = {
   rows: ShoplingInboundValidationRow[];
 };
@@ -58,7 +85,7 @@ export function ShoplingInboundValidationTable({
                 반영여부
               </th>
               <th className="px-3 py-2 font-medium text-muted-foreground">
-                미매칭 사유
+                미매칭 사유 / 비고
               </th>
             </tr>
           </thead>
@@ -99,8 +126,8 @@ export function ShoplingInboundValidationTable({
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-muted-foreground">
-                    {isMatched ? "—" : (FAILURE_REASON[row.status] ?? "미매칭")}
+                  <td className="min-w-[16rem] px-3 py-2 text-muted-foreground">
+                    {describeRow(row)}
                   </td>
                 </tr>
               );
