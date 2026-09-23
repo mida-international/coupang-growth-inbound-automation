@@ -33,9 +33,13 @@ export async function downloadCoupangInboundTemplate(
   URL.revokeObjectURL(objectUrl);
 
   const matched = response.headers.get("X-Filter-Matched");
+  const matchedQuantity = response.headers.get("X-Filter-Matched-Quantity");
   const unmatched = response.headers.get("X-Filter-Unmatched");
   const statsParts = [
     matched !== null ? `매칭 ${matched}건` : null,
+    matchedQuantity !== null
+      ? `수량 ${Number(matchedQuantity).toLocaleString()}개`
+      : null,
     unmatched !== null ? `미매칭 ${unmatched}건` : null,
   ].filter(Boolean);
 

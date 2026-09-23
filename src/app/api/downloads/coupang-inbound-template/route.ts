@@ -63,6 +63,7 @@ export async function POST(request: Request) {
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": encodeContentDispositionFilename(filename),
         "X-Filter-Matched": String(result.stats.matched),
+        "X-Filter-Matched-Quantity": String(result.stats.matchedQuantity),
         "X-Filter-Unmatched": String(result.stats.unmatched.length),
         "Cache-Control": "no-store",
       },

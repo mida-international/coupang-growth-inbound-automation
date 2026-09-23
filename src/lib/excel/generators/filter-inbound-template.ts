@@ -205,6 +205,7 @@ export async function filterInboundTemplateWithModeC(
   await workbook.xlsx.load(data as unknown as ExcelJS.Buffer);
 
   let matched = 0;
+  let matchedQuantity = 0;
   let originalDataRows = 0;
   let finalDataRows = 0;
 
@@ -233,6 +234,7 @@ export async function filterInboundTemplateWithModeC(
       if (qty !== undefined) {
         row.getCell(qtyCol).value = qty;
         matched += 1;
+        matchedQuantity += qty;
         unmatched.delete(barcode);
 
         const optionCell = row.getCell(optionIdCol);
@@ -266,6 +268,7 @@ export async function filterInboundTemplateWithModeC(
       inputWithQty: boxItems.filter((item) => item.quantity > 0).length,
       inputBarcodes: qtyMap.size,
       matched,
+      matchedQuantity,
       unmatched: Array.from(unmatched),
       originalRows: originalDataRows,
       finalRows: finalDataRows,
