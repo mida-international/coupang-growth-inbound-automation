@@ -46,7 +46,6 @@ export async function POST(request: Request) {
         "X-Inbound-Ambiguous": String(result.stats.ambiguous),
         "X-Inbound-Skipped-Dummy": String(result.stats.skippedDummy),
         "X-Inbound-Attempted": String(result.stats.totalAttempted),
-        "X-Inbound-Estimated": String(result.stats.estimated),
         "Cache-Control": "no-store",
       },
     });

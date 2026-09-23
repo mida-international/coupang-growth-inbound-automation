@@ -1,9 +1,7 @@
 import { isExcludedOutboundBarcode } from "@/lib/deliverables/normalize-outbound-box-items";
 import {
   compareShoplingInboundOptions,
-  ESTIMATED_OPTION_TIERS,
-  normalizeShoplingInboundLoose,
-  normalizeShoplingInboundProductBase,
+  normalizeShoplingInboundOptionForTier,
   normalizeShoplingInboundProductLabel,
   type ShoplingInboundOptionMatchTier,
 } from "@/lib/deliverables/normalize-shopling-inbound-option";
@@ -38,8 +36,6 @@ const OPTION_MATCH_TIERS: ShoplingInboundOptionMatchTier[] = [
   "exact",
   "ignoreWhitespace",
   "ignoreCase",
-  "ignorePunctuation",
-  "contains",
 ];
 
 type OptionMatchResult =
@@ -50,15 +46,7 @@ type OptionMatchResult =
 export type ShoplingInboundUnmappedReason = "productNotFound" | "optionNotFound";
 
 export type ShoplingInboundInventoryMatchResult =
-  | {
-      status: "matched";
-      barcode: string;
-      location: string | null;
-      /** 느슨한 단계로 찾은 추정 매칭 — 사람이 확인해야 한다 */
-      estimated: boolean;
-      /** 매칭된 샵플링 옵션값 (추정 매칭 확인용) */
-      matchedOption: string;
-    }
+  | { status: "matched"; barcode: string; location: string | null }
   | { status: "ambiguous" }
   | {
       status: "unmapped";
@@ -112,19 +100,15 @@ export function formatShoplingInboundLookupError(
   return `샵플링 바코드를 찾지 못했습니다. ${parts.join(" · ")}`;
 }
 
-type ProductMatchTier = "exact" | "loose" | "base";
+type ProductMatchTier = "exact" | "ignoreWhitespace" | "ignoreCase";
 
-const PRODUCT_MATCH_TIERS: ProductMatchTier[] = ["exact", "loose", "base"];
+// 옵션과 같은 규칙으로 상품명도 공백 → 대소문자 차이만 봐준다 (그 이상은 오매칭 위험).
+const PRODUCT_MATCH_TIERS: ProductMatchTier[] = ["exact", "ignoreWhitespace", "ignoreCase"];
 
 function normalizeProductForTier(value: string, tier: ProductMatchTier): string {
-  switch (tier) {
-    case "exact":
-      return normalizeShoplingInboundProductLabel(value);
-    case "loose":
-      return normalizeShoplingInboundLoose(value);
-    case "base":
-      return normalizeShoplingInboundProductBase(value);
-  }
+  return tier === "exact"
+    ? normalizeShoplingInboundProductLabel(value)
+    : normalizeShoplingInboundOptionForTier(value, tier);
 }
 
 function productLabelMatches(
@@ -157,33 +141,16 @@ function isUsableRow(row: ShoplingInboundInventoryRow): boolean {
   return Boolean(barcode) && !isExcludedOutboundBarcode(barcode);
 }
 
-/** 포함 관계 매칭은 겹치는 길이가 가장 긴 후보만 남긴다 (예: "18칸"보다 "뚜껑있음18칸"). */
-function keepBestContainment(
-  rows: ShoplingInboundInventoryRow[],
-  inboundOption: string,
-): ShoplingInboundInventoryRow[] {
-  const inbound = normalizeShoplingInboundLoose(inboundOption);
-  const overlap = (row: ShoplingInboundInventoryRow) =>
-    Math.min(inbound.length, normalizeShoplingInboundLoose(row.optionValue ?? "").length);
-  const best = Math.max(...rows.map(overlap));
-
-  return rows.filter((row) => overlap(row) === best);
-}
-
 export function findInventoryMatchByOptionCascade(
   candidates: ShoplingInboundInventoryRow[],
   inboundOption: string,
 ): ShoplingInboundInventoryMatchResult {
   for (const tier of OPTION_MATCH_TIERS) {
-    let matchedRows = candidates.filter(
+    const matchedRows = candidates.filter(
       (row) =>
         isUsableRow(row) &&
         compareShoplingInboundOptions(inboundOption, row.optionValue ?? "", tier),
     );
-
-    if (tier === "contains" && matchedRows.length > 1) {
-      matchedRows = keepBestContainment(matchedRows, inboundOption);
-    }
 
     const barcodes = new Set(matchedRows.map((row) => row.barcode.trim()));
 
@@ -194,13 +161,7 @@ export function findInventoryMatchByOptionCascade(
       )!;
       const location = matchedRow.location?.trim() || null;
 
-      return {
-        status: "matched",
-        barcode,
-        location,
-        estimated: ESTIMATED_OPTION_TIERS.has(tier),
-        matchedOption: matchedRow.optionValue ?? "",
-      };
+      return { status: "matched", barcode, location };
     }
 
     if (barcodes.size > 1) {
@@ -244,11 +205,8 @@ export function findBarcodesByOptionCascade(
 }
 
 /**
- * 상품 → 옵션 순서로 단계적으로 느슨하게 찾는다.
- * - 상품: 완전 일치 → 공백·대소문자·기호 무시 → "_" 앞 기본 이름
- * - 옵션: 완전 일치 → 공백 무시 → 대소문자 무시 → 기호 무시 → 포함 관계
+ * 상품 → 옵션 순서로 찾는다. 둘 다 완전 일치 → 공백 무시 → 대소문자 무시 순서.
  * 앞 단계에서 찾으면 뒤 단계는 보지 않으므로 기존에 맞던 행의 결과는 바뀌지 않는다.
- * 느슨한 단계(상품 loose/base, 옵션 기호무시/포함)로 찾은 경우 estimated=true.
  */
 export function matchShoplingInboundInventoryRow(
   productLabel: string,
@@ -279,7 +237,7 @@ export function matchShoplingInboundInventoryRow(
         return { status: "skippedDummy" };
       }
 
-      return tier === "exact" ? match : { ...match, estimated: true };
+      return match;
     }
 
     firstOptionMiss ??= match;
@@ -317,9 +275,6 @@ export function resolveShoplingInboundBarcodes(
       quantity: item.quantity,
       status: match.status,
       barcode: match.status === "matched" ? match.barcode : null,
-      ...(match.status === "matched" && match.estimated
-        ? { estimated: true, matchedOption: match.matchedOption }
-        : {}),
       ...(match.status === "unmapped"
         ? { unmappedReason: match.reason, candidateOptions: match.candidateOptions }
         : {}),
