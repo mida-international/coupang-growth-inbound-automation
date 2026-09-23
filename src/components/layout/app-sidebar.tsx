@@ -15,6 +15,18 @@ import {
   type NavItem,
 } from "@/config/navigation";
 import {
+  automationTabGroup,
+  boardCategoryTabGroup,
+  coupangGrowthSyncTabGroup,
+  coupangGrowthTabGroup,
+  dashboardTabGroup,
+  deliverablesTabGroup,
+  getDefaultTabHref,
+  integrationsTabGroup,
+  shoplingDataTabGroup,
+  type PageTabGroup,
+} from "@/config/page-tabs";
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -78,6 +90,25 @@ function menuListClassName(isCollapsed: boolean) {
   return cn(iconRailMenuClassName, !isCollapsed && expandedMenuClassName);
 }
 
+// 기본 탭으로 redirect만 하는 경로는 목적지로 바로 링크해 서버 왕복을 줄인다.
+// 각 경로의 page.tsx redirect 대상과 일치해야 한다.
+const NAV_DEFAULT_TAB_GROUPS: Record<string, PageTabGroup> = {
+  "/downloads": deliverablesTabGroup,
+  "/automation": automationTabGroup,
+  "/board": boardCategoryTabGroup,
+  "/integrations": integrationsTabGroup,
+  "/sync/coupang-growth": coupangGrowthSyncTabGroup,
+  "/data/dashboard": dashboardTabGroup,
+  "/data/coupang-growth": coupangGrowthTabGroup,
+  "/data/shopling": shoplingDataTabGroup,
+};
+
+function getNavLinkHref(item: NavItem) {
+  const group = NAV_DEFAULT_TAB_GROUPS[item.href];
+
+  return group ? getDefaultTabHref(group) : item.href;
+}
+
 function isNavItemActive(pathname: string, item: NavItem) {
   if (item.external || item.href.startsWith("http")) {
     return false;
@@ -120,7 +151,7 @@ function NavIconMenuItem({
             />
           ) : (
             <Link
-              href={item.href}
+              href={getNavLinkHref(item)}
               onClick={(event) => {
                 event.stopPropagation();
               }}
@@ -194,7 +225,7 @@ function NavCollapsibleGroup({
                       isActive={isNavItemActive(pathname, item)}
                       render={
           <Link
-            href={item.href}
+            href={getNavLinkHref(item)}
             onClick={(event) => {
               event.stopPropagation();
             }}
