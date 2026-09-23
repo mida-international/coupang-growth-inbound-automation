@@ -101,6 +101,9 @@ describe("filter-inbound-template", () => {
     assert.equal(result.stats.matched, 2);
     assert.equal(result.stats.matchedQuantity, 15);
     assert.deepEqual(result.stats.unmatched, ["9999999999999"]);
+    assert.deepEqual(result.stats.unmatchedItems, [
+      { barcode: "9999999999999", quantity: 100 },
+    ]);
   });
 
   it("throws when all box list quantities are zero", async () => {

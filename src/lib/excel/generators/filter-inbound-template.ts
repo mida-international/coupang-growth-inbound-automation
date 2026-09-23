@@ -270,6 +270,10 @@ export async function filterInboundTemplateWithModeC(
       matched,
       matchedQuantity,
       unmatched: Array.from(unmatched),
+      unmatchedItems: Array.from(unmatched, (barcode) => ({
+        barcode,
+        quantity: qtyMap.get(barcode) ?? 0,
+      })),
       originalRows: originalDataRows,
       finalRows: finalDataRows,
       inputFileSkippedRows: options.inputFileSkippedRows ?? 0,

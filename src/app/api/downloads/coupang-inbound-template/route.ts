@@ -4,6 +4,10 @@ import {
   resolveActiveSellerAccount,
 } from "@/lib/api/download-helpers";
 import { logRouteError } from "@/lib/api/log-route-error";
+import {
+  encodeUnmatchedBarcodesHeader,
+  UNMATCHED_BARCODES_HEADER,
+} from "@/lib/deliverables/unmatched-barcodes-header";
 import { jsonError } from "@/lib/api/response";
 import { buildCoupangInboundTemplateFilename } from "@/lib/excel/generators/filter-inbound-template";
 import { getLatestInboundTemplateFile } from "@/services/coupang-growth-sync/get-latest-inbound-template-file";
@@ -65,6 +69,9 @@ export async function POST(request: Request) {
         "X-Filter-Matched": String(result.stats.matched),
         "X-Filter-Matched-Quantity": String(result.stats.matchedQuantity),
         "X-Filter-Unmatched": String(result.stats.unmatched.length),
+        [UNMATCHED_BARCODES_HEADER]: encodeUnmatchedBarcodesHeader(
+          result.stats.unmatchedItems,
+        ),
         "Cache-Control": "no-store",
       },
     });

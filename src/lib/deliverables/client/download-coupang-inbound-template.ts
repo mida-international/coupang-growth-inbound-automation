@@ -1,7 +1,19 @@
+import {
+  decodeUnmatchedBarcodesHeader,
+  UNMATCHED_BARCODES_HEADER,
+  type UnmatchedBarcodeItem,
+} from "@/lib/deliverables/unmatched-barcodes-header";
+
+export type CoupangInboundTemplateDownloadResult = {
+  message: string;
+  unmatchedBarcodes: UnmatchedBarcodeItem[];
+  unmatchedCount: number;
+};
+
 export async function downloadCoupangInboundTemplate(
   sellerId: string,
   boxListFile: File,
-): Promise<string> {
+): Promise<CoupangInboundTemplateDownloadResult> {
   const formData = new FormData();
   formData.append("seller", sellerId);
   formData.append("boxListFile", boxListFile);
@@ -43,7 +55,14 @@ export async function downloadCoupangInboundTemplate(
     unmatched !== null ? `미매칭 ${unmatched}건` : null,
   ].filter(Boolean);
 
-  return statsParts.length > 0
-    ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
-    : "입고 템플릿 파일을 다운로드했습니다.";
+  return {
+    message:
+      statsParts.length > 0
+        ? `${statsParts.join(", ")} — 파일을 다운로드했습니다.`
+        : "입고 템플릿 파일을 다운로드했습니다.",
+    unmatchedBarcodes: decodeUnmatchedBarcodesHeader(
+      response.headers.get(UNMATCHED_BARCODES_HEADER),
+    ),
+    unmatchedCount: Number(unmatched ?? 0),
+  };
 }
