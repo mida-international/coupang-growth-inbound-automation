@@ -82,6 +82,27 @@ describe("filter-inbound-template", () => {
     assert.equal(sheet.getCell(5, 22).value, 3);
   });
 
+  it("sums matched quantities excluding unmatched barcodes", async () => {
+    const templateBuffer = await buildWingTemplateBuffer([
+      { optionId: OPTION_A, barcode: BARCODE_A },
+      { optionId: OPTION_B, barcode: BARCODE_B },
+    ]);
+    const boxListBuffer = buildBoxListBuffer([
+      [BARCODE_A, 3],
+      [BARCODE_B, 12],
+      ["9999999999999", 100],
+    ]);
+
+    const result = await generateFilteredInboundTemplate(templateBuffer, {
+      source: "excel",
+      boxListBuffer,
+    });
+
+    assert.equal(result.stats.matched, 2);
+    assert.equal(result.stats.matchedQuantity, 15);
+    assert.deepEqual(result.stats.unmatched, ["9999999999999"]);
+  });
+
   it("throws when all box list quantities are zero", async () => {
     const templateBuffer = await buildWingTemplateBuffer([
       { optionId: OPTION_A, barcode: BARCODE_A },

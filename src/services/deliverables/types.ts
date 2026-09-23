@@ -27,6 +27,7 @@ export type FilterInboundTemplateStats = {
   inputWithQty: number;
   inputBarcodes: number;
   matched: number;
+  matchedQuantity: number;
   unmatched: string[];
   originalRows: number;
   finalRows: number;
