@@ -1,3 +1,5 @@
+import type { UnmatchedBarcodeItem } from "@/lib/deliverables/unmatched-barcodes-header";
+
 export type WarehouseInboundListRow = {
   location: string | null;
   registeredProductName: string | null;
@@ -29,6 +31,7 @@ export type FilterInboundTemplateStats = {
   matched: number;
   matchedQuantity: number;
   unmatched: string[];
+  unmatchedItems: UnmatchedBarcodeItem[];
   originalRows: number;
   finalRows: number;
   inputFileSkippedRows: number;

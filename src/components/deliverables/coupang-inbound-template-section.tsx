@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { CoupangInboundImageDropzone } from "@/components/deliverables/vision/coupang-inbound-image-dropzone";
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
 import { ErrorNoticeDialog } from "@/components/deliverables/error-notice-dialog";
+import { UnmatchedBarcodeList } from "@/components/deliverables/unmatched-barcode-list";
 import {
   DeliverablesActionBar,
   DELIVERABLES_PRIMARY_BUTTON_CLASS,
@@ -13,7 +14,10 @@ import {
 import { ExcelDropzone } from "@/components/excel/excel-dropzone";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { downloadCoupangInboundTemplate } from "@/lib/deliverables/client/download-coupang-inbound-template";
+import {
+  downloadCoupangInboundTemplate,
+  type CoupangInboundTemplateDownloadResult,
+} from "@/lib/deliverables/client/download-coupang-inbound-template";
 import { downloadShoplingOutboundTemplate } from "@/lib/deliverables/client/download-shopling-outbound-template";
 import { recordCoupangInbound } from "@/lib/deliverables/client/record-coupang-inbound";
 import {
@@ -60,6 +64,8 @@ export function CoupangInboundTemplateSection({
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [visionData, setVisionData] = useState<VisionExtractedData | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [unmatchedResult, setUnmatchedResult] =
+    useState<CoupangInboundTemplateDownloadResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingShoplingOutbound, setIsDownloadingShoplingOutbound] =
@@ -133,6 +139,7 @@ export function CoupangInboundTemplateSection({
 
   useEffect(() => {
     setCanRecordInbound(false);
+    setUnmatchedResult(null);
   }, [sellerId, excelFile, imageFiles, activeTab]);
 
   useEffect(() => {
@@ -166,6 +173,7 @@ export function CoupangInboundTemplateSection({
 
     setIsDownloading(true);
     setNotice(null);
+    setUnmatchedResult(null);
 
     try {
       const boxListFile = await resolveBoxListFile();
@@ -174,11 +182,12 @@ export function CoupangInboundTemplateSection({
         return;
       }
 
-      const noticeMessage = await downloadCoupangInboundTemplate(
+      const downloadResult = await downloadCoupangInboundTemplate(
         sellerId,
         boxListFile,
       );
-      setNotice(noticeMessage);
+      setNotice(downloadResult.message);
+      setUnmatchedResult(downloadResult);
       setCanRecordInbound(true);
     } catch (error) {
       setErrorMessage(
@@ -196,6 +205,7 @@ export function CoupangInboundTemplateSection({
 
     setIsDownloadingShoplingOutbound(true);
     setNotice(null);
+    setUnmatchedResult(null);
 
     try {
       let boxListFile: File;
@@ -314,6 +324,7 @@ export function CoupangInboundTemplateSection({
                 onFilesSelected={(files) => {
                   setExcelFile(files[0] ?? null);
                   setNotice(null);
+                  setUnmatchedResult(null);
                 }}
               />
               <p className="text-xs text-muted-foreground">
@@ -333,6 +344,7 @@ export function CoupangInboundTemplateSection({
                   // (많은 이미지를 연속 처리할 때 "새 창을 열어야" 반영되던 문제).
                   setVisionData(null);
                   setNotice(null);
+                  setUnmatchedResult(null);
                 }}
                 visionData={visionData}
               />
@@ -415,6 +427,13 @@ export function CoupangInboundTemplateSection({
           <p className="text-sm text-muted-foreground" role="status">
             {notice}
           </p>
+        ) : null}
+
+        {unmatchedResult ? (
+          <UnmatchedBarcodeList
+            items={unmatchedResult.unmatchedBarcodes}
+            totalCount={unmatchedResult.unmatchedCount}
+          />
         ) : null}
       </div>
 

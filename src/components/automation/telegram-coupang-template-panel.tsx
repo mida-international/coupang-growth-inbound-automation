@@ -7,6 +7,7 @@ import {
   DeliverablesActionBar,
   DELIVERABLES_PRIMARY_BUTTON_CLASS,
 } from "@/components/deliverables/deliverables-action-bar";
+import { UnmatchedBarcodeList } from "@/components/deliverables/unmatched-barcode-list";
 import { VisionExtractPreviewTable } from "@/components/deliverables/vision/vision-extract-preview-table";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +16,10 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
-import { downloadCoupangInboundTemplate } from "@/lib/deliverables/client/download-coupang-inbound-template";
+import {
+  downloadCoupangInboundTemplate,
+  type CoupangInboundTemplateDownloadResult,
+} from "@/lib/deliverables/client/download-coupang-inbound-template";
 import { downloadShoplingOutboundTemplate } from "@/lib/deliverables/client/download-shopling-outbound-template";
 import { recordCoupangInbound } from "@/lib/deliverables/client/record-coupang-inbound";
 import { cn } from "@/lib/utils";
@@ -66,6 +70,8 @@ export function TelegramCoupangTemplatePanel({
   const [templateMeta, setTemplateMeta] = useState<TemplateMeta | null>(null);
   const [isLoadingTemplateMeta, setIsLoadingTemplateMeta] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [unmatchedResult, setUnmatchedResult] =
+    useState<CoupangInboundTemplateDownloadResult | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingShoplingOutbound, setIsDownloadingShoplingOutbound] =
     useState(false);
@@ -212,14 +218,16 @@ export function TelegramCoupangTemplatePanel({
 
     setIsDownloading(true);
     setNotice(null);
+    setUnmatchedResult(null);
 
     try {
       const file = await resolveBoxListFile();
-      const noticeMessage = await downloadCoupangInboundTemplate(
+      const downloadResult = await downloadCoupangInboundTemplate(
         sellerId,
         file,
       );
-      setNotice(noticeMessage);
+      setNotice(downloadResult.message);
+      setUnmatchedResult(downloadResult);
       setCanRecordInbound(true);
     } catch (error) {
       setNotice(
@@ -239,6 +247,7 @@ export function TelegramCoupangTemplatePanel({
 
     setIsDownloadingShoplingOutbound(true);
     setNotice(null);
+    setUnmatchedResult(null);
 
     try {
       const file = await resolveBoxListFile();
@@ -336,6 +345,7 @@ export function TelegramCoupangTemplatePanel({
               setSellerId(value);
               setCanRecordInbound(false);
               setNotice(null);
+              setUnmatchedResult(null);
             }
           }}
         >
@@ -449,6 +459,13 @@ export function TelegramCoupangTemplatePanel({
         <p className="text-sm text-muted-foreground" role="status">
           {notice}
         </p>
+      ) : null}
+
+      {unmatchedResult ? (
+        <UnmatchedBarcodeList
+          items={unmatchedResult.unmatchedBarcodes}
+          totalCount={unmatchedResult.unmatchedCount}
+        />
       ) : null}
     </div>
   );
