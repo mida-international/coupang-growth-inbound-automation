@@ -3,9 +3,10 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getGeminiVisionModel } from "@/lib/vision/constants";
 import {
   EXTRACT_BOX_LIST_SYSTEM_PROMPT,
-  buildGeminiExtractUserPrompt,
+  buildExtractUserPrompt,
 } from "@/lib/vision/prompts/extract-box-list-prompt";
 import { parseVisionJsonResponse, type ParsedVisionPayload } from "@/lib/vision/parse-vision-json";
+import type { PreparedVisionImageSet } from "@/lib/vision/prepare-vision-images";
 
 export type VisionImageInput = {
   buffer: Buffer;
@@ -39,13 +40,17 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> {
   throw lastError;
 }
 
-async function extractSingleImage(
-  client: GoogleGenerativeAI,
-  image: VisionImageInput,
-  imageIndex: number,
-  total: number,
+/** 원본 페이지 + 가로 띠 확대본을 한 번에 넣어 이미지 한 장을 판독한 결과를 돌려준다. */
+export async function extractImageWithGemini(
+  image: PreparedVisionImageSet,
 ): Promise<ParsedVisionPayload> {
-  const model = client.getGenerativeModel({
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
+  }
+
+  const model = new GoogleGenerativeAI(apiKey).getGenerativeModel({
     model: getGeminiVisionModel(),
     systemInstruction: EXTRACT_BOX_LIST_SYSTEM_PROMPT,
     // temperature 0: 같은 이미지를 같은 결과로 읽게 해 취소(0) 인식이
@@ -55,13 +60,10 @@ async function extractSingleImage(
 
   const result = await withRetry(() =>
     model.generateContent([
-      buildGeminiExtractUserPrompt(imageIndex, total),
-      {
-        inlineData: {
-          mimeType: image.mimeType,
-          data: image.buffer.toString("base64"),
-        },
-      },
+      buildExtractUserPrompt(image.strips.length),
+      ...[image.full, ...image.strips].map((part) => ({
+        inlineData: { mimeType: part.mimeType, data: part.base64 },
+      })),
     ]),
   );
 
@@ -72,23 +74,4 @@ async function extractSingleImage(
   }
 
   return parseVisionJsonResponse(text);
-}
-
-export async function extractWithGemini(
-  images: VisionImageInput[],
-): Promise<ParsedVisionPayload[]> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
-  }
-
-  const client = new GoogleGenerativeAI(apiKey);
-
-  // 이미지별로 병렬 처리 (순차로 하면 장수가 늘수록 함수 타임아웃에 걸린다).
-  return Promise.all(
-    images.map((image, index) =>
-      extractSingleImage(client, image, index, images.length),
-    ),
-  );
 }
