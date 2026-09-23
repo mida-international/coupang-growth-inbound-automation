@@ -1,4 +1,5 @@
 {
+  "regions": ["icn1"],
   "functions": {
     "src/app/api/automation/shopling-negative-stock/login/route.ts": {
       "maxDuration": 300,
