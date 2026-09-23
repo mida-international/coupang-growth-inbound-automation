@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import type {
   ListWarehouseInboundRowsResult,
   WarehouseInboundListRow,
+  WarehouseInboundListSnapshotDates,
 } from "@/services/deliverables/types";
 
 type ListWarehouseInboundRowsOptions = {
@@ -33,6 +34,77 @@ function mapRow(row: RawWarehouseInboundRow): WarehouseInboundListRow {
   };
 }
 
+async function getLatestSnapshotDates(
+  sellerId: string,
+): Promise<WarehouseInboundListSnapshotDates | null> {
+  const [template, shopling] = await Promise.all([
+    prisma.coupangGrowthInboundTemplate.aggregate({
+      where: { coupangSellerAccountId: sellerId },
+      _max: { snapshotDate: true },
+    }),
+    prisma.shoplingInventory.aggregate({
+      _max: { snapshotDate: true },
+    }),
+  ]);
+
+  if (!template._max.snapshotDate) {
+    return null;
+  }
+
+  return {
+    template: formatSnapshotDate(template._max.snapshotDate),
+    shopling: shopling._max.snapshotDate
+      ? formatSnapshotDate(shopling._max.snapshotDate)
+      : null,
+  };
+}
+
+/**
+ * 산출물 생성 화면용 요약 — 건수와 기준일만 필요하므로 행 전체를 읽지 않는다.
+ */
+export async function getWarehouseInboundSummary(
+  options: ListWarehouseInboundRowsOptions,
+): Promise<Omit<ListWarehouseInboundRowsResult, "rows">> {
+  const sellerId = options.coupangSellerAccountId;
+
+  const [summary] = await prisma.$queryRaw<
+    Array<{
+      row_count: number;
+      template_snapshot_date: Date | null;
+      shopling_snapshot_date: Date | null;
+    }>
+  >(
+    Prisma.sql`
+      SELECT
+        COUNT(*)::int AS row_count,
+        MAX(template_snapshot_date) AS template_snapshot_date,
+        MAX(shopling_snapshot_date) AS shopling_snapshot_date
+      FROM inbound_workbench_display_v
+      WHERE coupang_seller_account_id = ${sellerId}
+        AND growth_inbound_recommend > 0
+    `,
+  );
+
+  if (!summary || summary.row_count === 0) {
+    return {
+      snapshotDates: await getLatestSnapshotDates(sellerId),
+      rowCount: 0,
+    };
+  }
+
+  return {
+    snapshotDates: {
+      template: summary.template_snapshot_date
+        ? formatSnapshotDate(summary.template_snapshot_date)
+        : null,
+      shopling: summary.shopling_snapshot_date
+        ? formatSnapshotDate(summary.shopling_snapshot_date)
+        : null,
+    },
+    rowCount: summary.row_count,
+  };
+}
+
 export async function listWarehouseInboundRows(
   options: ListWarehouseInboundRowsOptions,
 ): Promise<ListWarehouseInboundRowsResult> {
@@ -58,31 +130,8 @@ export async function listWarehouseInboundRows(
   );
 
   if (rows.length === 0) {
-    const [template, shopling] = await Promise.all([
-      prisma.coupangGrowthInboundTemplate.aggregate({
-        where: { coupangSellerAccountId: sellerId },
-        _max: { snapshotDate: true },
-      }),
-      prisma.shoplingInventory.aggregate({
-        _max: { snapshotDate: true },
-      }),
-    ]);
-
-    if (!template._max.snapshotDate) {
-      return {
-        snapshotDates: null,
-        rowCount: 0,
-        rows: [],
-      };
-    }
-
     return {
-      snapshotDates: {
-        template: formatSnapshotDate(template._max.snapshotDate),
-        shopling: shopling._max.snapshotDate
-          ? formatSnapshotDate(shopling._max.snapshotDate)
-          : null,
-      },
+      snapshotDates: await getLatestSnapshotDates(sellerId),
       rowCount: 0,
       rows: [],
     };

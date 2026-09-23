@@ -9,7 +9,7 @@ import type { SellerAccountView } from "@/services/coupang-seller-accounts/types
 type DeliverablesPanelProps = {
   accounts: SellerAccountView[];
   sellerId: string;
-  warehouseInboundList: ListWarehouseInboundRowsResult;
+  warehouseInboundList: Omit<ListWarehouseInboundRowsResult, "rows">;
 };
 
 export function DeliverablesPanel({
