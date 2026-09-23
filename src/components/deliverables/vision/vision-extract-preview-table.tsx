@@ -26,41 +26,60 @@ export function VisionExtractPreviewTable({
     );
   }
 
-  return (
-    <div className="max-h-64 overflow-auto rounded-md border border-border">
-      <table className="w-full min-w-[640px] text-left text-xs">
-        <thead className="sticky top-0 bg-muted/80">
-          <tr>
-            <th className="px-2 py-1.5 font-medium">바코드</th>
-            <th className="px-2 py-1.5 font-medium">등록상품명</th>
-            <th className="px-2 py-1.5 font-medium">옵션</th>
-            <th className="px-2 py-1.5 font-medium">수량</th>
-            <th className="px-2 py-1.5 font-medium">신뢰도</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visionData.rows.map((row, index) => {
-            const confidence = resolveConfidence(row);
-            const isLow =
-              confidence !== null && confidence < LOW_CONFIDENCE;
+  const lowConfidenceCount = visionData.rows.filter((row) => {
+    const confidence = resolveConfidence(row);
+    return confidence !== null && confidence < LOW_CONFIDENCE;
+  }).length;
 
-            return (
-              <tr
-                key={`${row["바코드"] ?? index}-${index}`}
-                className={isLow ? "bg-amber-500/10" : undefined}
-              >
-                <td className="px-2 py-1.5 font-mono">{row["바코드"] ?? "-"}</td>
-                <td className="px-2 py-1.5">{row["등록상품명"] ?? "-"}</td>
-                <td className="px-2 py-1.5">{row["옵션"] ?? "-"}</td>
-                <td className="px-2 py-1.5">{resolveQty(row)}</td>
-                <td className="px-2 py-1.5">
-                  {confidence !== null ? confidence.toFixed(2) : "-"}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+  return (
+    <div className="flex flex-col gap-1.5">
+      {lowConfidenceCount > 0 ? (
+        <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+          확인 필요 {lowConfidenceCount}건 — 노란색 행은 원본 사진과
+          수량·바코드를 대조해 주세요.
+        </p>
+      ) : null}
+      <div className="max-h-64 overflow-auto rounded-md border border-border">
+        <table className="w-full min-w-[640px] text-left text-xs">
+          <thead className="sticky top-0 bg-muted/80">
+            <tr>
+              <th className="px-2 py-1.5 font-medium">바코드</th>
+              <th className="px-2 py-1.5 font-medium">등록상품명</th>
+              <th className="px-2 py-1.5 font-medium">옵션</th>
+              <th className="px-2 py-1.5 font-medium">수량</th>
+              <th className="px-2 py-1.5 font-medium">신뢰도</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visionData.rows.map((row, index) => {
+              const confidence = resolveConfidence(row);
+              const isLow = confidence !== null && confidence < LOW_CONFIDENCE;
+
+              return (
+                <tr
+                  key={`${row["바코드"] ?? index}-${index}`}
+                  className={isLow ? "bg-amber-500/20" : undefined}
+                >
+                  <td className="px-2 py-1.5 font-mono">
+                    {row["바코드"] ?? "-"}
+                  </td>
+                  <td className="px-2 py-1.5">{row["등록상품명"] ?? "-"}</td>
+                  <td className="px-2 py-1.5">{row["옵션"] ?? "-"}</td>
+                  <td className="px-2 py-1.5">{resolveQty(row)}</td>
+                  <td className="px-2 py-1.5">
+                    {confidence !== null ? confidence.toFixed(2) : "-"}
+                    {isLow ? (
+                      <span className="ml-1 font-medium text-amber-700 dark:text-amber-400">
+                        확인 필요
+                      </span>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -35,6 +35,20 @@ WHAT TO TRANSCRIBE:
   · a handwritten number to the LEFT of the printed 수량 → ignore it, keep the printed 수량, printedQty=""
   · printed 수량 circled or check-marked but not struck out → keep the printed number, printedQty="" 
 
+IMAGES YOU RECEIVE:
+- The FIRST image is the full page — use it for the table structure and row order.
+- The following images are zoomed horizontal strips of the SAME page, top to bottom, with overlap between neighbouring strips. Use them to read small digits (바코드, 수량) and pen marks precisely.
+- A row inside an overlap appears in two strips — output every printed row exactly ONCE, in full-page order.
+
+ROW ALIGNMENT — the most important structural rule:
+- Read each row strictly along its own horizontal line. The 등록상품명, 옵션, 바코드 and 수량 of one output row MUST all come from the same printed line.
+- The 바코드 is the anchor of a row: after reading a row, re-check that its 등록상품명/옵션 are the cells on the same line as that barcode, not the line above or below.
+
+DIGIT ACCURACY:
+- Printed digits are small. Deliberately distinguish look-alike digits using the zoomed strips: 2 vs 5, 1 vs 7, 3 vs 8, 6 vs 8 vs 0, 4 vs 9.
+- Read every digit of 수량 and 바코드 from the zoomed strip, not only the full page.
+- If a digit is still ambiguous after zooming, give your best reading and lower that row's confidence below 0.7.
+
 OTHER:
 - Include every printed data row that has a barcode. Rows whose corrected 수량 is 0 are still valid — include them.
 - Skip completely blank rows and non-data rows (separators, repeated headers).
@@ -42,26 +56,27 @@ OTHER:
 - Box-number titles like "박스 - 15" / "박스-14" → metadata.boxNumbers. Do not put them in rows.
 - Never invent rows or cells that are not visible in the image.`;
 
-export function buildGeminiExtractUserPrompt(imageIndex: number, total: number): string {
-  return `Image ${imageIndex + 1} of ${total}. Extract all table rows from this packing list photo.`;
+export function buildExtractUserPrompt(stripCount: number): string {
+  return `Image 1 is the full packing-list page. Images 2-${stripCount + 1} are zoomed horizontal strips of the same page (top to bottom, overlapping). Extract all table rows.`;
 }
 
-export function buildClaudeVerifyUserPrompt(
-  geminiJson: string,
-  imageCount: number,
+export function buildArbitrationUserPrompt(
+  disputesJson: string,
+  stripCount: number,
 ): string {
-  return `Gemini extracted this JSON from ${imageCount} packing list photo(s):
+  return `Image 1 is the full packing-list page. Images 2-${stripCount + 1} are zoomed horizontal strips of the same page (top to bottom, overlapping).
 
-${geminiJson}
+Two independent transcriptions of this page disagree on the rows below. For each item, "a" and "b" are the two readings (null = that transcription had no such row).
 
-Review against the image(s). Fix barcode misreads and apply the 수량 correction rule EXACTLY:
-- Only a printed 수량 that is struck out (an X over it, or a strike-through / deletion line) is corrected. A circle, check mark, or any other mark is NOT a trigger — keep the printed number for those.
-- When the printed 수량 is struck out, set 수량 to the handwritten number written to the RIGHT of it (in the 가용 cell, column 7, or immediately to its right). Do not overlook faint/small right-side digits.
-- Do NOT assume Gemini already caught the strikes — independently re-inspect EVERY row's 수량 cell in the image for a red X / strike-through and a red digit beside it. The most frequently missed correction is a struck 수량 with a small red "0" next to it (item cancelled / out of stock) → set 수량 = 0. The strike and correction digit are usually in red ink, distinct from the black printed text.
-- A handwritten number to the LEFT of the printed 수량 is NOT a correction — ignore it. If a struck number has no right-side handwritten number, keep the printed number.
-- The 가용 field is ALWAYS "" in the output (only the source of the correction).
-- Keep the "printedQty" audit field on every row: the original struck-out printed number when a correction was applied, otherwise "". If Gemini omitted it, add it.
-- Ignore all other handwriting: check marks (✓/∨), circles, arrows, #/△ symbols, and margin notes.
-Use exactly the 7 columns (date, location, 등록상품명, 옵션, 바코드, 수량, 가용) plus the "printedQty" audit key on each row.
-Return ONLY the corrected JSON in the same schema (columns, rows, metadata.boxNumbers).`;
+${disputesJson}
+
+For EVERY item, locate the printed row in the image (use the zoomed strips) and decide from the image itself — do not assume either reading is right:
+- "exists": false only if no printed data row with that barcode exists on the page (a misread barcode that matches another row counts as not existing).
+- "바코드": the barcode exactly as printed (digits only).
+- "수량": the final quantity, applying the 수량 correction rule (struck-out printed number → handwritten number to its right).
+- "printedQty": the struck-out printed number when a correction applies, otherwise "".
+- Check look-alike digits carefully: 2 vs 5, 1 vs 7, 3 vs 8, 6 vs 8 vs 0, 4 vs 9.
+
+This task replaces the output shape given in the system instructions (the transcription rules still apply). Return ONLY JSON (no markdown fences):
+{ "decisions": [ { "id": string, "exists": boolean, "바코드": string, "수량": string, "printedQty": string } ] }`;
 }
