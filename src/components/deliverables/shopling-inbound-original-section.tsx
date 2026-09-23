@@ -50,6 +50,7 @@ export function ShoplingInboundOriginalSection() {
       const matched = response.headers.get("X-Inbound-Matched");
       const unmapped = response.headers.get("X-Inbound-Unmapped");
       const ambiguous = response.headers.get("X-Inbound-Ambiguous");
+      const estimated = response.headers.get("X-Inbound-Estimated");
 
       const objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -62,6 +63,9 @@ export function ShoplingInboundOriginalSection() {
 
       const statsParts = [
         matched !== null ? `매칭 ${matched}건` : null,
+        estimated !== null && Number(estimated) > 0
+          ? `그중 추정 매칭 ${estimated}건(확인 필요)`
+          : null,
         unmapped !== null && Number(unmapped) > 0
           ? `미매핑 ${unmapped}건`
           : null,

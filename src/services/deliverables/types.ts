@@ -131,6 +131,14 @@ export type ShoplingInboundValidationRow = {
   quantity: number;
   status: ShoplingInboundValidationStatus;
   barcode: string | null;
+  /** 느슨한 단계(기호 무시·포함 관계·상품 기본 이름)로 찾은 추정 매칭 */
+  estimated?: boolean;
+  /** 추정 매칭일 때 실제로 매칭된 샵플링 옵션값 */
+  matchedOption?: string;
+  /** 미매핑 사유: 상품 자체가 없음 / 상품은 있으나 옵션 불일치 */
+  unmappedReason?: "productNotFound" | "optionNotFound";
+  /** 옵션 불일치일 때 그 상품의 샵플링 옵션 후보 */
+  candidateOptions?: string[];
 };
 
 export type GenerateShoplingInboundTemplateResult = {
@@ -146,6 +154,7 @@ export type ShoplingInboundOriginalStats = {
   unmapped: number;
   ambiguous: number;
   skippedDummy: number;
+  estimated: number;
 };
 
 export type GenerateShoplingInboundOriginalResult = {

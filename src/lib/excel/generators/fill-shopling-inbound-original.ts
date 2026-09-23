@@ -17,6 +17,8 @@ export type FillShoplingInboundOriginalStats = {
   unmapped: number;
   ambiguous: number;
   skippedDummy: number;
+  /** 느슨한 단계로 찾은 추정 매칭 (matched 에 포함) — 사람이 확인해야 한다 */
+  estimated: number;
 };
 
 export type FillShoplingInboundOriginalResult = {
@@ -89,6 +91,7 @@ export function fillShoplingInboundOriginalFile(
         unmapped: 0,
         ambiguous: 0,
         skippedDummy: 0,
+        estimated: 0,
       },
     };
   }
@@ -100,6 +103,7 @@ export function fillShoplingInboundOriginalFile(
     unmapped: 0,
     ambiguous: 0,
     skippedDummy: 0,
+    estimated: 0,
   };
 
   for (let rowIndex = range.s.r; rowIndex <= range.e.r; rowIndex++) {
@@ -120,6 +124,10 @@ export function fillShoplingInboundOriginalFile(
 
     if (match.status === "matched") {
       stats.matched += 1;
+
+      if (match.estimated) {
+        stats.estimated += 1;
+      }
 
       if (match.location) {
         writeCellValue(firstSheet, rowIndex, LOCATION_COL, match.location);

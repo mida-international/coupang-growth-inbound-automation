@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, CircleX } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleX } from "lucide-react";
 
 import type { ShoplingInboundValidationRow } from "@/services/deliverables/types";
 
@@ -9,6 +9,35 @@ const FAILURE_REASON: Record<string, string> = {
   ambiguous: "여러 바코드와 매칭됨 (모호)",
   skippedDummy: "더미 바코드 제외",
 };
+
+const CANDIDATE_OPTION_PREVIEW = 6;
+
+function describeRow(row: ShoplingInboundValidationRow): string {
+  if (row.status === "matched") {
+    return row.estimated
+      ? `추정 매칭 — 샵플링 옵션 "${row.matchedOption ?? ""}" 확인 필요`
+      : "—";
+  }
+
+  if (row.status === "unmapped" && row.unmappedReason === "productNotFound") {
+    return "샵플링에 해당 상품이 없음 (품명 확인)";
+  }
+
+  if (row.status === "unmapped" && row.unmappedReason === "optionNotFound") {
+    const options = row.candidateOptions ?? [];
+    const preview = options.slice(0, CANDIDATE_OPTION_PREVIEW).join(", ");
+    const more =
+      options.length > CANDIDATE_OPTION_PREVIEW
+        ? ` 외 ${options.length - CANDIDATE_OPTION_PREVIEW}개`
+        : "";
+
+    return options.length > 0
+      ? `옵션 불일치 — 샵플링 옵션: ${preview}${more}`
+      : "옵션 불일치 — 샵플링에 사용 가능한 옵션 없음";
+  }
+
+  return FAILURE_REASON[row.status] ?? "미매칭";
+}
 
 type ShoplingInboundValidationTableProps = {
   rows: ShoplingInboundValidationRow[];
@@ -23,6 +52,9 @@ export function ShoplingInboundValidationTable({
 
   const successCount = rows.filter((row) => row.status === "matched").length;
   const failCount = rows.length - successCount;
+  const estimatedCount = rows.filter(
+    (row) => row.status === "matched" && row.estimated,
+  ).length;
 
   return (
     <div className="rounded-md border border-border">
@@ -31,6 +63,13 @@ export function ShoplingInboundValidationTable({
         <p className="text-xs text-muted-foreground">
           전체 {rows.length}건{" "}
           <span className="font-medium text-primary">성공 {successCount}건</span>{" "}
+          {estimatedCount > 0 ? (
+            <>
+              <span className="font-medium text-amber-600 dark:text-amber-400">
+                (추정 {estimatedCount}건 확인 필요)
+              </span>{" "}
+            </>
+          ) : null}
           <span className="font-medium text-destructive">
             실패 {failCount}건
           </span>
@@ -58,21 +97,24 @@ export function ShoplingInboundValidationTable({
                 반영여부
               </th>
               <th className="px-3 py-2 font-medium text-muted-foreground">
-                미매칭 사유
+                미매칭 사유 / 비고
               </th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, index) => {
               const isMatched = row.status === "matched";
+              const isEstimated = isMatched && row.estimated === true;
 
               return (
                 <tr
                   key={`${row.ptnGoodsCd}-${row.optionValue}-${index}`}
                   className={
-                    isMatched
-                      ? "border-t border-border/60"
-                      : "border-t border-border/60 bg-destructive/5"
+                    isEstimated
+                      ? "border-t border-border/60 bg-amber-500/10"
+                      : isMatched
+                        ? "border-t border-border/60"
+                        : "border-t border-border/60 bg-destructive/5"
                   }
                 >
                   <td className="px-3 py-2 text-muted-foreground">
@@ -87,7 +129,12 @@ export function ShoplingInboundValidationTable({
                   <td className="px-3 py-2">{row.quantity}</td>
                   <td className="px-3 py-2 font-mono">{row.barcode ?? "—"}</td>
                   <td className="px-3 py-2">
-                    {isMatched ? (
+                    {isEstimated ? (
+                      <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+                        <CircleAlert className="size-3.5" aria-hidden />
+                        성공(추정)
+                      </span>
+                    ) : isMatched ? (
                       <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
                         <CircleCheck className="size-3.5" aria-hidden />
                         성공
@@ -99,8 +146,8 @@ export function ShoplingInboundValidationTable({
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-muted-foreground">
-                    {isMatched ? "—" : (FAILURE_REASON[row.status] ?? "미매칭")}
+                  <td className="min-w-[16rem] px-3 py-2 text-muted-foreground">
+                    {describeRow(row)}
                   </td>
                 </tr>
               );
