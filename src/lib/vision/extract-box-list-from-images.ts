@@ -9,6 +9,7 @@ import {
   extractImageWithGemini,
   type VisionImageInput,
 } from "@/lib/vision/extract-with-gemini";
+import { flagImplausibleQuantities } from "@/lib/vision/flag-implausible-quantity";
 import { mergeVisionPayloads } from "@/lib/vision/merge-vision-results";
 import { computeVisionStats } from "@/lib/vision/compute-vision-stats";
 import type { ParsedVisionPayload } from "@/lib/vision/parse-vision-json";
@@ -105,7 +106,8 @@ export async function extractBoxListFromImages(
 
   const visionData = {
     columns: merged.columns,
-    rows: merged.rows,
+    // 인쇄 수량보다 훨씬 큰 값(예: 7을 87로)은 "확인 필요"로 표시
+    rows: flagImplausibleQuantities(merged.rows),
   };
 
   const stats = computeVisionStats(visionData, {
