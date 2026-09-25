@@ -21,6 +21,7 @@ export { buildBoxListExcelFilename };
 
 export async function extractVisionDataFromImages(
   imageFiles: File[],
+  sellerId?: string,
 ): Promise<{
   visionData: VisionExtractedData;
   stats: import("@/lib/vision/types").VisionExtractStats;
@@ -29,6 +30,11 @@ export async function extractVisionDataFromImages(
 
   for (const file of imageFiles) {
     formData.append("images", file);
+  }
+
+  // 판매자 ID를 함께 보내면 서버가 그 판매자의 실제 바코드 목록으로 자동 교정한다.
+  if (sellerId && sellerId.trim().length > 0) {
+    formData.append("seller", sellerId.trim());
   }
 
   const response = await fetch("/api/vision/extract-box-list", {

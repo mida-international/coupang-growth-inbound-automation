@@ -1,3 +1,4 @@
+import { isValidBarcodeChecksum } from "@/lib/vision/validate-barcode";
 import type { VisionExtractedData } from "@/lib/vision/types";
 
 const LOW_CONFIDENCE = 0.7;
@@ -26,6 +27,10 @@ export function VisionExtractPreviewTable({
     );
   }
 
+  const invalidBarcodeCount = visionData.rows.filter((row) => {
+    const barcode = row["바코드"]?.trim();
+    return barcode ? !isValidBarcodeChecksum(barcode) : false;
+  }).length;
   const lowConfidenceCount = visionData.rows.filter((row) => {
     const confidence = resolveConfidence(row);
     return confidence !== null && confidence < LOW_CONFIDENCE;
@@ -33,6 +38,12 @@ export function VisionExtractPreviewTable({
 
   return (
     <div className="flex flex-col gap-1.5">
+      {invalidBarcodeCount > 0 ? (
+        <p className="text-xs font-medium text-red-600 dark:text-red-400">
+          바코드 {invalidBarcodeCount}건이 잘못 읽힌 것으로 보입니다(체크섬 불일치,
+          자동 교정도 안 됨). 빨간 행을 원본 사진과 대조해 주세요.
+        </p>
+      ) : null}
       {lowConfidenceCount > 0 ? (
         <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
           확인 필요 {lowConfidenceCount}건 — 노란색 행은 원본 사진과
@@ -54,14 +65,29 @@ export function VisionExtractPreviewTable({
             {visionData.rows.map((row, index) => {
               const confidence = resolveConfidence(row);
               const isLow = confidence !== null && confidence < LOW_CONFIDENCE;
+              const barcode = row["바코드"]?.trim() ?? "";
+              const isBadBarcode = barcode
+                ? !isValidBarcodeChecksum(barcode)
+                : false;
 
               return (
                 <tr
                   key={`${row["바코드"] ?? index}-${index}`}
-                  className={isLow ? "bg-amber-500/20" : undefined}
+                  className={
+                    isBadBarcode
+                      ? "bg-red-500/15"
+                      : isLow
+                        ? "bg-amber-500/20"
+                        : undefined
+                  }
                 >
                   <td className="px-2 py-1.5 font-mono">
                     {row["바코드"] ?? "-"}
+                    {isBadBarcode ? (
+                      <span className="ml-1 font-sans text-red-600 dark:text-red-400">
+                        오인식
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-2 py-1.5">{row["등록상품명"] ?? "-"}</td>
                   <td className="px-2 py-1.5">{row["옵션"] ?? "-"}</td>

@@ -1,4 +1,5 @@
 {
+  "regions": ["icn1"],
   "functions": {
     "src/app/api/automation/shopling-negative-stock/login/route.ts": {
       "maxDuration": 300,
@@ -9,6 +10,10 @@
       "memory": 3008
     },
     "src/app/api/shopling/package-mapping/sync/route.ts": {
+      "maxDuration": 300,
+      "memory": 3008
+    },
+    "src/app/api/shopling-sync/run/route.ts": {
       "maxDuration": 300,
       "memory": 3008
     }
