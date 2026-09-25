@@ -38,6 +38,9 @@ export function convertVisionDataToBoxItems(visionData: VisionExtractedData): {
 
     const barcode = String(barcodeRaw).trim().replace(/\s/g, "");
 
+    // 형식만 확인한다. 잘못 읽힌 바코드는 추출 단계에서 마스터로 교정되고,
+    // 교정 못 한 것은 입고 템플릿 매칭에서 자연히 제외되므로, 여기서 체크섬으로
+    // 하드 제외하지는 않는다(EAN 아닌 정상 바코드를 잘못 버리지 않기 위해).
     if (!/^\d{6,14}$/.test(barcode)) {
       skippedRows += 1;
       continue;

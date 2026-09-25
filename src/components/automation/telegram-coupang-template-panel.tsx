@@ -215,11 +215,8 @@ export function TelegramCoupangTemplatePanel({
 
     try {
       const file = await resolveBoxListFile();
-      const noticeMessage = await downloadCoupangInboundTemplate(
-        sellerId,
-        file,
-      );
-      setNotice(noticeMessage);
+      const result = await downloadCoupangInboundTemplate(sellerId, file);
+      setNotice(result.message);
       setCanRecordInbound(true);
     } catch (error) {
       setNotice(

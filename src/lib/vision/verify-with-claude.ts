@@ -71,15 +71,19 @@ export async function verifyImageWithClaude(
     },
   ];
 
+  // claude-opus-5는 temperature 파라미터를 받지 않는다(보내면 400). 대신 기본
+  // adaptive thinking으로 표를 더 정확히 판독한다. thinking과 출력이 max_tokens를
+  // 함께 쓰므로 넉넉히(32000) 잡는데, 이 크기의 비스트리밍 요청은 SDK가 막으므로
+  // 스트리밍으로 호출하고 finalMessage()로 완성본을 받는다.
   const response = await withRetry(() =>
-    client.messages.create({
-      model: getAnthropicVisionModel(),
-      max_tokens: 16000,
-      // temperature 0: 검증 결과가 실행마다 흔들리지 않도록 결정적으로 읽는다.
-      temperature: 0,
-      system: EXTRACT_BOX_LIST_SYSTEM_PROMPT,
-      messages: [{ role: "user", content }],
-    }),
+    client.messages
+      .stream({
+        model: getAnthropicVisionModel(),
+        max_tokens: 32000,
+        system: EXTRACT_BOX_LIST_SYSTEM_PROMPT,
+        messages: [{ role: "user", content }],
+      })
+      .finalMessage(),
   );
 
   const textBlock = response.content.find((block) => block.type === "text");

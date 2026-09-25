@@ -7,6 +7,8 @@ import {
   resolveShoplingInboundBarcodes,
 } from "@/lib/deliverables/resolve-shopling-inbound-barcodes";
 
+const ZWSP = String.fromCharCode(0x200b);
+
 describe("resolveShoplingInboundBarcodes", () => {
   const inventoryRows = [
     {
@@ -243,5 +245,94 @@ describe("matchShoplingInboundInventoryRow", () => {
       assert.equal(match.barcode, "8802222222222");
       assert.equal(match.location, "A-01");
     }
+  });
+});
+
+describe("matchShoplingInboundInventoryRow product-name tolerance", () => {
+  const inventory = [
+    {
+      ptnGoodsCd: "CODE-100",
+      productName: "발란스신발끈",
+      optionValue: "블랙",
+      barcode: "8810000000001",
+      location: null,
+    },
+  ];
+
+  it("matches when the inbound product name has an extra internal space", () => {
+    const match = matchShoplingInboundInventoryRow(
+      "발란스 신발끈",
+      "블랙",
+      inventory,
+    );
+
+    assert.equal(match.status, "matched");
+    if (match.status === "matched") {
+      assert.equal(match.barcode, "8810000000001");
+    }
+  });
+
+  it("matches when the inbound product name carries a zero-width space", () => {
+    const match = matchShoplingInboundInventoryRow(
+      `발란스${ZWSP}신발끈`,
+      "블랙",
+      inventory,
+    );
+
+    assert.equal(match.status, "matched");
+    if (match.status === "matched") {
+      assert.equal(match.barcode, "8810000000001");
+    }
+  });
+
+  it("matches when only the product-name casing differs", () => {
+    const match = matchShoplingInboundInventoryRow("Roll Tape", "clear", [
+      {
+        ptnGoodsCd: "CODE-200",
+        productName: "roll tape",
+        optionValue: "Clear",
+        barcode: "8810000000002",
+        location: null,
+      },
+    ]);
+
+    assert.equal(match.status, "matched");
+    if (match.status === "matched") {
+      assert.equal(match.barcode, "8810000000002");
+    }
+  });
+
+  it("prefers the exactly-named product over a whitespace-different one", () => {
+    const match = matchShoplingInboundInventoryRow("롱가죽장갑", "블랙", [
+      {
+        ptnGoodsCd: "CODE-EXACT",
+        productName: "롱가죽장갑",
+        optionValue: "블랙",
+        barcode: "8810000000010",
+        location: null,
+      },
+      {
+        ptnGoodsCd: "CODE-LOOSE",
+        productName: "롱 가죽 장갑",
+        optionValue: "블랙",
+        barcode: "8810000000011",
+        location: null,
+      },
+    ]);
+
+    assert.equal(match.status, "matched");
+    if (match.status === "matched") {
+      assert.equal(match.barcode, "8810000000010");
+    }
+  });
+
+  it("still reports unmapped when the product is absent from inventory", () => {
+    const match = matchShoplingInboundInventoryRow(
+      "존재하지않는상품",
+      "블랙",
+      inventory,
+    );
+
+    assert.equal(match.status, "unmapped");
   });
 });

@@ -57,7 +57,7 @@ export function buildBoxListExcelBytes(
       }
       return output;
     })
-    // 바코드(셀 데이터)가 있는 행만 — 공백/비데이터 행 제외
+    // 바코드(셀 데이터)가 있는 행만 — 공백/비데이터 행 제외.
     .filter((row) => /^\d{6,14}$/.test(row["바코드"].replace(/\s/g, "")));
 
   const worksheet = XLSX.utils.json_to_sheet(rows, {

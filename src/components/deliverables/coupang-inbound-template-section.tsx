@@ -60,6 +60,7 @@ export function CoupangInboundTemplateSection({
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [visionData, setVisionData] = useState<VisionExtractedData | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [unmatchedBarcodes, setUnmatchedBarcodes] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingShoplingOutbound, setIsDownloadingShoplingOutbound] =
@@ -144,7 +145,7 @@ export function CoupangInboundTemplateSection({
       return visionData;
     }
 
-    const extracted = await extractVisionDataFromImages(imageFiles);
+    const extracted = await extractVisionDataFromImages(imageFiles, sellerId);
     setVisionData(extracted.visionData);
     return extracted.visionData;
   }
@@ -166,6 +167,7 @@ export function CoupangInboundTemplateSection({
 
     setIsDownloading(true);
     setNotice(null);
+    setUnmatchedBarcodes([]);
 
     try {
       const boxListFile = await resolveBoxListFile();
@@ -174,11 +176,12 @@ export function CoupangInboundTemplateSection({
         return;
       }
 
-      const noticeMessage = await downloadCoupangInboundTemplate(
+      const result = await downloadCoupangInboundTemplate(
         sellerId,
         boxListFile,
       );
-      setNotice(noticeMessage);
+      setNotice(result.message);
+      setUnmatchedBarcodes(result.unmatchedBarcodes);
       setCanRecordInbound(true);
     } catch (error) {
       setErrorMessage(
@@ -412,9 +415,39 @@ export function CoupangInboundTemplateSection({
         ) : null}
 
         {notice ? (
-          <p className="text-sm text-muted-foreground" role="status">
-            {notice}
-          </p>
+          <div className="space-y-2" role="status">
+            <p className="text-sm text-muted-foreground">{notice}</p>
+            {unmatchedBarcodes.length > 0 ? (
+              <details className="rounded-md border border-border bg-muted/20 text-sm">
+                <summary className="cursor-pointer select-none px-3 py-2 font-medium text-foreground">
+                  미매칭 바코드 {unmatchedBarcodes.length}건 보기
+                </summary>
+                <div className="space-y-2 border-t border-border px-3 py-2">
+                  <button
+                    type="button"
+                    className="text-xs text-primary underline-offset-4 hover:underline"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(
+                        unmatchedBarcodes.join("\n"),
+                      );
+                    }}
+                  >
+                    전체 복사
+                  </button>
+                  <div className="max-h-40 overflow-auto font-mono text-xs leading-relaxed text-muted-foreground">
+                    {unmatchedBarcodes.map((code) => (
+                      <div key={code}>{code}</div>
+                    ))}
+                  </div>
+                  {unmatchedBarcodes.length >= 200 ? (
+                    <p className="text-xs text-muted-foreground">
+                      미매칭이 많아 처음 200건만 표시했습니다.
+                    </p>
+                  ) : null}
+                </div>
+              </details>
+            ) : null}
+          </div>
         ) : null}
       </div>
 

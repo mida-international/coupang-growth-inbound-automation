@@ -29,7 +29,9 @@ import type {
   ShoplingSyncStoppedReason,
 } from "@/services/shopling-sync/types";
 
-const CREATE_MANY_BATCH_SIZE = 1000;
+// 배치당 행 수. 행당 컬럼 18개 → 2000행 = 36,000 파라미터로 Postgres 상한(65535)
+// 아래이며, 배치를 키워 Supabase 왕복 횟수를 줄여 적재를 빠르게 한다.
+const CREATE_MANY_BATCH_SIZE = 2000;
 const INGEST_TX_BASE_MS = 30_000;
 const INGEST_TX_PER_BATCH_MS = 15_000;
 const INGEST_TX_MAX_MS = 240_000;
@@ -112,6 +114,10 @@ export async function syncShoplingInventory(
     return configResult;
   }
 
+  // 시간 계측: 300s 초과(504)의 병목이 fetch인지 DB 적재인지 로그로 특정한다.
+  const startedAt = Date.now();
+  const elapsedMs = () => Date.now() - startedAt;
+
   const today = getKstTodayDate();
   const dedupeMap = new Map<string, ParsedShoplingInventoryRow>();
   const chunkResults: ShoplingSyncChunkResult[] = [];
@@ -119,8 +125,15 @@ export async function syncShoplingInventory(
   let fetchedProductCount = 0;
   let stoppedReason: ShoplingSyncStoppedReason = "max_chunks";
 
-  for (let chunkIndex = 0; chunkIndex < SHOPLING_SYNC_MAX_CHUNKS; chunkIndex++) {
+  // 샵플링 API가 동시 요청을 제대로 처리하지 못해(병렬 호출 시 첫 배치가 응답 없이
+  // 멈춤) 청크는 순차로 호출한다. 청크별 소요 시간을 로그로 남겨 병목을 계측한다.
+  for (
+    let chunkIndex = 0;
+    chunkIndex < SHOPLING_SYNC_MAX_CHUNKS;
+    chunkIndex++
+  ) {
     const chunk = buildShoplingSyncChunk(today, chunkIndex);
+    const chunkStartedAt = Date.now();
     const fetchResult = await fetchShoplingChunkXml(
       configResult.data,
       chunk.startDt,
@@ -133,6 +146,9 @@ export async function syncShoplingInventory(
 
     const productCount = countGoodsInfoBlocks(fetchResult.body);
     fetchedProductCount += productCount;
+    console.log(
+      `[shopling-sync-timing] chunk ${chunkIndex} (${chunk.startDt}~${chunk.endDt}) fetched ${productCount} in ${Date.now() - chunkStartedAt}ms (elapsed ${elapsedMs()}ms, rows ${dedupeMap.size})`,
+    );
 
     if (productCount === 0) {
       consecutiveEmpty++;
@@ -182,6 +198,11 @@ export async function syncShoplingInventory(
   const newestEndDt = formatYyyyMmDd(today);
 
   const txTimeout = computeIngestTransactionTimeoutMs(rows.length);
+
+  console.log(
+    `[shopling-sync-timing] fetch phase DONE @ ${elapsedMs()}ms — ${rows.length} rows to insert, ${chunkResults.length} chunks. DB tx start (timeout ${txTimeout}ms)`,
+  );
+  const dbStartedAt = Date.now();
 
   try {
     await prisma.$transaction(
@@ -245,6 +266,10 @@ export async function syncShoplingInventory(
 
     return { ok: false, error: message };
   }
+
+  console.log(
+    `[shopling-sync-timing] DB insert DONE in ${Date.now() - dbStartedAt}ms (total ${elapsedMs()}ms, ${rows.length} rows)`,
+  );
 
   return {
     ok: true,

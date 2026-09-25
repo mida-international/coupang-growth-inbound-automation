@@ -56,6 +56,14 @@ export async function POST(request: Request) {
 
     const filename = buildCoupangInboundTemplateFilename(result.stats.source);
 
+    // 매칭된 행들의 수량 총합(변경되지 않아야 할 수량이 바뀌었는지 한눈에 확인용).
+    const quantitySum = result.matchedItems.reduce(
+      (sum, item) => sum + item.quantity,
+      0,
+    );
+    // 미매칭 바코드 목록(헤더 크기 보호 위해 최대 200개까지만 실어 보낸다).
+    const unmatchedBarcodes = result.stats.unmatched.slice(0, 200).join(",");
+
     return new Response(new Uint8Array(result.buffer), {
       status: 200,
       headers: {
@@ -64,6 +72,8 @@ export async function POST(request: Request) {
         "Content-Disposition": encodeContentDispositionFilename(filename),
         "X-Filter-Matched": String(result.stats.matched),
         "X-Filter-Unmatched": String(result.stats.unmatched.length),
+        "X-Filter-Quantity-Sum": String(quantitySum),
+        "X-Filter-Unmatched-Barcodes": unmatchedBarcodes,
         "Cache-Control": "no-store",
       },
     });

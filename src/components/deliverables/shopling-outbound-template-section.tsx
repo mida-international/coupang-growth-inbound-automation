@@ -92,7 +92,7 @@ export function ShoplingOutboundTemplateSection({
         activeTab === "excel"
           ? (excelFile as File)
           : buildBoxListExcelFile(
-              (await extractVisionDataFromImages([imageFile as File]))
+              (await extractVisionDataFromImages([imageFile as File], sellerId))
                 .visionData,
               "샵플링_출고리스트_이미지변환.xlsx",
             );

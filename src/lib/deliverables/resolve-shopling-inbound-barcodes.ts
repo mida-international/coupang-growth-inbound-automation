@@ -1,7 +1,7 @@
 import { isExcludedOutboundBarcode } from "@/lib/deliverables/normalize-outbound-box-items";
 import {
   compareShoplingInboundOptions,
-  normalizeShoplingInboundProductLabel,
+  normalizeShoplingInboundProductLabelForTier,
   type ShoplingInboundOptionMatchTier,
 } from "@/lib/deliverables/normalize-shopling-inbound-option";
 import type { ShoplingInboundListItem } from "@/lib/excel/parsers/parse-shopling-inbound-list";
@@ -32,6 +32,13 @@ export type ResolveShoplingInboundBarcodesResult = {
 };
 
 const OPTION_MATCH_TIERS: ShoplingInboundOptionMatchTier[] = [
+  "exact",
+  "ignoreWhitespace",
+  "ignoreCase",
+];
+
+// 품명(D열)도 옵션과 동일한 순서로 점점 느슨하게 후보를 넓힌다.
+const PRODUCT_MATCH_TIERS: ShoplingInboundOptionMatchTier[] = [
   "exact",
   "ignoreWhitespace",
   "ignoreCase",
@@ -95,15 +102,25 @@ export function formatShoplingInboundLookupError(
 function productLabelMatches(
   inboundLabel: string,
   row: ShoplingInboundInventoryRow,
+  tier: ShoplingInboundOptionMatchTier,
 ): boolean {
-  const normalized = normalizeShoplingInboundProductLabel(inboundLabel);
+  const normalized = normalizeShoplingInboundProductLabelForTier(
+    inboundLabel,
+    tier,
+  );
 
   if (!normalized) {
     return false;
   }
 
-  const ptnGoodsCd = normalizeShoplingInboundProductLabel(row.ptnGoodsCd ?? "");
-  const productName = normalizeShoplingInboundProductLabel(row.productName ?? "");
+  const ptnGoodsCd = normalizeShoplingInboundProductLabelForTier(
+    row.ptnGoodsCd ?? "",
+    tier,
+  );
+  const productName = normalizeShoplingInboundProductLabelForTier(
+    row.productName ?? "",
+    tier,
+  );
 
   return normalized === ptnGoodsCd || normalized === productName;
 }
@@ -111,8 +128,11 @@ function productLabelMatches(
 export function filterInventoryByProductLabel(
   productLabel: string,
   inventoryRows: ShoplingInboundInventoryRow[],
+  tier: ShoplingInboundOptionMatchTier = "exact",
 ): ShoplingInboundInventoryRow[] {
-  return inventoryRows.filter((row) => productLabelMatches(productLabel, row));
+  return inventoryRows.filter((row) =>
+    productLabelMatches(productLabel, row, tier),
+  );
 }
 
 export function findInventoryMatchByOptionCascade(
@@ -184,23 +204,36 @@ export function matchShoplingInboundInventoryRow(
   optionValue: string,
   inventoryRows: ShoplingInboundInventoryRow[],
 ): ShoplingInboundInventoryMatchResult {
-  const candidates = filterInventoryByProductLabel(productLabel, inventoryRows);
+  // 품명을 exact → ignoreWhitespace → ignoreCase 순으로 넓혀가며 후보를 찾고,
+  // 각 티어에서 옵션 캐스케이드로 바코드를 확정한다. 엄격한 티어를 먼저 확정해
+  // "정확히 같은 품명"이 우선되도록 하고, 옵션이 안 맞으면(unmapped) 더 느슨한
+  // 품명 티어로 내려가 재시도한다. 모호(ambiguous)는 그 티어의 실제 충돌이므로
+  // 즉시 반환한다.
+  for (const productTier of PRODUCT_MATCH_TIERS) {
+    const candidates = filterInventoryByProductLabel(
+      productLabel,
+      inventoryRows,
+      productTier,
+    );
 
-  if (candidates.length === 0) {
-    return { status: "unmapped" };
-  }
+    if (candidates.length === 0) {
+      continue;
+    }
 
-  const match = findInventoryMatchByOptionCascade(candidates, optionValue);
+    const match = findInventoryMatchByOptionCascade(candidates, optionValue);
 
-  if (match.status !== "matched") {
+    if (match.status === "unmapped") {
+      continue;
+    }
+
+    if (match.status === "matched" && isExcludedOutboundBarcode(match.barcode)) {
+      return { status: "skippedDummy" };
+    }
+
     return match;
   }
 
-  if (isExcludedOutboundBarcode(match.barcode)) {
-    return { status: "skippedDummy" };
-  }
-
-  return match;
+  return { status: "unmapped" };
 }
 
 export function resolveShoplingInboundBarcodes(

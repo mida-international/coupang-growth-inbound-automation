@@ -7,6 +7,7 @@ import {
 } from "@/lib/vision/extract-with-gemini";
 import { mergeVisionPayloads } from "@/lib/vision/merge-vision-results";
 import { computeVisionStats } from "@/lib/vision/compute-vision-stats";
+import { enhanceRedMarksAll } from "@/lib/vision/preprocess-image";
 import { translateVisionError } from "@/lib/vision/translate-vision-error";
 import { verifyImageWithClaude } from "@/lib/vision/verify-with-claude";
 import type { VisionExtractResult } from "@/lib/vision/types";
@@ -28,12 +29,16 @@ export async function extractBoxListFromImages(
   let verifiedResults;
 
   try {
-    const geminiResults = await extractWithGemini(images);
+    // 0) 빨간 채널 전처리(강화 원본): 취소선·보정 숫자(특히 0)를 진하게 키워
+    // 인식률을 높인다. 실패 시 각 장이 원본으로 대체되므로 안전하다.
+    const processedImages = await enhanceRedMarksAll(images);
+
+    const geminiResults = await extractWithGemini(processedImages);
 
     // 이미지별 검증도 병렬로 (순차 처리 시 2장부터 함수 타임아웃에 걸린다).
     verifiedResults = await Promise.all(
       geminiResults.map((geminiResult, index) =>
-        verifyImageWithClaude(geminiResult, images[index]),
+        verifyImageWithClaude(geminiResult, processedImages[index]),
       ),
     );
   } catch (error) {
