@@ -13,6 +13,7 @@ import { mergeVisionPayloads } from "@/lib/vision/merge-vision-results";
 import { computeVisionStats } from "@/lib/vision/compute-vision-stats";
 import type { ParsedVisionPayload } from "@/lib/vision/parse-vision-json";
 import { prepareVisionImages } from "@/lib/vision/prepare-vision-images";
+import { enhanceRedMarks } from "@/lib/vision/preprocess-image";
 import {
   applyArbitration,
   reconcileVisionRows,
@@ -24,6 +25,7 @@ export type { VisionImageInput };
 
 /**
  * 이미지 한 장 판독:
+ * 0) 빨간 표시(취소선·보정 숫자, 특히 0)를 진하게 키운 "강화 원본"을 만든다 (실패 시 원본)
  * 1) 원본 + 가로 띠 확대본 준비
  * 2) Claude·Gemini 가 서로의 결과를 보지 않고 독립 판독 (병렬)
  * 3) 바코드 기준으로 대조해 수량이 다르거나 한쪽에만 있는 행만 Claude 가 재판정
@@ -33,7 +35,8 @@ export type { VisionImageInput };
 async function extractSingleImage(
   input: VisionImageInput,
 ): Promise<ParsedVisionPayload> {
-  const image = await prepareVisionImages(input.buffer);
+  const enhanced = await enhanceRedMarks(input);
+  const image = await prepareVisionImages(enhanced.buffer);
   const [claudeResult, geminiResult] = await Promise.allSettled([
     extractImageWithClaude(image),
     extractImageWithGemini(image),

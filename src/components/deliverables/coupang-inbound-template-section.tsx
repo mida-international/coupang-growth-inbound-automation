@@ -151,7 +151,7 @@ export function CoupangInboundTemplateSection({
       return visionData;
     }
 
-    const extracted = await extractVisionDataFromImages(imageFiles);
+    const extracted = await extractVisionDataFromImages(imageFiles, sellerId);
     setVisionData(extracted.visionData);
     return extracted.visionData;
   }
