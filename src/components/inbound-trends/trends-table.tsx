@@ -73,7 +73,7 @@ export function TrendsTable({ rows, dates, sellerId }: TrendsTableProps) {
 
     if (
       !window.confirm(
-        `구글 시트에 '${title}' 열을 P열에 삽입하고 바코드(O열)와 매칭해 값을 채웁니다.\n진행할까요?`,
+        `구글 시트에 '${title}' 열을 최근 날짜 열 앞에 넣고(이미 있으면 값만 갱신) 시트의 바코드 열과 매칭해 값을 채웁니다.\n진행할까요?`,
       )
     ) {
       return;
@@ -113,7 +113,7 @@ export function TrendsTable({ rows, dates, sellerId }: TrendsTableProps) {
       }
 
       setNotice(
-        `'${title}' 열 삽입 완료 — O열 바코드 ${payload.data.barcodeRowCount}개 중 ${payload.data.matchedCount}개 매칭`,
+        `'${title}' 열 반영 완료 — 시트 바코드 ${payload.data.barcodeRowCount}개 중 ${payload.data.matchedCount}개 매칭`,
       );
 
       if (payload.data.sheetUrl) {

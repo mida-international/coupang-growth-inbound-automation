@@ -53,7 +53,7 @@ export type InsertTrendsDateColumnInput = {
 export type InsertTrendsDateColumnResult = {
   sheetUrl: string;
   sheetTitle: string;
-  /** O열에서 바코드로 인식된 행 수 */
+  /** 바코드 열에서 바코드로 인식된 행 수 */
   barcodeRowCount: number;
   /** 그중 값이 매칭되어 채워진 수 */
   matchedCount: number;
@@ -201,7 +201,7 @@ export function findTitleColumnOffset(
     .findIndex((cell) => headerCellMatchesTitle(cell, title));
 }
 
-/** O열 각 행에 맞춰 날짜 열 값 배열을 만든다 (헤더 행 = 제목, 바코드 없는 행 = 빈칸). */
+/** 바코드 열 각 행에 맞춰 날짜 열 값 배열을 만든다 (헤더 행 = 제목, 바코드 없는 행 = 빈칸). */
 export function buildDateColumnValues(
   oValues: string[],
   headerRowIndex: number,

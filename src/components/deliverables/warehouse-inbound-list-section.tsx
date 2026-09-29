@@ -445,7 +445,7 @@ export function WarehouseInboundListSection({
               status: "success",
               message: `오늘 기록 ${recorded.recordedCount}건 ${
                 recorded.replacedCount > 0 ? "갱신" : "저장"
-              } · '${trends.title}' 열 반영 — O열 바코드 ${trends.barcodeRowCount}개 중 ${trends.matchedCount}개 매칭`,
+              } · '${trends.title}' 열 반영 — 시트 바코드 ${trends.barcodeRowCount}개 중 ${trends.matchedCount}개 매칭`,
               sheetUrl: trends.sheetUrl || null,
             };
           } catch (error) {

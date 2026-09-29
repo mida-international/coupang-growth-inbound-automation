@@ -1,6 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import {
+  isPreviewWriteBlocked,
+  PREVIEW_WRITE_BLOCKED_MESSAGE,
+} from "@/lib/api/preview-write-guard";
 import { hasProfile } from "@/lib/auth/profile-edge";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
@@ -11,6 +15,20 @@ function copyCookies(from: NextResponse, to: NextResponse) {
 }
 
 export async function middleware(request: NextRequest) {
+  // 시험 사이트(프리뷰)는 운영과 같은 DB를 쓰므로 쓰기 API를 막는다.
+  if (
+    isPreviewWriteBlocked({
+      vercelEnv: process.env.VERCEL_ENV,
+      method: request.method,
+      pathname: request.nextUrl.pathname,
+    })
+  ) {
+    return NextResponse.json(
+      { ok: false, error: PREVIEW_WRITE_BLOCKED_MESSAGE },
+      { status: 403 },
+    );
+  }
+
   // 확장 프로그램의 세션 전송 라우트는 쿠키 세션이 없고 Bearer 토큰으로
   // 자체 인증하므로, 미들웨어의 쿠키 기반 인증 게이트를 건너뛴다.
   if (
