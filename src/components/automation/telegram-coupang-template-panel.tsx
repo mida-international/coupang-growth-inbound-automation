@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import {
+  useCoupangInboundDownloadDialog,
+  type CoupangInboundDownloadChoice,
+  type PendingCoupangInboundDownload,
+} from "@/components/deliverables/coupang-inbound-download-dialog";
+import {
   DeliverablesActionBar,
   DELIVERABLES_PRIMARY_BUTTON_CLASS,
 } from "@/components/deliverables/deliverables-action-bar";
@@ -75,8 +80,6 @@ export function TelegramCoupangTemplatePanel({
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingShoplingOutbound, setIsDownloadingShoplingOutbound] =
     useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [canRecordInbound, setCanRecordInbound] = useState(false);
   const [previewData, setPreviewData] = useState<VisionExtractedData | null>(
     null,
   );
@@ -87,7 +90,12 @@ export function TelegramCoupangTemplatePanel({
   const hasSeller = sellerId.trim().length > 0;
   const hasStoredTemplate = templateMeta?.exists === true;
   const selectedAccount = accounts.find((account) => account.id === sellerId);
-  const canDownload = hasSeller && hasStoredTemplate && !isDownloading;
+  const downloadDialog = useCoupangInboundDownloadDialog(runDownload);
+  const canDownload =
+    hasSeller &&
+    hasStoredTemplate &&
+    !isDownloading &&
+    !downloadDialog.isPreparing;
   const canDownloadShoplingOutbound =
     hasSeller && !isDownloadingShoplingOutbound;
 
@@ -211,29 +219,73 @@ export function TelegramCoupangTemplatePanel({
     return file;
   }
 
+  // 다운로드 → 팝업(다운로드만 / 다운로드 + 기록).
+  // 원본은 저장된 OCR 엑셀이라, 같은 텔레그램 건을 다시 기록하면 같은 파일로 감지된다.
   async function handleDownloadClick() {
     if (!canDownload) {
       return;
     }
 
-    setIsDownloading(true);
     setNotice(null);
     setUnmatchedResult(null);
 
     try {
       const file = await resolveBoxListFile();
+      await downloadDialog.open(sellerId, [file]);
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "중복 기록 확인에 실패했습니다.",
+      );
+    }
+  }
+
+  async function runDownload(
+    choice: CoupangInboundDownloadChoice,
+    pending: PendingCoupangInboundDownload,
+  ) {
+    setIsDownloading(true);
+
+    const file = pending.files[0];
+    let downloadMessage: string;
+
+    try {
       const downloadResult = await downloadCoupangInboundTemplate(
-        sellerId,
+        pending.sellerId,
         file,
       );
-      setNotice(downloadResult.message);
+      downloadMessage = downloadResult.message;
+      setNotice(downloadMessage);
       setUnmatchedResult(downloadResult);
-      setCanRecordInbound(true);
     } catch (error) {
       setNotice(
         error instanceof Error
           ? error.message
           : "입고 템플릿 생성에 실패했습니다.",
+      );
+      setIsDownloading(false);
+      return;
+    }
+
+    if (choice === "download") {
+      setIsDownloading(false);
+      return;
+    }
+
+    try {
+      const recordMessage = await recordCoupangInbound({
+        sellerId: pending.sellerId,
+        boxListFile: file,
+        files: pending.files,
+        sourceFiles: pending.sourceFiles,
+        // 팝업에서 중복 경고를 보고 "그래도" 고른 경우만 강제. 그 사이 생긴 중복은 서버가 막는다.
+        force: pending.duplicates.length > 0,
+      });
+      setNotice(`${downloadMessage}\n${recordMessage}`);
+    } catch (error) {
+      setNotice(
+        `다운로드는 완료됐지만 입고 기록에 실패했습니다: ${
+          error instanceof Error ? error.message : "알 수 없는 오류"
+        }`,
       );
     } finally {
       setIsDownloading(false);
@@ -264,27 +316,6 @@ export function TelegramCoupangTemplatePanel({
       );
     } finally {
       setIsDownloadingShoplingOutbound(false);
-    }
-  }
-
-  async function handleRecordInboundClick() {
-    if (!canRecordInbound || !hasSeller) {
-      return;
-    }
-
-    setIsRecording(true);
-    setNotice(null);
-
-    try {
-      const file = await resolveBoxListFile();
-      const recordedCount = await recordCoupangInbound(sellerId, file);
-      setNotice(`${recordedCount}개 바코드 입고를 기록했습니다.`);
-    } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "입고 기록에 실패했습니다.",
-      );
-    } finally {
-      setIsRecording(false);
     }
   }
 
@@ -343,7 +374,6 @@ export function TelegramCoupangTemplatePanel({
           onValueChange={(value) => {
             if (value) {
               setSellerId(value);
-              setCanRecordInbound(false);
               setNotice(null);
               setUnmatchedResult(null);
             }
@@ -403,21 +433,21 @@ export function TelegramCoupangTemplatePanel({
               type="button"
               size="default"
               className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
-              disabled={
-                !canDownload || isRecording || isDownloadingShoplingOutbound
-              }
+              disabled={!canDownload || isDownloadingShoplingOutbound}
               onClick={handleDownloadClick}
             >
-              {isDownloading ? "생성 중..." : "다운로드"}
+              {downloadDialog.isPreparing
+                ? "확인 중..."
+                : isDownloading
+                  ? "생성 중..."
+                  : "다운로드"}
             </Button>
             <Button
               type="button"
               variant="outline"
               size="default"
               className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
-              disabled={
-                !canDownloadShoplingOutbound || isDownloading || isRecording
-              }
+              disabled={!canDownloadShoplingOutbound || isDownloading}
               onClick={handleShoplingOutboundClick}
             >
               {isDownloadingShoplingOutbound
@@ -425,23 +455,6 @@ export function TelegramCoupangTemplatePanel({
                 : "샵플링 출고 템플릿 생성"}
             </Button>
           </>
-        }
-        end={
-          <Button
-            type="button"
-            variant="outline"
-            size="default"
-            className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
-            disabled={
-              !canRecordInbound ||
-              isRecording ||
-              isDownloading ||
-              isDownloadingShoplingOutbound
-            }
-            onClick={handleRecordInboundClick}
-          >
-            {isRecording ? "기록 중..." : "기록하기"}
-          </Button>
         }
       />
 
@@ -456,7 +469,10 @@ export function TelegramCoupangTemplatePanel({
       ) : null}
 
       {notice ? (
-        <p className="text-sm text-muted-foreground" role="status">
+        <p
+          className="text-sm whitespace-pre-line text-muted-foreground"
+          role="status"
+        >
           {notice}
         </p>
       ) : null}
@@ -467,6 +483,8 @@ export function TelegramCoupangTemplatePanel({
           totalCount={unmatchedResult.unmatchedCount}
         />
       ) : null}
+
+      {downloadDialog.dialog}
     </div>
   );
 }

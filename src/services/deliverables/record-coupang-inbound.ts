@@ -58,6 +58,10 @@ export async function recordCoupangInbound(
         matchedCount: generated.stats.matched,
         unmatchedCount: generated.stats.unmatched.length,
         recordedById: input.recordedById,
+        sourceFingerprint: input.sourceFingerprint ?? null,
+        ...(input.sourceFiles && input.sourceFiles.length > 0
+          ? { sourceFiles: input.sourceFiles }
+          : {}),
       },
     });
 

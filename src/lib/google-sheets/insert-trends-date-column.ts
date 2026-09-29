@@ -8,18 +8,37 @@ import {
 
 /** 바코드가 들어있는 열 (A=0 기준 O=14). */
 const BARCODE_COLUMN_LETTER = "O";
-/** 새 값을 넣을 열 (A=0 기준 P=15). 여기 빈 열을 삽입하고 기존 P 이후를 오른쪽으로 민다. */
-const INSERT_COLUMN_LETTER = "P";
+/** 새 날짜 열을 넣을 열 (A=0 기준 P=15). 여기 빈 열을 삽입하고 기존 P 이후를 오른쪽으로 민다. */
 const INSERT_COLUMN_INDEX = 15;
+/**
+ * 같은 제목의 기존 열을 찾는 범위 (P열부터 N개 열).
+ * 새 날짜 열은 항상 P열에 들어가므로 오늘 열은 P열 근처에 있고,
+ * 지난 날짜 열은 하루에 약 2열(창고 'M/D' + 쿠팡 'M/D(완)')씩 오른쪽으로 밀린다.
+ * 범위를 날짜에 맞춰 좁혀 두면 제목에 연도가 없어도 작년 같은 날짜 열과 헷갈리지 않는다.
+ */
+export const TITLE_SEARCH_COLUMN_COUNT = 10;
+/** 날짜 1일당 넓힐 검색 열 수 (하루 약 2열 + 여유) */
+const SEARCH_COLUMNS_PER_DAY = 3;
+/** 이보다 오래된 날짜는 시트를 건드리지 않는다 (작년 같은 날짜 열 오인 방지) */
+export const MAX_SYNC_DAYS_AGO = 60;
+
+/** 며칠 전 날짜인지에 맞춘 검색 범위 (오늘 = 10열, 5일 전 = 25열) */
+export function titleSearchColumnCount(daysAgo: number): number {
+  return TITLE_SEARCH_COLUMN_COUNT + Math.max(0, daysAgo) * SEARCH_COLUMNS_PER_DAY;
+}
 const READ_ROW_LIMIT = 100000;
 
 export type InsertTrendsDateColumnInput = {
   spreadsheetId: string;
   sheetGid: number;
-  /** P열 맨 위(헤더)에 들어갈 제목. 예: "6/22" 또는 "6/22(완)" */
+  /** 날짜 열 헤더 제목. 예: "6/22" 또는 "6/22(완)" */
   title: string;
   /** 바코드(숫자 문자열) → 값 */
   barcodeToValue: Map<string, number>;
+  /** 기존 열 검색 범위 (P열부터 열 수). 기본 TITLE_SEARCH_COLUMN_COUNT */
+  searchColumnCount?: number;
+  /** 기존 열이 없을 때 P열에 새로 넣을지 (기본 true). 원복 동기화는 false */
+  insertIfMissing?: boolean;
 };
 
 export type InsertTrendsDateColumnResult = {
@@ -29,6 +48,10 @@ export type InsertTrendsDateColumnResult = {
   barcodeRowCount: number;
   /** 그중 값이 매칭되어 채워진 수 */
   matchedCount: number;
+  /** 새 열을 삽입했으면 true, 기존 열 값만 갱신했으면 false */
+  created: boolean;
+  /** 기존 열이 없고 insertIfMissing=false라 아무것도 하지 않았으면 true */
+  skipped: boolean;
 };
 
 function escapeSheetTitle(title: string): string {
@@ -43,12 +66,26 @@ function isBarcode(value: string): boolean {
   return /^\d{6,14}$/.test(value);
 }
 
+/** 0 기준 열 번호 → A1 표기 열 문자 (15 → "P", 26 → "AA") */
+export function columnIndexToLetter(index: number): string {
+  let letter = "";
+  let current = index + 1;
+
+  while (current > 0) {
+    const remainder = (current - 1) % 26;
+    letter = String.fromCharCode(65 + remainder) + letter;
+    current = Math.floor((current - 1) / 26);
+  }
+
+  return letter;
+}
+
 /**
  * 헤더 셀이 같은 제목인지 비교. 'M/D' 제목은 시트에서 날짜 셀로 저장되어
  * 표시 형식이 달라질 수 있으므로 숫자(월/일) 기준으로도 비교한다.
  * '(완)' 접미사가 붙은 제목은 정확히 일치할 때만 매칭된다.
  */
-function headerCellMatchesTitle(cell: string, title: string): boolean {
+export function headerCellMatchesTitle(cell: string, title: string): boolean {
   const trimmed = cell.trim();
 
   if (!trimmed) {
@@ -77,14 +114,66 @@ function headerCellMatchesTitle(cell: string, title: string): boolean {
   );
 }
 
-export async function insertTrendsDateColumn(
-  config: GoogleSheetsConfig,
-  input: InsertTrendsDateColumnInput,
-  options?: { sheetsClient?: sheets_v4.Sheets },
-): Promise<InsertTrendsDateColumnResult> {
-  const sheetsClient = options?.sheetsClient ?? createGoogleSheetsClient(config);
+/** P열부터 읽은 헤더 셀 중 제목이 같은 첫 열의 위치(P=0). 없으면 -1. */
+export function findTitleColumnOffset(
+  headerCells: string[],
+  title: string,
+  searchColumnCount = TITLE_SEARCH_COLUMN_COUNT,
+): number {
+  return headerCells
+    .slice(0, searchColumnCount)
+    .findIndex((cell) => headerCellMatchesTitle(cell, title));
+}
 
-  // 1. gid로 탭(시트) 찾기 → 탭 제목 확보
+/** O열 각 행에 맞춰 날짜 열 값 배열을 만든다 (헤더 행 = 제목, 바코드 없는 행 = 빈칸). */
+export function buildDateColumnValues(
+  oValues: string[],
+  headerRowIndex: number,
+  title: string,
+  barcodeToValue: Map<string, number>,
+): { values: string[][]; barcodeRowCount: number; matchedCount: number } {
+  let barcodeRowCount = 0;
+  let matchedCount = 0;
+
+  const values: string[][] = oValues.map((cell, rowIndex) => {
+    if (rowIndex === headerRowIndex) {
+      return [title];
+    }
+
+    const key = normalizeBarcode(cell.trim());
+
+    if (!isBarcode(key)) {
+      return [""];
+    }
+
+    barcodeRowCount += 1;
+    const value = barcodeToValue.get(key);
+
+    if (value === undefined) {
+      return [""];
+    }
+
+    matchedCount += 1;
+    return [String(value)];
+  });
+
+  if (values.length === 0) {
+    values.push([title]);
+  }
+
+  return { values, barcodeRowCount, matchedCount };
+}
+
+async function locateTrendsSheet(
+  sheetsClient: sheets_v4.Sheets,
+  input: { spreadsheetId: string; sheetGid: number },
+): Promise<{
+  sheetTitle: string;
+  escapedTitle: string;
+  oValues: string[];
+  headerRowIndex: number;
+}> {
+  // gid로 탭(시트) 찾기 → 탭 제목 확보
   const spreadsheet = await sheetsClient.spreadsheets.get({
     spreadsheetId: input.spreadsheetId,
   });
@@ -102,7 +191,7 @@ export async function insertTrendsDateColumn(
   const sheetTitle = sheet.properties.title;
   const escapedTitle = escapeSheetTitle(sheetTitle);
 
-  // 2. O열(바코드) 읽기 — 열 삽입 전에 읽는다 (O열은 삽입 위치 P보다 왼쪽이라 영향 없음)
+  // O열(바코드) 읽기
   const oResponse = await sheetsClient.spreadsheets.values.get({
     spreadsheetId: input.spreadsheetId,
     range: `${escapedTitle}!${BARCODE_COLUMN_LETTER}1:${BARCODE_COLUMN_LETTER}${READ_ROW_LIMIT}`,
@@ -113,72 +202,134 @@ export async function insertTrendsDateColumn(
     row[0] !== undefined && row[0] !== null ? String(row[0]) : "",
   );
 
-  // 3. O열 각 행에 맞춰 P열 값 배열 구성
   const foundHeaderRowIndex = oValues.findIndex((cell) =>
     /바코드|barcode/i.test(cell.trim()),
   );
-  const headerRowIndex = foundHeaderRowIndex >= 0 ? foundHeaderRowIndex : 0;
 
-  let barcodeRowCount = 0;
-  let matchedCount = 0;
+  return {
+    sheetTitle,
+    escapedTitle,
+    oValues,
+    headerRowIndex: foundHeaderRowIndex >= 0 ? foundHeaderRowIndex : 0,
+  };
+}
 
-  const pColumn: string[][] = oValues.map((cell, rowIndex) => {
-    if (rowIndex === headerRowIndex) {
-      return [input.title];
-    }
+/** 헤더 행에서 같은 제목의 기존 날짜 열 번호(0 기준)를 찾는다. 없으면 null. */
+async function findExistingTitleColumn(
+  sheetsClient: sheets_v4.Sheets,
+  input: {
+    spreadsheetId: string;
+    escapedTitle: string;
+    headerRowNumber: number;
+    title: string;
+    searchColumnCount: number;
+  },
+): Promise<number | null> {
+  const startLetter = columnIndexToLetter(INSERT_COLUMN_INDEX);
+  const endLetter = columnIndexToLetter(
+    INSERT_COLUMN_INDEX + input.searchColumnCount - 1,
+  );
 
-    const key = normalizeBarcode(cell.trim());
-
-    if (isBarcode(key)) {
-      barcodeRowCount += 1;
-      const value = input.barcodeToValue.get(key);
-
-      if (value !== undefined) {
-        matchedCount += 1;
-        return [String(value)];
-      }
-
-      return [""];
-    }
-
-    return [""];
-  });
-
-  if (pColumn.length === 0) {
-    pColumn.push([input.title]);
-  }
-
-  // 4. 같은 제목의 기존 열이 있으면 삭제 (같은 날 재실행 시 열이 쌓이지 않도록 갱신)
-  const headerRowNumber = headerRowIndex + 1;
   const headerResponse = await sheetsClient.spreadsheets.values.get({
     spreadsheetId: input.spreadsheetId,
-    range: `${escapedTitle}!${INSERT_COLUMN_LETTER}${headerRowNumber}:ZZ${headerRowNumber}`,
+    range: `${input.escapedTitle}!${startLetter}${input.headerRowNumber}:${endLetter}${input.headerRowNumber}`,
   });
 
   const headerCells = (headerResponse.data.values?.[0] ?? []).map((cell) =>
     cell !== undefined && cell !== null ? String(cell) : "",
   );
 
-  const duplicateOffsets = headerCells
-    .map((cell, offset) =>
-      headerCellMatchesTitle(cell, input.title) ? offset : -1,
-    )
-    .filter((offset) => offset >= 0);
+  const offset = findTitleColumnOffset(
+    headerCells,
+    input.title,
+    input.searchColumnCount,
+  );
 
-  // 오른쪽 열부터 지워야 남은 열 인덱스가 밀리지 않는다
-  for (const offset of duplicateOffsets.reverse()) {
+  return offset >= 0 ? INSERT_COLUMN_INDEX + offset : null;
+}
+
+async function writeColumnValues(
+  sheetsClient: sheets_v4.Sheets,
+  input: {
+    spreadsheetId: string;
+    escapedTitle: string;
+    columnIndex: number;
+    values: string[][];
+  },
+): Promise<void> {
+  const letter = columnIndexToLetter(input.columnIndex);
+
+  await sheetsClient.spreadsheets.values.update({
+    spreadsheetId: input.spreadsheetId,
+    range: `${input.escapedTitle}!${letter}1:${letter}${input.values.length}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: {
+      values: input.values,
+    },
+  });
+}
+
+/**
+ * 날짜 열을 반영한다.
+ * - 같은 제목의 열이 P열 근처(검색 범위 안)에 이미 있으면: 열은 그대로 두고 값만 덮어쓴다
+ *   (열 순서·그 열을 참조하는 수식 유지).
+ * - 없으면: P열에 빈 열을 삽입하고(기존 P 이후는 오른쪽으로 밀림) 값을 쓴다.
+ *   insertIfMissing=false면 아무것도 하지 않는다.
+ */
+export async function insertTrendsDateColumn(
+  config: GoogleSheetsConfig,
+  input: InsertTrendsDateColumnInput,
+  options?: { sheetsClient?: sheets_v4.Sheets },
+): Promise<InsertTrendsDateColumnResult> {
+  const sheetsClient = options?.sheetsClient ?? createGoogleSheetsClient(config);
+
+  // 1. gid로 탭 찾기 + O열(바코드) 읽기
+  const { sheetTitle, escapedTitle, oValues, headerRowIndex } =
+    await locateTrendsSheet(sheetsClient, input);
+
+  // 2. O열 각 행에 맞춰 값 배열 구성
+  const { values, barcodeRowCount, matchedCount } = buildDateColumnValues(
+    oValues,
+    headerRowIndex,
+    input.title,
+    input.barcodeToValue,
+  );
+
+  // 3. 같은 제목의 기존 열 찾기 (같은 날 재실행이면 값만 갱신)
+  const existingColumnIndex = await findExistingTitleColumn(sheetsClient, {
+    spreadsheetId: input.spreadsheetId,
+    escapedTitle,
+    headerRowNumber: headerRowIndex + 1,
+    title: input.title,
+    searchColumnCount: input.searchColumnCount ?? TITLE_SEARCH_COLUMN_COUNT,
+  });
+
+  if (existingColumnIndex === null && input.insertIfMissing === false) {
+    return {
+      sheetUrl: buildSpreadsheetUrl(input.spreadsheetId, input.sheetGid),
+      sheetTitle,
+      barcodeRowCount,
+      matchedCount: 0,
+      created: false,
+      skipped: true,
+    };
+  }
+
+  // 4. 없으면 P열 위치에 빈 열 삽입 (기존 P 이후를 오른쪽으로 민다)
+  if (existingColumnIndex === null) {
     await sheetsClient.spreadsheets.batchUpdate({
       spreadsheetId: input.spreadsheetId,
       requestBody: {
         requests: [
           {
-            deleteDimension: {
+            insertDimension: {
               range: {
                 sheetId: input.sheetGid,
                 dimension: "COLUMNS",
-                startIndex: INSERT_COLUMN_INDEX + offset,
-                endIndex: INSERT_COLUMN_INDEX + offset + 1,
+                startIndex: INSERT_COLUMN_INDEX,
+                endIndex: INSERT_COLUMN_INDEX + 1,
               },
+              inheritFromBefore: false,
             },
           },
         ],
@@ -186,34 +337,12 @@ export async function insertTrendsDateColumn(
     });
   }
 
-  // 5. P열 위치에 빈 열 삽입 (기존 P 이후를 오른쪽으로 민다)
-  await sheetsClient.spreadsheets.batchUpdate({
+  // 5. 값 기입
+  await writeColumnValues(sheetsClient, {
     spreadsheetId: input.spreadsheetId,
-    requestBody: {
-      requests: [
-        {
-          insertDimension: {
-            range: {
-              sheetId: input.sheetGid,
-              dimension: "COLUMNS",
-              startIndex: INSERT_COLUMN_INDEX,
-              endIndex: INSERT_COLUMN_INDEX + 1,
-            },
-            inheritFromBefore: false,
-          },
-        },
-      ],
-    },
-  });
-
-  // 6. 새로 삽입된 빈 P열에 값 기입
-  await sheetsClient.spreadsheets.values.update({
-    spreadsheetId: input.spreadsheetId,
-    range: `${escapedTitle}!${INSERT_COLUMN_LETTER}1:${INSERT_COLUMN_LETTER}${pColumn.length}`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: pColumn,
-    },
+    escapedTitle,
+    columnIndex: existingColumnIndex ?? INSERT_COLUMN_INDEX,
+    values,
   });
 
   return {
@@ -221,5 +350,57 @@ export async function insertTrendsDateColumn(
     sheetTitle,
     barcodeRowCount,
     matchedCount,
+    created: existingColumnIndex === null,
+    skipped: false,
+  };
+}
+
+/**
+ * 같은 제목의 날짜 열 값을 비운다 (제목은 남긴다).
+ * 그날 기록이 모두 원복되어 값이 없을 때 사용한다. 열이 없으면 아무것도 하지 않는다.
+ */
+export async function clearTrendsDateColumn(
+  config: GoogleSheetsConfig,
+  input: {
+    spreadsheetId: string;
+    sheetGid: number;
+    title: string;
+    searchColumnCount?: number;
+  },
+  options?: { sheetsClient?: sheets_v4.Sheets },
+): Promise<{ sheetUrl: string; cleared: boolean }> {
+  const sheetsClient = options?.sheetsClient ?? createGoogleSheetsClient(config);
+  const { escapedTitle, oValues, headerRowIndex } = await locateTrendsSheet(
+    sheetsClient,
+    input,
+  );
+
+  const existingColumnIndex = await findExistingTitleColumn(sheetsClient, {
+    spreadsheetId: input.spreadsheetId,
+    escapedTitle,
+    headerRowNumber: headerRowIndex + 1,
+    title: input.title,
+    searchColumnCount: input.searchColumnCount ?? TITLE_SEARCH_COLUMN_COUNT,
+  });
+
+  if (existingColumnIndex !== null) {
+    const { values } = buildDateColumnValues(
+      oValues,
+      headerRowIndex,
+      input.title,
+      new Map(),
+    );
+
+    await writeColumnValues(sheetsClient, {
+      spreadsheetId: input.spreadsheetId,
+      escapedTitle,
+      columnIndex: existingColumnIndex,
+      values,
+    });
+  }
+
+  return {
+    sheetUrl: buildSpreadsheetUrl(input.spreadsheetId, input.sheetGid),
+    cleared: existingColumnIndex !== null,
   };
 }
