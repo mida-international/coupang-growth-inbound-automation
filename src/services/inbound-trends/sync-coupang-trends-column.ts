@@ -32,7 +32,7 @@ export function buildCoupangTrendsColumnTitle(isoDate: string): string {
 export async function syncCoupangTrendsColumn(input: {
   coupangSellerAccountId: string;
   isoDate: string;
-  /** 그날 열이 없을 때 새로 넣을지. 기록=true, 원복=false (지난 날짜 열을 P열에 새로 만들지 않음) */
+  /** 그날 열이 없을 때 새로 넣을지. 기록=true, 원복=false (지난 날짜 열을 새로 만들지 않음) */
   insertIfMissing: boolean;
 }): Promise<CoupangTrendsColumnSyncResult> {
   const title = buildCoupangTrendsColumnTitle(input.isoDate);
@@ -73,7 +73,7 @@ export async function syncCoupangTrendsColumn(input: {
 
     return {
       status: "success",
-      message: `추세 시트 '${title}' 열 반영 — O열 바코드 ${result.data.barcodeRowCount}개 중 ${result.data.matchedCount}개 매칭 (기록 바코드 ${result.data.valueCount}개)`,
+      message: `추세 시트 '${title}' 열 반영 — 시트 바코드 ${result.data.barcodeRowCount}개 중 ${result.data.matchedCount}개 매칭 (기록 바코드 ${result.data.valueCount}개)`,
       sheetUrl: result.data.sheetUrl,
     };
   } catch (error) {

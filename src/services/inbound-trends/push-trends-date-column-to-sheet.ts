@@ -39,11 +39,11 @@ export type PushTrendsDateColumnInput = {
   /** YYYY-MM-DD */
   date: string;
   kind: TrendsDateColumnKind;
-  /** P열 헤더 제목 (예: "6/22", "6/22(완)") */
+  /** 날짜 열 헤더 제목 (예: "6/22", "6/22(완)") */
   title: string;
   /** 그날 데이터가 없으면 오류 대신 같은 제목의 기존 열 값을 비운다 (기록 원복 후 동기화용) */
   clearWhenEmpty?: boolean;
-  /** 기존 열이 없을 때 새로 넣을지 (기본 true). 원복 동기화는 false — 지난 날짜 열을 P열에 새로 만들지 않는다 */
+  /** 기존 열이 없을 때 새로 넣을지 (기본 true). 원복 동기화는 false — 지난 날짜 열을 새로 만들지 않는다 */
   insertIfMissing?: boolean;
 };
 
