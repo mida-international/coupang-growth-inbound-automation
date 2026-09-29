@@ -132,15 +132,20 @@ function HistoryRow({
     setDeleting(true);
     setError(null);
 
-    const result = await apiDelete<void>(
-      `/api/coupang-inbound-deliverables/${row.id}`,
-    );
+    const result = await apiDelete<{
+      sheet: { status: "success" | "error"; message: string } | null;
+    }>(`/api/coupang-inbound-deliverables/${row.id}`);
 
     setDeleting(false);
 
     if (!result.ok) {
       setError(result.error);
       return;
+    }
+
+    // mizucos 계정은 추세 시트 '(완)' 열도 다시 반영된다 — 결과를 알려 준다.
+    if (result.data?.sheet) {
+      window.alert(result.data.sheet.message);
     }
 
     onDeleted();

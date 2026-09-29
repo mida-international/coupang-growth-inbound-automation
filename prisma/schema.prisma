@@ -408,12 +408,17 @@ model CoupangInboundDeliverable {
   unmatchedCount         Int      @default(0) @map("unmatched_count")
   recordedById           String   @map("recorded_by_id")
   recordedAt             DateTime @default(now()) @map("recorded_at")
+  /// 업로드한 원본 파일(엑셀/이미지) 해시로 만든 지문 — 같은 원본 재기록 경고용
+  sourceFingerprint      String?  @map("source_fingerprint")
+  /// 원본 파일 목록 [{ name, sha256, contentType, size, storagePath }]
+  sourceFiles            Json?    @map("source_files")
 
   coupangSellerAccount CoupangSellerAccount             @relation(fields: [coupangSellerAccountId], references: [id], onDelete: Restrict)
   recordedBy           Profile                          @relation(fields: [recordedById], references: [id], onDelete: Restrict)
   items                CoupangInboundDeliverableItem[]
 
   @@index([coupangSellerAccountId, recordedAt], map: "idx_coupang_inbound_deliverable_seller_at")
+  @@index([coupangSellerAccountId, sourceFingerprint], map: "idx_coupang_inbound_deliverable_seller_fingerprint")
   @@index([recordedById, recordedAt], map: "idx_coupang_inbound_deliverable_by_at")
   @@map("coupang_inbound_deliverable")
 }

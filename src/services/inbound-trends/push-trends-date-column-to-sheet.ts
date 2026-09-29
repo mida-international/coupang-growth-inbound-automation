@@ -9,7 +9,28 @@ import {
   getGoogleApiErrorMessage,
   getGoogleApiErrorStatus,
 } from "@/lib/google-sheets/google-api-error";
-import { insertTrendsDateColumn } from "@/lib/google-sheets/insert-trends-date-column";
+import {
+  clearTrendsDateColumn,
+  insertTrendsDateColumn,
+  MAX_SYNC_DAYS_AGO,
+  titleSearchColumnCount,
+} from "@/lib/google-sheets/insert-trends-date-column";
+
+/**
+ * 추세 시트 반영을 한 번에 하나씩만 실행하기 위한 DB advisory lock 키.
+ * 두 사람이 동시에 기록해도 열이 두 번 삽입되거나 옛 합계가 나중에 덮어쓰지 않게 한다.
+ */
+const TRENDS_SHEET_LOCK_KEY = 7202609291;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** YYYY-MM-DD 날짜가 KST 오늘로부터 며칠 전인지 */
+function daysAgoFromKstToday(isoDate: string): number {
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+  return Math.round(
+    (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${isoDate}T00:00:00Z`)) / DAY_MS,
+  );
+}
 
 export type TrendsDateColumnKind = "coupang" | "warehouse";
 
@@ -20,7 +41,14 @@ export type PushTrendsDateColumnInput = {
   kind: TrendsDateColumnKind;
   /** P열 헤더 제목 (예: "6/22", "6/22(완)") */
   title: string;
+  /** 그날 데이터가 없으면 오류 대신 같은 제목의 기존 열 값을 비운다 (기록 원복 후 동기화용) */
+  clearWhenEmpty?: boolean;
+  /** 기존 열이 없을 때 새로 넣을지 (기본 true). 원복 동기화는 false — 지난 날짜 열을 P열에 새로 만들지 않는다 */
+  insertIfMissing?: boolean;
 };
+
+/** 시트에 한 일: 새 열 삽입 / 기존 열 값 갱신 / 기존 열 값 비움 / 열을 못 찾아 그대로 둠 */
+export type TrendsColumnOutcome = "created" | "updated" | "cleared" | "not-found";
 
 export type PushTrendsDateColumnResult =
   | {
@@ -31,6 +59,7 @@ export type PushTrendsDateColumnResult =
         barcodeRowCount: number;
         matchedCount: number;
         valueCount: number;
+        outcome: TrendsColumnOutcome;
       };
     }
   | {
@@ -146,39 +175,88 @@ export async function pushTrendsDateColumnToSheet(
     };
   }
 
-  try {
-    const barcodeToValue = await fetchBarcodeQuantities(
-      input.coupangSellerAccountId,
-      input.date,
-      input.kind,
-    );
+  const daysAgo = daysAgoFromKstToday(input.date);
 
-    if (barcodeToValue.size === 0) {
-      const label = input.kind === "coupang" ? "쿠팡 입고(완)" : "창고 입고";
-      return {
-        ok: false,
-        error: `${input.date}에 ${label} 데이터가 없습니다.`,
-        status: 400,
-      };
-    }
-
-    const result = await insertTrendsDateColumn(sheetsConfig.config, {
-      spreadsheetId: target.spreadsheetId,
-      sheetGid: target.sheetGid,
-      title: input.title,
-      barcodeToValue,
-    });
-
+  if (daysAgo > MAX_SYNC_DAYS_AGO) {
     return {
-      ok: true,
-      data: {
-        sheetUrl: result.sheetUrl,
-        sheetTitle: result.sheetTitle,
-        barcodeRowCount: result.barcodeRowCount,
-        matchedCount: result.matchedCount,
-        valueCount: barcodeToValue.size,
-      },
+      ok: false,
+      error: `${MAX_SYNC_DAYS_AGO}일보다 지난 날짜는 시트에 자동 반영하지 않습니다 (작년 같은 날짜 열과 헷갈릴 수 있음). 시트에서 직접 확인해 주세요.`,
+      status: 400,
     };
+  }
+
+  const searchColumnCount = titleSearchColumnCount(daysAgo);
+
+  try {
+    // 합계 조회부터 시트 쓰기까지 잠금 안에서 실행한다 (동시 반영 시 열 중복·옛 합계 덮어쓰기 방지).
+    return await prisma.$transaction(
+      async (tx): Promise<PushTrendsDateColumnResult> => {
+        await tx.$queryRaw`SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(${Prisma.raw(String(TRENDS_SHEET_LOCK_KEY))})) AS l`;
+
+        const barcodeToValue = await fetchBarcodeQuantities(
+          input.coupangSellerAccountId,
+          input.date,
+          input.kind,
+        );
+
+        if (barcodeToValue.size === 0 && input.clearWhenEmpty) {
+          const cleared = await clearTrendsDateColumn(sheetsConfig.config, {
+            spreadsheetId: target.spreadsheetId,
+            sheetGid: target.sheetGid,
+            title: input.title,
+            searchColumnCount,
+          });
+
+          return {
+            ok: true,
+            data: {
+              sheetUrl: cleared.sheetUrl,
+              sheetTitle: input.title,
+              barcodeRowCount: 0,
+              matchedCount: 0,
+              valueCount: 0,
+              outcome: cleared.cleared ? "cleared" : "not-found",
+            },
+          };
+        }
+
+        if (barcodeToValue.size === 0) {
+          const label = input.kind === "coupang" ? "쿠팡 입고(완)" : "창고 입고";
+          return {
+            ok: false,
+            error: `${input.date}에 ${label} 데이터가 없습니다.`,
+            status: 400,
+          };
+        }
+
+        const result = await insertTrendsDateColumn(sheetsConfig.config, {
+          spreadsheetId: target.spreadsheetId,
+          sheetGid: target.sheetGid,
+          title: input.title,
+          barcodeToValue,
+          searchColumnCount,
+          insertIfMissing: input.insertIfMissing,
+        });
+
+        return {
+          ok: true,
+          data: {
+            sheetUrl: result.sheetUrl,
+            sheetTitle: result.sheetTitle,
+            barcodeRowCount: result.barcodeRowCount,
+            matchedCount: result.matchedCount,
+            valueCount: barcodeToValue.size,
+            outcome: result.skipped
+              ? "not-found"
+              : result.created
+                ? "created"
+                : "updated",
+          },
+        };
+      },
+      // Google Sheets API 호출이 끝날 때까지 잠금을 유지한다.
+      { maxWait: 30_000, timeout: 55_000 },
+    );
   } catch (error) {
     return mapGoogleSheetsError(error, sheetsConfig.config.clientEmail);
   }

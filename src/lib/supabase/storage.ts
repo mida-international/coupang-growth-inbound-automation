@@ -25,6 +25,16 @@ export function getCoupangInboundDeliverableStoragePath(deliverableId: string) {
   return `coupang-inbound-deliverables/${deliverableId}/inbound-template.xlsx`;
 }
 
+export function getCoupangInboundSourceStoragePath(
+  deliverableId: string,
+  index: number,
+  fileName: string,
+) {
+  // 원래 파일명은 DB(source_files)에 두고, 경로에는 ASCII 확장자만 쓴다.
+  const extension = fileName.match(/\.[A-Za-z0-9]{1,5}$/)?.[0].toLowerCase() ?? "";
+  return `coupang-inbound-deliverables/${deliverableId}/source-${index}${extension}`;
+}
+
 export function getTelegramBoxListStoragePath(uploadId: string) {
   return `telegram-box-list/${uploadId}/box-list.xlsx`;
 }

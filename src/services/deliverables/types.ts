@@ -56,6 +56,10 @@ export type RecordCoupangInboundInput = {
   templateBuffer: Buffer;
   boxListInput: import("@/lib/excel/generators/filter-inbound-template").BoxListInput;
   sourceFileName?: string | null;
+  /** 원본 파일(엑셀/이미지) 해시로 만든 지문 — 같은 원본 재기록 경고용 */
+  sourceFingerprint?: string | null;
+  /** 원본 파일 목록 (Storage 저장은 기록 후 별도 업로드) */
+  sourceFiles?: import("@/lib/deliverables/coupang-inbound-source").CoupangInboundSourceFile[];
 };
 
 export type RecordCoupangInboundResult = {

@@ -1,12 +1,49 @@
+import { NextResponse } from "next/server";
+
 import { requireApiProfile } from "@/lib/api/auth";
 import { resolveActiveSellerAccount } from "@/lib/api/download-helpers";
 import { logRouteError } from "@/lib/api/log-route-error";
 import { jsonError, jsonSuccess } from "@/lib/api/response";
+import {
+  computeSourceFingerprint,
+  parseClientSourceFiles,
+  type CoupangInboundSourceFile,
+} from "@/lib/deliverables/coupang-inbound-source";
 import { getLatestInboundTemplateFile } from "@/services/coupang-growth-sync/get-latest-inbound-template-file";
+import { findDuplicateCoupangInboundDeliverables } from "@/services/deliverables/find-duplicate-coupang-inbound-deliverables";
 import { listCoupangInboundDeliverables } from "@/services/deliverables/list-coupang-inbound-deliverables";
 import { recordCoupangInbound } from "@/services/deliverables/record-coupang-inbound";
+import {
+  isTrendsAutoPushAccount,
+  syncCoupangTrendsColumn,
+  toKstIsoDate,
+} from "@/services/inbound-trends/sync-coupang-trends-column";
 
 export const runtime = "nodejs";
+// 기록 후 추세 시트 반영(Google Sheets API 여러 번 호출)까지 기다린다.
+export const maxDuration = 60;
+
+/**
+ * 폼의 sourceFiles(JSON): 브라우저가 계산한 원본 파일(엑셀/이미지) 해시 목록.
+ * 원본 자체는 기록 후 /[id]/sources 로 한 장씩 따로 올린다 (요청 크기 제한 회피).
+ */
+function parseSourceFilesField(
+  value: FormDataEntryValue | null,
+): CoupangInboundSourceFile[] {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return [];
+  }
+
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return [];
+  }
+
+  return parseClientSourceFiles(parsed);
+}
 
 export async function GET(request: Request) {
   try {
@@ -68,6 +105,32 @@ export async function POST(request: Request) {
       );
     }
 
+    const sourceFiles = parseSourceFilesField(formData.get("sourceFiles"));
+    const sourceFingerprint = computeSourceFingerprint(
+      sourceFiles.map((file) => file.sha256),
+    );
+    const force = formData.get("force") === "true";
+
+    // 오늘 같은 계정에 같은 원본으로 기록했으면, 사용자가 확인(force)하기 전에는 기록하지 않는다.
+    if (sourceFingerprint && !force) {
+      const duplicates = await findDuplicateCoupangInboundDeliverables(
+        seller.id,
+        sourceFingerprint,
+      );
+
+      if (duplicates.length > 0) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "오늘 같은 원본 파일로 이미 기록했습니다. 기존 기록을 확인해 주세요.",
+            duplicates,
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     const boxListBuffer = Buffer.from(await boxListFile.arrayBuffer());
 
     const result = await recordCoupangInbound({
@@ -78,10 +141,24 @@ export async function POST(request: Request) {
         source: "excel",
         boxListBuffer,
       },
-      sourceFileName: boxListFile.name,
+      sourceFileName:
+        sourceFiles.length > 1
+          ? `${sourceFiles[0].name} 외 ${sourceFiles.length - 1}개`
+          : (sourceFiles[0]?.name ?? boxListFile.name),
+      sourceFingerprint,
+      sourceFiles,
     });
 
-    return jsonSuccess(result);
+    // mizucos 계정은 기록 직후 추세 시트의 '오늘(완)' 열을 그날 합계로 다시 반영한다.
+    const sheet = isTrendsAutoPushAccount(seller.displayName)
+      ? await syncCoupangTrendsColumn({
+          coupangSellerAccountId: seller.id,
+          isoDate: toKstIsoDate(new Date()),
+          insertIfMissing: true,
+        })
+      : null;
+
+    return jsonSuccess({ ...result, sheet });
   } catch (error) {
     logRouteError(error, {
       route: "/api/coupang-inbound-deliverables",

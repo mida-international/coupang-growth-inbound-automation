@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import {
+  useCoupangInboundDownloadDialog,
+  type CoupangInboundDownloadChoice,
+  type PendingCoupangInboundDownload,
+} from "@/components/deliverables/coupang-inbound-download-dialog";
 import { CoupangInboundImageDropzone } from "@/components/deliverables/vision/coupang-inbound-image-dropzone";
 import { DeliverablesSection } from "@/components/deliverables/deliverables-section";
 import { ErrorNoticeDialog } from "@/components/deliverables/error-notice-dialog";
@@ -70,17 +75,20 @@ export function CoupangInboundTemplateSection({
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingShoplingOutbound, setIsDownloadingShoplingOutbound] =
     useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [activeTab, setActiveTab] = useState<InputTab>("excel");
   const [templateMeta, setTemplateMeta] = useState<TemplateMeta | null>(null);
   const [isLoadingTemplateMeta, setIsLoadingTemplateMeta] = useState(false);
-  const [canRecordInbound, setCanRecordInbound] = useState(false);
   const hasSeller = sellerId.trim().length > 0;
   const hasStoredTemplate = templateMeta?.exists === true;
   const hasBoxListInput =
     activeTab === "excel" ? excelFile !== null : imageFiles.length > 0;
+  const downloadDialog = useCoupangInboundDownloadDialog(runDownload);
   const canDownload =
-    hasSeller && hasStoredTemplate && hasBoxListInput && !isDownloading;
+    hasSeller &&
+    hasStoredTemplate &&
+    hasBoxListInput &&
+    !isDownloading &&
+    !downloadDialog.isPreparing;
   const canDownloadShoplingOutbound =
     hasSeller && hasBoxListInput && !isDownloadingShoplingOutbound;
 
@@ -138,7 +146,6 @@ export function CoupangInboundTemplateSection({
   }, [hasSeller, sellerId]);
 
   useEffect(() => {
-    setCanRecordInbound(false);
     setUnmatchedResult(null);
   }, [sellerId, excelFile, imageFiles, activeTab]);
 
@@ -166,32 +173,79 @@ export function CoupangInboundTemplateSection({
     return buildBoxListExcelFile(data, "쿠팡_입고리스트_이미지변환.xlsx");
   }
 
+  // 다운로드 → 팝업(다운로드만 / 다운로드 + 기록). 원본은 엑셀 1개 또는 이미지 여러 장.
   async function handleDownloadClick() {
     if (!canDownload) {
       return;
     }
 
-    setIsDownloading(true);
     setNotice(null);
     setUnmatchedResult(null);
 
+    const files =
+      activeTab === "excel" ? (excelFile ? [excelFile] : []) : imageFiles;
+
     try {
-      const boxListFile = await resolveBoxListFile();
+      await downloadDialog.open(sellerId, files);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "중복 기록 확인에 실패했습니다.",
+      );
+    }
+  }
+
+  async function runDownload(
+    choice: CoupangInboundDownloadChoice,
+    pending: PendingCoupangInboundDownload,
+  ) {
+    setIsDownloading(true);
+
+    let downloadMessage: string;
+    let boxListFile: File | null;
+
+    try {
+      boxListFile = await resolveBoxListFile();
 
       if (!boxListFile) {
+        setIsDownloading(false);
         return;
       }
 
       const downloadResult = await downloadCoupangInboundTemplate(
-        sellerId,
+        pending.sellerId,
         boxListFile,
       );
-      setNotice(downloadResult.message);
+      downloadMessage = downloadResult.message;
+      setNotice(downloadMessage);
       setUnmatchedResult(downloadResult);
-      setCanRecordInbound(true);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "입고 템플릿 생성에 실패했습니다.",
+      );
+      setIsDownloading(false);
+      return;
+    }
+
+    if (choice === "download") {
+      setIsDownloading(false);
+      return;
+    }
+
+    try {
+      const recordMessage = await recordCoupangInbound({
+        sellerId: pending.sellerId,
+        boxListFile,
+        files: pending.files,
+        sourceFiles: pending.sourceFiles,
+        // 팝업에서 중복 경고를 보고 "그래도" 고른 경우만 강제. 그 사이 생긴 중복은 서버가 막는다.
+        force: pending.duplicates.length > 0,
+      });
+      setNotice(`${downloadMessage}\n${recordMessage}`);
+    } catch (error) {
+      setErrorMessage(
+        `다운로드는 완료됐지만 입고 기록에 실패했습니다: ${
+          error instanceof Error ? error.message : "알 수 없는 오류"
+        }`,
       );
     } finally {
       setIsDownloading(false);
@@ -234,32 +288,6 @@ export function CoupangInboundTemplateSection({
       );
     } finally {
       setIsDownloadingShoplingOutbound(false);
-    }
-  }
-
-  async function handleRecordInboundClick() {
-    if (!canRecordInbound || !hasSeller) {
-      return;
-    }
-
-    setIsRecording(true);
-    setNotice(null);
-
-    try {
-      const boxListFile = await resolveBoxListFile();
-
-      if (!boxListFile) {
-        return;
-      }
-
-      const recordedCount = await recordCoupangInbound(sellerId, boxListFile);
-      setNotice(`${recordedCount}개 바코드 입고를 기록했습니다.`);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "입고 기록에 실패했습니다.",
-      );
-    } finally {
-      setIsRecording(false);
     }
   }
 
@@ -359,25 +387,21 @@ export function CoupangInboundTemplateSection({
                 type="button"
                 size="default"
                 className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
-                disabled={
-                  !canDownload ||
-                  isRecording ||
-                  isDownloadingShoplingOutbound
-                }
+                disabled={!canDownload || isDownloadingShoplingOutbound}
                 onClick={handleDownloadClick}
               >
-                {isDownloading ? "생성 중..." : "다운로드"}
+                {downloadDialog.isPreparing
+                  ? "확인 중..."
+                  : isDownloading
+                    ? "생성 중..."
+                    : "다운로드"}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="default"
                 className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
-                disabled={
-                  !canDownloadShoplingOutbound ||
-                  isDownloading ||
-                  isRecording
-                }
+                disabled={!canDownloadShoplingOutbound || isDownloading}
                 onClick={handleShoplingOutboundClick}
               >
                 {isDownloadingShoplingOutbound
@@ -385,23 +409,6 @@ export function CoupangInboundTemplateSection({
                   : "샵플링 출고 템플릿 생성"}
               </Button>
             </>
-          }
-          end={
-            <Button
-              type="button"
-              variant="outline"
-              size="default"
-              className={DELIVERABLES_PRIMARY_BUTTON_CLASS}
-              disabled={
-                !canRecordInbound ||
-                isRecording ||
-                isDownloading ||
-                isDownloadingShoplingOutbound
-              }
-              onClick={handleRecordInboundClick}
-            >
-              {isRecording ? "기록 중..." : "기록하기"}
-            </Button>
           }
         />
 
@@ -424,7 +431,10 @@ export function CoupangInboundTemplateSection({
         ) : null}
 
         {notice ? (
-          <p className="text-sm text-muted-foreground" role="status">
+          <p
+            className="text-sm whitespace-pre-line text-muted-foreground"
+            role="status"
+          >
             {notice}
           </p>
         ) : null}
@@ -436,6 +446,8 @@ export function CoupangInboundTemplateSection({
           />
         ) : null}
       </div>
+
+      {downloadDialog.dialog}
 
       <ErrorNoticeDialog
         message={errorMessage}
