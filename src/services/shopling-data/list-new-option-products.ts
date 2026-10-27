@@ -10,6 +10,7 @@ import type {
   ShoplingNewOptionProductRowView,
 } from "@/services/shopling-data/types";
 import { normalizeShoplingInventoryPageSize } from "@/services/shopling-data/types";
+import { withWorkbenchResultCache } from "@/services/inbound-workbench/workbench-result-cache";
 
 type ListNewOptionProductsOptions = {
   from?: string;
@@ -28,7 +29,19 @@ type RawNewOptionProductRow = {
   option_value: string | null;
   barcode: string;
   first_added_date: Date;
+  total_count: bigint;
 };
+
+/**
+ * 자료 버전 — 샵플링 재고·입고 템플릿 적재는 모두 ingestion_log 에 한 줄씩 남으므로
+ * 그 표의 MAX(id) 하나면 「자료가 바뀌었나」를 알 수 있다 (2026-10-27 느림 수리, 작업대와 같은 방식).
+ */
+async function getIngestionVersion(): Promise<string> {
+  const rows = await prisma.$queryRaw<[{ max_id: bigint | null }]>(
+    Prisma.sql`SELECT MAX(id) AS max_id FROM ingestion_log`,
+  );
+  return rows[0]?.max_id?.toString() ?? "-";
+}
 
 function formatFirstAddedDate(value: Date): string {
   const year = value.getUTCFullYear();
@@ -62,9 +75,12 @@ export async function listNewOptionProducts(
   });
   const searchCondition = buildNewOptionProductsSearchCondition(options.search);
 
-  const inventoryCount = await prisma.shoplingInventory.count();
+  // 전체 건수 세기(큰 표 전체 훑기) 대신 한 줄 있는지만 본다.
+  const anyInventory = await prisma.shoplingInventory.findFirst({
+    select: { id: true },
+  });
 
-  if (inventoryCount === 0) {
+  if (!anyInventory) {
     return {
       hasInventoryHistory: false,
       from: dateRange.from,
@@ -85,15 +101,21 @@ export async function listNewOptionProducts(
     ? Prisma.empty
     : Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
 
-  const [countResult, rows] = await Promise.all([
-    prisma.$queryRaw<[{ count: number }]>(
-      Prisma.sql`
-        ${baseCte}
-        SELECT COUNT(*)::int AS count
-        FROM visible_rows
-      `,
-    ),
-    prisma.$queryRaw<RawNewOptionProductRow[]>(
+  // 2026-10-27 느림 수리: 건수 쿼리와 목록 쿼리가 각각 shopling_inventory 전체를 두 번 훑던 것을
+  // 한 쿼리(COUNT(*) OVER())로 합치고, 자료 버전이 같으면 지난 결과를 그대로 쓴다.
+  const version = await getIngestionVersion();
+  const cacheKey = JSON.stringify({
+    kind: "new-option-products",
+    from: dateRange.from,
+    to: dateRange.to,
+    page,
+    pageSize,
+    exportAll,
+    search: options.search?.trim() ?? "",
+  });
+
+  const { value } = await withWorkbenchResultCache(cacheKey, version, async () => {
+    const rows = await prisma.$queryRaw<RawNewOptionProductRow[]>(
       Prisma.sql`
         ${baseCte}
         SELECT
@@ -102,20 +124,26 @@ export async function listNewOptionProducts(
           ptn_goods_cd,
           option_value,
           barcode,
-          first_added_date
+          first_added_date,
+          COUNT(*) OVER()::bigint AS total_count
         FROM visible_rows
         ORDER BY first_added_date DESC, goods_key ASC, barcode ASC
         ${paginationClause}
       `,
-    ),
-  ]);
+    );
+
+    return {
+      totalCount: Number(rows[0]?.total_count ?? 0),
+      rows: rows.map(mapRow),
+    };
+  });
 
   return {
     hasInventoryHistory: true,
     from: dateRange.from,
     to: dateRange.to,
     days: dateRange.days,
-    totalCount: countResult[0]?.count ?? 0,
-    rows: rows.map(mapRow),
+    totalCount: value.totalCount,
+    rows: value.rows,
   };
 }
