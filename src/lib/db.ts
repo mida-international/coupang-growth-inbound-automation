@@ -12,17 +12,21 @@ const globalForDb = globalThis as unknown as {
   pgPool: Pool | undefined;
 };
 
+// 기본 5: 런타임 연결은 transaction pooler(6543)로 자동 전환되므로(resolve-runtime-database-url)
+// 함수 하나당 5개는 안전하다. 1이면 Promise.all 병렬 조회가 실제로는 줄 서서 실행된다 (2026-10-27).
+const DEFAULT_DATABASE_POOL_MAX = 5;
+
 function getDatabasePoolMax(): number {
   const raw = process.env.DATABASE_POOL_MAX?.trim();
 
   if (!raw) {
-    return 1;
+    return DEFAULT_DATABASE_POOL_MAX;
   }
 
   const parsed = Number(raw);
 
   if (!Number.isFinite(parsed) || parsed <= 0) {
-    return 1;
+    return DEFAULT_DATABASE_POOL_MAX;
   }
 
   return Math.floor(parsed);
