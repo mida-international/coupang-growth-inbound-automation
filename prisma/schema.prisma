@@ -321,6 +321,7 @@ model ShoplingInventory {
   @@index([snapshotDate, barcode], map: "idx_shopling_inv_snapshot_barcode")
   @@index([ptnGoodsCd], map: "idx_shopling_inv_ptn_goods_cd")
   @@index([goodsKey], map: "idx_shopling_inv_goods_key")
+  @@index([optId, snapshotDate], map: "idx_shopling_inv_opt_id_snapshot")
   @@index([ingestionId], map: "idx_shopling_inv_ingestion_id")
   @@map("shopling_inventory")
 }
