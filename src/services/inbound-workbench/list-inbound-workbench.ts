@@ -17,6 +17,10 @@ import type {
   ListInboundWorkbenchResult,
 } from "@/services/inbound-workbench/types";
 import { normalizeInboundWorkbenchPageSize } from "@/services/inbound-workbench/types";
+import {
+  getWorkbenchDataVersion,
+  withWorkbenchResultCache,
+} from "@/services/inbound-workbench/workbench-result-cache";
 
 type ListInboundWorkbenchOptions = {
   coupangSellerAccountIds: string[];
@@ -198,6 +202,25 @@ export async function listInboundWorkbench(
     ? Prisma.empty
     : Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
 
+  // 자료가 바뀌지 않았으면(버전 같음) 지난 결과를 그대로 쓴다 — 2026-10-27 느림 수리.
+  const version = await getWorkbenchDataVersion(sellerIds);
+  const cacheKey = JSON.stringify({
+    sellerIds: [...sellerIds].sort(),
+    page,
+    pageSize,
+    exportAll,
+    search: options.search?.trim() ?? "",
+    sort,
+    dir,
+  });
+
+  const { value } = await withWorkbenchResultCache(cacheKey, version, () =>
+    queryWorkbench(),
+  );
+
+  return value;
+
+  async function queryWorkbench(): Promise<ListInboundWorkbenchResult> {
   // 스냅샷 날짜 조회는 본 쿼리 결과와 무관하므로 병렬 실행 (순차 왕복 제거)
   const [snapshotDates, rows] = await Promise.all([
     fetchSnapshotDates(sellerIds[0]!),
@@ -268,4 +291,5 @@ export async function listInboundWorkbench(
     totalCount: Number(rows[0]?.total_count ?? 0),
     rows: rows.map(mapRow),
   };
+  }
 }
