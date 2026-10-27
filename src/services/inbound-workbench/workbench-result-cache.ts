@@ -15,9 +15,7 @@ import { prisma } from "@/lib/db";
  */
 
 type VersionRow = {
-  template_at: Date | null;
-  health_at: Date | null;
-  shopling_at: Date | null;
+  ingestion_id: bigint | null;
   record_at: Date | null;
   record_count: bigint;
   override_at: Date | null;
@@ -49,13 +47,11 @@ function toKey(value: Date | bigint | null): string {
 /** 선택 계정들의 자료 버전 문자열. 원천 표 중 하나라도 바뀌면 달라진다. */
 export async function getWorkbenchDataVersion(sellerIds: string[]): Promise<string> {
   const sellerIn = Prisma.join(sellerIds.map((id) => Prisma.sql`${id}`));
+  // 템플릿·재고건강·샵플링 재고의 적재는 모두 ingestion_log 에 한 줄씩 남는다(작은 표, PK).
+  // 큰 표 3개의 MAX(created_at)(색인 없음 → 전체 훑기, 수 초)를 이 한 값으로 대신한다 — 2026-10-27 2차.
   const rows = await prisma.$queryRaw<VersionRow[]>(Prisma.sql`
     SELECT
-      (SELECT MAX(created_at) FROM coupang_growth_inbound_template
-        WHERE coupang_seller_account_id IN (${sellerIn})) AS template_at,
-      (SELECT MAX(created_at) FROM coupang_growth_inventory_health
-        WHERE coupang_seller_account_id IN (${sellerIn})) AS health_at,
-      (SELECT MAX(created_at) FROM shopling_inventory) AS shopling_at,
+      (SELECT MAX(id) FROM ingestion_log) AS ingestion_id,
       (SELECT MAX(recorded_at) FROM coupang_inbound_record
         WHERE coupang_seller_account_id IN (${sellerIn})) AS record_at,
       (SELECT COUNT(*) FROM coupang_inbound_record
@@ -70,9 +66,7 @@ export async function getWorkbenchDataVersion(sellerIds: string[]): Promise<stri
   const r = rows[0];
   if (!r) return "none";
   return [
-    toKey(r.template_at),
-    toKey(r.health_at),
-    toKey(r.shopling_at),
+    toKey(r.ingestion_id),
     toKey(r.record_at),
     toKey(r.record_count),
     toKey(r.override_at),

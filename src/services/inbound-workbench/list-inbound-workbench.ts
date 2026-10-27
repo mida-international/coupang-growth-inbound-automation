@@ -186,7 +186,9 @@ export async function listInboundWorkbench(
   const searchCondition = buildSearchCondition(options.search);
   const { sort, dir } = parseInboundWorkbenchSort(options.sort, options.dir);
   const orderBy = buildInboundWorkbenchOrderBy(sort, dir);
+  const t0 = Date.now();
   const queryContext = await resolveWorkbenchQueryContext(sellerIds);
+  const tContext = Date.now() - t0;
 
   if (!queryContext) {
     return {
@@ -203,7 +205,9 @@ export async function listInboundWorkbench(
     : Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
 
   // 자료가 바뀌지 않았으면(버전 같음) 지난 결과를 그대로 쓴다 — 2026-10-27 느림 수리.
+  const t1 = Date.now();
   const version = await getWorkbenchDataVersion(sellerIds);
+  const tVersion = Date.now() - t1;
   const cacheKey = JSON.stringify({
     sellerIds: [...sellerIds].sort(),
     page,
@@ -214,8 +218,13 @@ export async function listInboundWorkbench(
     dir,
   });
 
-  const { value } = await withWorkbenchResultCache(cacheKey, version, () =>
+  const t2 = Date.now();
+  const { value, hit } = await withWorkbenchResultCache(cacheKey, version, () =>
     queryWorkbench(),
+  );
+  // 느림 수리 측정용 — Vercel Runtime Logs 에서 「[perf] workbench」 로 검색 (2026-10-27)
+  console.log(
+    `[perf] workbench context=${tContext}ms version=${tVersion}ms ${hit ? "cache-hit" : "query"}=${Date.now() - t2}ms page=${page} size=${pageSize} search=${options.search?.trim() ? "y" : "n"}`,
   );
 
   return value;

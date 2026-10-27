@@ -23,15 +23,19 @@ type DashboardPageProps = {
 export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
+  const tStart = Date.now();
   const profile = await requireProfile();
+  const tAuth = Date.now() - tStart;
 
   const params = await searchParams;
   // 판매자 목록과 컬럼 레이아웃은 서로 독립적이므로 병렬 조회
   // (컬럼 레이아웃을 본 쿼리 뒤에서 순차로 부르던 것을 앞으로 당겨 왕복 제거)
+  const tPre = Date.now();
   const [accounts, columnLayout] = await Promise.all([
     listSellerAccounts(),
     getInboundWorkbenchColumnLayout(profile.id),
   ]);
+  const tAccounts = Date.now() - tPre;
   const sellerIds = resolveSellerAccountIds(accounts, params.seller);
   const search = params.q?.trim() ?? "";
   const pageSize = normalizeInboundWorkbenchPageSize(Number(params.pageSize));
@@ -48,6 +52,10 @@ export default async function DashboardPage({
           dir: params.dir,
         })
       : EMPTY_INBOUND_WORKBENCH_RESULT;
+  // 느림 수리 측정용 — Vercel Runtime Logs 「[perf] page/」 (2026-10-27)
+  console.log(
+    `[perf] page/ auth=${tAuth}ms accounts+layout=${tAccounts}ms total=${Date.now() - tStart}ms rows=${data.rows.length}`,
+  );
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
