@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import * as React from "react";
@@ -103,6 +102,9 @@ const NAV_DEFAULT_TAB_GROUPS: Record<string, PageTabGroup> = {
   "/data/shopling": shoplingDataTabGroup,
 };
 
+// 메뉴는 Next <Link>(화면 안 이동) 대신 보통 <a>(전체 새로 열기)를 쓴다.
+// 화면 안 이동 때 크롬 탭이 3~8분 굳는 현상(2026-10-27, 집 PC·정우신 PC 재현, 페이지 코드 밖 원인)을 피하기 위함.
+// 주소창 직접 입력은 한 번도 안 굳었고, 첫 화면이 1초 안이라 체감 차이 없음.
 function getNavLinkHref(item: NavItem) {
   const group = NAV_DEFAULT_TAB_GROUPS[item.href];
 
@@ -150,7 +152,7 @@ function NavIconMenuItem({
               }}
             />
           ) : (
-            <Link
+            <a
               href={getNavLinkHref(item)}
               onClick={(event) => {
                 event.stopPropagation();
@@ -224,7 +226,7 @@ function NavCollapsibleGroup({
                       className={expandedSubButtonClassName}
                       isActive={isNavItemActive(pathname, item)}
                       render={
-          <Link
+          <a
             href={getNavLinkHref(item)}
             onClick={(event) => {
               event.stopPropagation();

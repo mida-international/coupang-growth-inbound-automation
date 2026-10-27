@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
@@ -47,7 +46,8 @@ export function PageTabsNav({
           const isActive = tab.href === activeHref;
 
           return (
-            <Link
+            // 화면 안 이동(Link) 대신 전체 새로 열기 — 크롬 탭 굳음 회피(2026-10-27, app-sidebar 와 같은 이유)
+            <a
               key={tab.href}
               href={tab.href}
               aria-current={isActive ? "page" : undefined}
@@ -60,7 +60,7 @@ export function PageTabsNav({
               )}
             >
               {tab.title}
-            </Link>
+            </a>
           );
         })}
       </div>
