@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { LongFrameReporter } from "@/components/diag/long-frame-reporter";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
@@ -35,6 +36,7 @@ export default function RootLayout({
     >
       <body className="flex h-full min-h-full flex-col overflow-hidden">
         <TooltipProvider>{children}</TooltipProvider>
+        <LongFrameReporter />
       </body>
     </html>
   );

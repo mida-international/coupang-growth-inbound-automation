@@ -15,6 +15,8 @@ const READ_ONLY_POST_PATHS = new Set([
   "/api/downloads/shopling-outbound-template",
   "/api/integrations/shopling/test",
   "/api/vision/extract-box-list",
+  // 브라우저 긴 작업(멈춤) 기록 — 로그만 남기고 DB·시트에 쓰지 않음 (2026-10-27)
+  "/api/diag/long-frame",
 ]);
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
