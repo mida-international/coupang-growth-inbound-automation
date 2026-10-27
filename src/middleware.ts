@@ -89,6 +89,13 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user) {
+    // 화면(페이지) 요청은 각 page 의 requireProfile 이 Profile 을 다시 확인해 /login 으로 보내므로,
+    // 미들웨어의 Profile REST 조회는 API 요청과 /login 에서만 한다.
+    // (화면 한 번 열 때 메뉴 미리불러오기까지 15번 넘게 같은 조회를 반복하던 것을 없앰, 2026-10-27)
+    if (!isApiRoute && !isLoginPage) {
+      return supabaseResponse;
+    }
+
     const profileExists = await hasProfile(user.id);
 
     if (!profileExists) {
